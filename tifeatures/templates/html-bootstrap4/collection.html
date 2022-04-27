@@ -1,21 +1,12 @@
 {% include "header.html" %}
 
-<nav aria-label="breadcrumb">
-  <ol class="breadcrumb bg-light">
-    <li class="breadcrumb-item"><a href="{{ template.api_root }}?f=html">Home</a></li>
-    <li class="breadcrumb-item"><a href="{{ template.api_root }}/collections?f=html">Collections</a></li>
-    <li class="breadcrumb-item active" aria-current="page">{{ response.title }}</li>
-    <li class="ml-auto json-link"><a target="_blank" href="{{ template.api_root }}/collections/{{ response.id }}?f=json">JSON</a></li>
-  </ol>
-</nav>
-
-<h1>{{ template.title }} - Collection: {{ response.title }}</h1>
+<h1>Collection: {{ response.title or response.id }}</h1>
 
 <div class="row">
   <div class="col-sm">
 
-    <p>{{ response.description }}</p>
-    {% if existsIn(response, "keywords") and length(response.keywords) > 0 %}
+    <p>{{ response.description or response.title or response.id }}</p>
+    {% if "keywords" in response and length(response.keywords) > 0 %}
       <div id="keywords"><p>
         {% for keyword in response.keywords %}
           <span class="badge badge-secondary">{{ keyword }}</span>

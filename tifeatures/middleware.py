@@ -72,17 +72,37 @@ class HTMLResponseMiddleware(BaseHTTPMiddleware):
             headers['content-type'] = 'text/html'
             route = request.scope['route']
             tpl = f"{route.endpoint.__name__}.html"
+            urlpath = request.url.path
+            crumbs=[]
+            baseurl = str(request.base_url).rstrip('/')
+            crumbpath = str(baseurl)
+            for crumb in urlpath.split('/'):
+                print(crumb)
+                print(crumbpath)
+                crumbpath = crumbpath.rstrip('/')
+                part = crumb
+                if part is None or part == '':
+                    part = 'Home'
+                crumbpath += f"/{crumb}"
+                crumbs.append({
+                    "url": crumbpath.rstrip('/'),
+                    "part": part.capitalize()
+                })
+            print(crumbs)
+
+
+            print(request.url)
             return self.templates.TemplateResponse(
                 tpl,
                 {
                     "request": request,
                     "response": data,
                     "template": {
-                        "api_root": str(request.base_url).rstrip('/'),
+                        "api_root": baseurl,
+                        "params": request.query_params,
                         "title": "",
                     },
-                    "existsIn": existsIn,
-                    "dumps": json.dumps,
+                    "crumbs": crumbs,
                     "json_url": str(request.url).replace('f=html','f=json')
                 },
                 headers=headers

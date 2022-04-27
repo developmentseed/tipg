@@ -8,17 +8,8 @@
   {% if link.rel == "next" %}{% set next_link = link %}{% set show_next_link = true %}{% endif %}
 {% endfor %}
 
-<nav aria-label="breadcrumb">
-  <ol class="breadcrumb bg-light">
-    <li class="breadcrumb-item"><a href="{{ template.api_root }}/?f=html">Home</a></li>
-    <li class="breadcrumb-item"><a href="{{ template.api_root }}/collections?f=html">Collections</a></li>
-    <li class="breadcrumb-item"><a href="{{ template.api_root }}/collections/{{ response.id }}?f=html">{{ response.title }}</a></li>
-    <li class="breadcrumb-item active" aria-current="page">items</li>
-    <li class="ml-auto json-link"><a target="_blank" href="{{ json_url }}">JSON</a></li>
-  </ol>
-</nav>
 
-<h1>{{ template.title }} - Collection Items: {{ response.title }}</h1>
+<h1>Collection Items: {{ response.title or response.id }}</h1>
 
 <div id="map" class="rounded" style="width:100%; height:400px;">Loading...</div>
 
@@ -94,10 +85,10 @@ $(function() {
   var offset = 0; // defaults
   var limit = 10;
 
-  {% if existsIn(template.params, "offset") %}
+  {% if "offset" in template.params %}
   offset = {{ template.params.offset }};
   {% endif %}
-  {% if existsIn(template.params, "limit") %}
+  {% if "limit" in template.params %}
   limit = {{ template.params.limit }};
   {% endif %}
 

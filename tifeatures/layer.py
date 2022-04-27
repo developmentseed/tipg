@@ -95,21 +95,32 @@ class Table(CollectionLayer):
         async with pool.acquire() as conn:
             sql_query = """
                 WITH
-                    -- TODO: make sure to return features in CRS (epsg:4326)
-                    -- TODO: add id to the geojson
                     features AS (
-                        SELECT *
+                        SELECT
+                        *
                         FROM :tablename
                         -- TODO: WHERE
                         -- TODO: SORT
                         LIMIT :limit OFFSET :offset
                     ),
                     total_count AS (
-                        SELECT COUNT(*) FROM :tablename
+                        SELECT COUNT(*) FROM features
                     )
                 SELECT json_build_object(
                     'type', 'FeatureCollection',
-                    'features', json_agg(ST_AsGeoJSON(features.*)::json),
+                    'features', json_agg(
+                        json_build_object(
+                            'type', 'Feature',
+                            'id', :id_column,
+                            'geometry', ST_AsGeoJSON(
+                                CASE
+                                    WHEN :srid = 4326 THEN :geometry_column
+                                    ELSE ST_Transform(:geometry_column, 4326)
+                                END
+                                )::json,
+                            'properties', to_jsonb( features.* ) - :geometry_column_str
+                        )
+                    ),
                     'total_count', total_count.count
                 )
                 FROM features, total_count
@@ -119,6 +130,10 @@ class Table(CollectionLayer):
             q, p = render(
                 sql_query,
                 tablename=pg_variable(self.id),
+                id_column=pg_variable(self.id_column),
+                geometry_column=pg_variable(self.geometry_column),
+                geometry_column_str=self.geometry_column,
+                srid=self.geometry_srid,
                 limit=limit,
                 offset=offset,
             )

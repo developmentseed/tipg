@@ -9,6 +9,7 @@ from tifeatures.middleware import CacheControlMiddleware, HTMLResponseMiddleware
 from tifeatures.settings import APISettings
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
@@ -24,6 +25,7 @@ app.include_router(endpoints.router)
 # We add the function registry to the application state
 app.state.function_catalog = FunctionRegistry()
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Set all CORS enabled origins
 if settings.cors_origins:
