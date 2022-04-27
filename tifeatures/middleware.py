@@ -55,10 +55,10 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 
 
 class HTMLResponseMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, template_directory="templates/html-bootstrap4"):
+    def __init__(self, app, template_directory="templates"):
         super().__init__(app)
         self.template_directory = template_directory
-        self.templates = Jinja2Templates(directory="templates/html-bootstrap4")
+        self.templates = Jinja2Templates(directory=template_directory)
 
     async def dispatch(self, request, call_next):
 

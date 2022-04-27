@@ -38,7 +38,7 @@ if settings.cors_origins:
     )
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
-app.add_middleware(HTMLResponseMiddleware, template_directory='templates/html-bootstrap4')
+app.add_middleware(HTMLResponseMiddleware, template_directory='templates')
 app.add_middleware(CompressionMiddleware)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
