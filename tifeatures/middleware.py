@@ -5,7 +5,15 @@ from typing import Optional, Set
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from fastapi import Response
 from starlette.types import ASGIApp
+import json
+
+from fastapi.templating import Jinja2Templates
+
+
+def existsIn(obj: dict, key: str):
+    return key in obj
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -37,7 +45,44 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 if re.match(path, request.url.path):
                     return response
 
-            if request.method in ["HEAD", "GET"] and response.status_code < 500:
+            if (
+                request.method in ["HEAD", "GET"]
+                and response.status_code < 500
+            ):
                 response.headers["Cache-Control"] = self.cachecontrol
 
+        return response
+
+
+class HTMLResponseMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, template_directory="templates/html-bootstrap4"):
+        super().__init__(app)
+        self.template_directory = template_directory
+        self.templates = Jinja2Templates(directory="templates/html-bootstrap4")
+
+    async def dispatch(self, request, call_next):
+
+        response = await call_next(request)
+        if response.status_code == 200 and (
+            request.query_params.get("f") == "html"
+            or request.headers.get("content-type", None) == "text/html"
+        ):
+            data = json.loads(([r async for r in response.body_iterator][0]))
+            headers=dict(**response.headers)
+            headers['content-type'] = 'text/html'
+            route = request.scope['route']
+            tpl = f"{route.endpoint.__name__}.html"
+            return self.templates.TemplateResponse(
+                tpl,
+                {
+                    "request": request,
+                    "response": data,
+                    "template": {
+                        "api_root": request.base_url,
+                        "title": "",
+                    },
+                    "existsIn": existsIn,
+                },
+                headers=headers
+            )
         return response

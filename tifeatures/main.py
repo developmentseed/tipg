@@ -5,7 +5,7 @@ from tifeatures.db import close_db_connection, connect_to_db, register_table_cat
 from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tifeatures.factory import Endpoints
 from tifeatures.layer import FunctionRegistry
-from tifeatures.middleware import CacheControlMiddleware
+from tifeatures.middleware import CacheControlMiddleware, HTMLResponseMiddleware
 from tifeatures.settings import APISettings
 
 from fastapi import FastAPI
@@ -36,6 +36,7 @@ if settings.cors_origins:
     )
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
+app.add_middleware(HTMLResponseMiddleware, template_directory='templates/html-bootstrap4')
 app.add_middleware(CompressionMiddleware)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 

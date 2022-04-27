@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, Path, Query
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 
-
 @dataclass
 class Endpoints:
     """Endpoints Factory."""
@@ -53,7 +52,7 @@ class Endpoints:
             response_model=model.Landing,
             response_model_exclude_none=True,
         )
-        def landing(request: Request):
+        def landing(request: Request, f: str = Query("json")):
             """Get conformance."""
             return model.Landing(
                 title="eoAPI Features",
@@ -76,7 +75,9 @@ class Endpoints:
                     model.Link(
                         title="Collection metadata",
                         href=self.url_for(
-                            request, "collection", collectionId="{collectionId}"
+                            request,
+                            "collection",
+                            collectionId="{collectionId}",
                         ),
                         type=model.MediaType.json,
                     ),
@@ -99,6 +100,7 @@ class Endpoints:
                     ),
                 ],
             )
+
 
         @self.router.get(
             "/conformance",
@@ -162,7 +164,9 @@ class Endpoints:
                                 ),
                                 model.Link(
                                     href=self.url_for(
-                                        request, "items", collectionId=collection.id
+                                        request,
+                                        "items",
+                                        collectionId=collection.id,
                                     ),
                                     rel="items",
                                     type=model.MediaType.geojson,
@@ -193,7 +197,9 @@ class Endpoints:
                     "links": [
                         model.Link(
                             href=self.url_for(
-                                request, "collection", collectionId=collection.id
+                                request,
+                                "collection",
+                                collectionId=collection.id,
                             ),
                             rel="self",
                             type=model.MediaType.json,
@@ -219,7 +225,8 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             limit: int = Query(
-                10, description="Limits the number of features in the response."
+                10,
+                description="Limits the number of features in the response.",
             ),
             offset: Optional[int] = Query(
                 None,
@@ -291,7 +298,9 @@ class Endpoints:
                 offset=offset,
             )
 
-            qs = "?" + str(request.query_params) if request.query_params else ""
+            qs = (
+                "?" + str(request.query_params) if request.query_params else ""
+            )
             links = [
                 model.Link(
                     href=self.url_for(
@@ -301,7 +310,9 @@ class Endpoints:
                     type=model.MediaType.json,
                 ),
                 model.Link(
-                    href=self.url_for(request, "items", collectionId=collection.id)
+                    href=self.url_for(
+                        request, "items", collectionId=collection.id
+                    )
                     + qs,
                     rel="self",
                     type=model.MediaType.geojson,
@@ -321,7 +332,9 @@ class Endpoints:
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(href=url, rel="next", type=model.MediaType.geojson),
+                    model.Link(
+                        href=url, rel="next", type=model.MediaType.geojson
+                    ),
                 )
 
             if offset:
@@ -329,16 +342,22 @@ class Endpoints:
                 query_params.pop("offset")
                 prev_offset = max(offset - items_returned, 0)
                 if prev_offset:
-                    query_params = QueryParams({**query_params, "offset": prev_offset})
+                    query_params = QueryParams(
+                        {**query_params, "offset": prev_offset}
+                    )
                 else:
                     query_params = QueryParams({**query_params})
 
-                url = self.url_for(request, "items", collectionId=collection.id)
+                url = self.url_for(
+                    request, "items", collectionId=collection.id
+                )
                 if query_params:
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(href=url, rel="prev", type=model.MediaType.geojson),
+                    model.Link(
+                        href=url, rel="prev", type=model.MediaType.geojson
+                    ),
                 )
 
             return model.Items(
@@ -411,7 +430,10 @@ class Endpoints:
                     ),
                     model.Link(
                         href=self.url_for(
-                            request, "item", collectionId=collection.id, itemId=itemId
+                            request,
+                            "item",
+                            collectionId=collection.id,
+                            itemId=itemId,
                         ),
                         rel="self",
                         type=model.MediaType.geojson,
