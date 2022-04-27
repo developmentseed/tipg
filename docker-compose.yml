@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8081
+      - PYTHONWARNINGS=ignore
+      - POSTGRES_USER=username
+      - POSTGRES_PASS=password
+      - POSTGRES_DBNAME=postgis
+      - POSTGRES_HOST=database
+      - POSTGRES_PORT=5432
+      - DEBUG=TRUE
+    ports:
+      - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
+    depends_on:
+    - database
+    command:
+      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && /start.sh"
+    volumes:
+      - ./dockerfiles/scripts:/tmp/scripts
+
+  database:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.db
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgis
+    ports:
+      - "5439:5432"
+    command: postgres -N 500

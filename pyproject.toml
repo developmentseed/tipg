@@ -1,0 +1,97 @@
+[project]
+name = "tifeatures"
+description = "Simple and Fast Geospatial Feature Server for PostGIS."
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
+]
+keywords = ["FastAPI", "POSTGIS", "OGC Features"]
+classifiers = [
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dynamic = ["version"]
+dependencies = [
+    "asyncpg>=0.23.0",
+    "buildpg>=0.3",
+    "fastapi>=0.73",
+    "jinja2>=2.11.2,<4.0.0",
+    "geojson-pydantic",
+    "starlette-cramjam>=0.1.0,<0.2",
+    "importlib_resources>=1.1.0; python_version < '3.9'",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "requests",
+    "psycopg2",
+    "pytest-pgsql",
+]
+dev = [
+    "pre-commit",
+]
+server = [
+    "uvicorn[standard]>=0.12.0,<0.16.0",
+]
+docs = [
+    "nbconvert",
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-jupyter",
+    "pygments",
+    "pdocs",
+]
+
+[project.urls]
+Source = "https://github.com/developmentseed/tifeatures"
+Documentation = "https://developmentseed.org/tifeatures/"
+
+[build-system]
+requires = ["flit>=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "tifeatures"
+
+[tool.flit.sdist]
+exclude = [
+    "tests/",
+    "docs/",
+    ".github/",
+    "CHANGES.md",
+    "CONTRIBUTING.md",
+    "dockerfiles",
+    "demo",
+    ".env*",
+    "data/",
+    "docker-compose.yml",
+]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["tifeatures"]
+known_third_party = [
+    "morecantile",
+]
+forced_separate = [
+    "fastapi",
+    "starlette",
+]
+default_section = "THIRDPARTY"
+
+[tool.mypy]
+no_strict_optional = "True"
+
+[tool.pydocstyle]
+select = "D1"
+match = "(?!test).*.py"
