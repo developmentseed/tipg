@@ -182,7 +182,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}",
+            "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
         )
@@ -216,7 +216,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}/items",
+            "/collections/{collectionId}/items",
             response_model=model.Items,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,
@@ -361,6 +361,9 @@ class Endpoints:
                 )
 
             return model.Items(
+                id=collection.id,
+                title=collection.title or collection.id,
+                description=collection.description or collection.title or collection.id,
                 numberMatched=matched_items,
                 numberReturned=items_returned,
                 links=links,
@@ -398,7 +401,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}/items/{itemId}",
+            "/collections/{collectionId}/items/{itemId}",
             response_model=model.Item,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,

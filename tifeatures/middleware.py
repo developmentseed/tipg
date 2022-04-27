@@ -78,10 +78,12 @@ class HTMLResponseMiddleware(BaseHTTPMiddleware):
                     "request": request,
                     "response": data,
                     "template": {
-                        "api_root": request.base_url,
+                        "api_root": str(request.base_url).rstrip('/'),
                         "title": "",
                     },
                     "existsIn": existsIn,
+                    "dumps": json.dumps,
+                    "json_url": str(request.url).replace('f=html','f=json')
                 },
                 headers=headers
             )

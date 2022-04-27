@@ -26,7 +26,7 @@
     <h2>Links</h2>
     <ul>
     {% for link in response.links %}
-      <li> <a href="{{ link.href }}?f=html">{{ link.title }}</a></li>
+      <li> <a href="{{ link.href }}?f=html">{{ link.title or link.rel }}</a></li>
     {% endfor %}
     </ul>
   </div>
@@ -45,7 +45,7 @@
       }
     ));
 
-    var bbox = {{ response.extent.spatial.bbox.0 }};
+    var bbox = {{ ('extent' in response and response.extent.spatial.bbox.0) or [-180,-90,180,90] }};
     var bbox_polygon = L.polygon([
       [bbox[1], bbox[0]],
       [bbox[1], bbox[2]],
