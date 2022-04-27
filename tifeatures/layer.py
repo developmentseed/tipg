@@ -149,14 +149,25 @@ class Table(CollectionLayer):
         async with pool.acquire() as conn:
             sql_query = """
                 WITH
-                feature AS (
+                features AS (
                     SELECT *
                     FROM :tablename t
                     :where_logic
                     LIMIT 1
                 )
-                SELECT ST_AsGeoJSON(feature.*)::json
-                FROM feature
+                SELECT
+                    json_build_object(
+                            'type', 'Feature',
+                            'id', :id_column,
+                            'geometry', ST_AsGeoJSON(
+                                CASE
+                                    WHEN :srid = 4326 THEN :geometry_column
+                                    ELSE ST_Transform(:geometry_column, 4326)
+                                END
+                                )::json,
+                            'properties', to_jsonb( features.* ) - :geometry_column_str
+                        )
+                FROM features
             """
             where_logic = clauses.Where(
                 pg_variable(self.id_column)
@@ -169,6 +180,10 @@ class Table(CollectionLayer):
             q, p = render(
                 sql_query,
                 tablename=pg_variable(self.id),
+                id_column=pg_variable(self.id_column),
+                geometry_column=pg_variable(self.geometry_column),
+                geometry_column_str=self.geometry_column,
+                srid=self.geometry_srid,
                 where_logic=where_logic,
             )
 

@@ -68,30 +68,24 @@ class HTMLResponseMiddleware(BaseHTTPMiddleware):
             or request.headers.get("content-type", None) == "text/html"
         ):
             data = json.loads(([r async for r in response.body_iterator][0]))
-            headers=dict(**response.headers)
-            headers['content-type'] = 'text/html'
-            route = request.scope['route']
+            headers = dict(**response.headers)
+            headers["content-type"] = "text/html"
+            route = request.scope["route"]
             tpl = f"{route.endpoint.__name__}.html"
             urlpath = request.url.path
-            crumbs=[]
-            baseurl = str(request.base_url).rstrip('/')
+            crumbs = []
+            baseurl = str(request.base_url).rstrip("/")
             crumbpath = str(baseurl)
-            for crumb in urlpath.split('/'):
-                print(crumb)
-                print(crumbpath)
-                crumbpath = crumbpath.rstrip('/')
+            for crumb in urlpath.split("/"):
+                crumbpath = crumbpath.rstrip("/")
                 part = crumb
-                if part is None or part == '':
-                    part = 'Home'
+                if part is None or part == "":
+                    part = "Home"
                 crumbpath += f"/{crumb}"
-                crumbs.append({
-                    "url": crumbpath.rstrip('/'),
-                    "part": part.capitalize()
-                })
-            print(crumbs)
+                crumbs.append(
+                    {"url": crumbpath.rstrip("/"), "part": part.capitalize()}
+                )
 
-
-            print(request.url)
             return self.templates.TemplateResponse(
                 tpl,
                 {
@@ -103,8 +97,8 @@ class HTMLResponseMiddleware(BaseHTTPMiddleware):
                         "title": "",
                     },
                     "crumbs": crumbs,
-                    "json_url": str(request.url).replace('f=html','f=json')
+                    "json_url": str(request.url).replace("f=html", "f=json"),
                 },
-                headers=headers
+                headers=headers,
             )
         return response
