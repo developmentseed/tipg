@@ -4,7 +4,6 @@ import abc
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List, Optional
 
-# from buildpg import Func
 from buildpg import Var as pg_variable
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
@@ -95,10 +94,9 @@ class Table(CollectionLayer):
         async with pool.acquire() as conn:
             sql_query = """
                 WITH
-                    -- TODO: make sure to return features in CRS (epsg:4326)
-                    -- TODO: add id to the geojson
                     features AS (
-                        SELECT *
+                        SELECT
+                        *
                         FROM :tablename
                         -- TODO: WHERE
                         -- TODO: SORT
@@ -109,7 +107,19 @@ class Table(CollectionLayer):
                     )
                 SELECT json_build_object(
                     'type', 'FeatureCollection',
-                    'features', json_agg(ST_AsGeoJSON(features.*)::json),
+                    'features', json_agg(
+                        json_build_object(
+                            'type', 'Feature',
+                            'id', :id_column,
+                            'geometry', ST_AsGeoJSON(
+                                CASE
+                                    WHEN :srid = 4326 THEN :geometry_column
+                                    ELSE ST_Transform(:geometry_column, 4326)
+                                END
+                                )::json,
+                            'properties', to_jsonb( features.* ) - :geometry_column_str
+                        )
+                    ),
                     'total_count', total_count.count
                 )
                 FROM features, total_count
@@ -119,6 +129,10 @@ class Table(CollectionLayer):
             q, p = render(
                 sql_query,
                 tablename=pg_variable(self.id),
+                id_column=pg_variable(self.id_column),
+                geometry_column=pg_variable(self.geometry_column),
+                geometry_column_str=self.geometry_column,
+                srid=self.geometry_srid,
                 limit=limit,
                 offset=offset,
             )
@@ -134,14 +148,25 @@ class Table(CollectionLayer):
         async with pool.acquire() as conn:
             sql_query = """
                 WITH
-                feature AS (
+                features AS (
                     SELECT *
                     FROM :tablename t
                     :where_logic
                     LIMIT 1
                 )
-                SELECT ST_AsGeoJSON(feature.*)::json
-                FROM feature
+                SELECT
+                    json_build_object(
+                            'type', 'Feature',
+                            'id', :id_column,
+                            'geometry', ST_AsGeoJSON(
+                                CASE
+                                    WHEN :srid = 4326 THEN :geometry_column
+                                    ELSE ST_Transform(:geometry_column, 4326)
+                                END
+                                )::json,
+                            'properties', to_jsonb( features.* ) - :geometry_column_str
+                        )
+                FROM features
             """
             where_logic = clauses.Where(
                 pg_variable(self.id_column)
@@ -154,6 +179,10 @@ class Table(CollectionLayer):
             q, p = render(
                 sql_query,
                 tablename=pg_variable(self.id),
+                id_column=pg_variable(self.id_column),
+                geometry_column=pg_variable(self.geometry_column),
+                geometry_column_str=self.geometry_column,
+                srid=self.geometry_srid,
                 where_logic=where_logic,
             )
 

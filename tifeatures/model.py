@@ -127,6 +127,10 @@ class Items(FeatureCollection):
 
     """
 
+    id: str
+    title: Optional[str]
+    description: Optional[str]
+    keywords: Optional[List[str]]
     features: List[Item]  # type: ignore
     links: Optional[List[Link]]
     timeStamp: Optional[str]

@@ -53,7 +53,7 @@ class Endpoints:
             response_model=model.Landing,
             response_model_exclude_none=True,
         )
-        def landing(request: Request):
+        def landing(request: Request, f: str = Query("json")):
             """Get conformance."""
             return model.Landing(
                 title="eoAPI Features",
@@ -76,7 +76,9 @@ class Endpoints:
                     model.Link(
                         title="Collection metadata",
                         href=self.url_for(
-                            request, "collection", collectionId="{collectionId}"
+                            request,
+                            "collection",
+                            collectionId="{collectionId}",
                         ),
                         type=model.MediaType.json,
                     ),
@@ -162,7 +164,9 @@ class Endpoints:
                                 ),
                                 model.Link(
                                     href=self.url_for(
-                                        request, "items", collectionId=collection.id
+                                        request,
+                                        "items",
+                                        collectionId=collection.id,
                                     ),
                                     rel="items",
                                     type=model.MediaType.geojson,
@@ -178,7 +182,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}",
+            "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
         )
@@ -193,7 +197,9 @@ class Endpoints:
                     "links": [
                         model.Link(
                             href=self.url_for(
-                                request, "collection", collectionId=collection.id
+                                request,
+                                "collection",
+                                collectionId=collection.id,
                             ),
                             rel="self",
                             type=model.MediaType.json,
@@ -210,7 +216,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}/items",
+            "/collections/{collectionId}/items",
             response_model=model.Items,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,
@@ -219,7 +225,8 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             limit: int = Query(
-                10, description="Limits the number of features in the response."
+                10,
+                description="Limits the number of features in the response.",
             ),
             offset: Optional[int] = Query(
                 None,
@@ -342,6 +349,9 @@ class Endpoints:
                 )
 
             return model.Items(
+                id=collection.id,
+                title=collection.title or collection.id,
+                description=collection.description or collection.title or collection.id,
                 numberMatched=matched_items,
                 numberReturned=items_returned,
                 links=links,
@@ -379,7 +389,7 @@ class Endpoints:
             )
 
         @self.router.get(
-            "/collection/{collectionId}/items/{itemId}",
+            "/collections/{collectionId}/items/{itemId}",
             response_model=model.Item,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,
@@ -411,7 +421,10 @@ class Endpoints:
                     ),
                     model.Link(
                         href=self.url_for(
-                            request, "item", collectionId=collection.id, itemId=itemId
+                            request,
+                            "item",
+                            collectionId=collection.id,
+                            itemId=itemId,
                         ),
                         rel="self",
                         type=model.MediaType.geojson,

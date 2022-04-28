@@ -80,9 +80,7 @@ exclude = [
 [tool.isort]
 profile = "black"
 known_first_party = ["tifeatures"]
-known_third_party = [
-    "morecantile",
-]
+known_third_party = ["geojson_pydantic"]
 forced_separate = [
     "fastapi",
     "starlette",

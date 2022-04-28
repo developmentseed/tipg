@@ -1,0 +1,26 @@
+{% include "header.html" %}
+
+<h1>Collections</h1>
+
+<div class="table-responsive">
+  <table class="table" style="width:100%;">
+    <thead class="thead-light">
+      <tr>
+        <th>Title</th>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+{% for collection in response.collections %}
+      <tr>
+        <td><a href="{{ template.api_root }}/collections/{{ collection.id }}?f=html">{{ collection.title or collection.id }}</a></td>
+        <td>{{ collection.itemType }}</td>
+        <td>{{ collection.description or collection.title or collection.id }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include "footer.html" %}

@@ -1,0 +1,52 @@
+{% include "header.html" %}
+
+<h1>Collection: {{ response.title or response.id }}</h1>
+
+<div class="row">
+  <div class="col-sm">
+
+    <p>{{ response.description or response.title or response.id }}</p>
+    {% if "keywords" in response and length(response.keywords) > 0 %}
+      <div id="keywords"><p>
+        {% for keyword in response.keywords %}
+          <span class="badge badge-secondary">{{ keyword }}</span>
+        {% endfor %}
+      </p></div>
+    {% endif %}
+
+    <h2>Links</h2>
+    <ul>
+    {% for link in response.links %}
+      <li> <a href="{{ link.href }}?f=html">{{ link.title or link.rel }}</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+  <div class="col-sm">
+    <div id="map" class="rounded" style="width:100%;height:400px;">Loading...</div>
+  </div>
+</div>
+
+<script>
+  $(function() {
+    var map = L.map('map').setView([0, 0], 1);
+    map.addLayer(new L.TileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+      }
+    ));
+
+    var bbox = {{ ('extent' in response and response.extent.spatial.bbox.0) or [-180,-90,180,90] }};
+    var bbox_polygon = L.polygon([
+      [bbox[1], bbox[0]],
+      [bbox[1], bbox[2]],
+      [bbox[3], bbox[2]],
+      [bbox[3], bbox[0]]
+    ]);
+
+    map.addLayer(bbox_polygon);
+    map.fitBounds(bbox_polygon.getBounds());
+  });
+</script>
+
+{% include "footer.html" %}

@@ -4,7 +4,6 @@ from functools import lru_cache
 from typing import Any, Dict, Optional
 
 import pydantic
-from starlite import CORSConfig
 
 
 class _APISettings(pydantic.BaseSettings):
@@ -24,13 +23,6 @@ class _APISettings(pydantic.BaseSettings):
 
         env_prefix = "TIFEATURES_"
         env_file = ".env"
-
-    @property
-    def cors_config(self) -> Optional[CORSConfig]:
-        if self.cors_origins:
-            return CORSConfig(allow_origins=self.cors_origins)
-
-        return None
 
 
 @lru_cache()
