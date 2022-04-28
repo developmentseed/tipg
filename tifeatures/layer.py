@@ -104,7 +104,7 @@ class Table(CollectionLayer):
                         LIMIT :limit OFFSET :offset
                     ),
                     total_count AS (
-                        SELECT COUNT(*) FROM features
+                        SELECT COUNT(*) FROM :tablename
                     )
                 SELECT json_build_object(
                     'type', 'FeatureCollection',
