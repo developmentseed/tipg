@@ -1,5 +1,7 @@
 """tifeatures app."""
 
+import pathlib
+
 from tifeatures import __version__ as tifeatures_version
 from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog
 from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -25,7 +27,10 @@ app.include_router(endpoints.router)
 # We add the function registry to the application state
 app.state.function_catalog = FunctionRegistry()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = str(pathlib.Path(__file__).parent.joinpath("static"))
+template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Set all CORS enabled origins
 if settings.cors_origins:
@@ -38,7 +43,7 @@ if settings.cors_origins:
     )
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
-app.add_middleware(HTMLResponseMiddleware, template_directory="templates")
+app.add_middleware(HTMLResponseMiddleware, template_directory=template_dir)
 app.add_middleware(CompressionMiddleware)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
@@ -54,3 +59,9 @@ async def startup_event() -> None:
 async def shutdown_event() -> None:
     """Close database connection."""
     await close_db_connection(app)
+
+
+@app.get("/healthz", description="Health Check", tags=["Health Check"])
+def ping():
+    """Health check."""
+    return {"ping": "pong!"}
