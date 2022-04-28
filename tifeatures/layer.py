@@ -4,7 +4,6 @@ import abc
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List, Optional
 
-# from buildpg import Func
 from buildpg import Var as pg_variable
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
