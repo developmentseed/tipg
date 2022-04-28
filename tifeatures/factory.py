@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 
+
 @dataclass
 class Endpoints:
     """Endpoints Factory."""
@@ -100,7 +101,6 @@ class Endpoints:
                     ),
                 ],
             )
-
 
         @self.router.get(
             "/conformance",
@@ -298,9 +298,7 @@ class Endpoints:
                 offset=offset,
             )
 
-            qs = (
-                "?" + str(request.query_params) if request.query_params else ""
-            )
+            qs = "?" + str(request.query_params) if request.query_params else ""
             links = [
                 model.Link(
                     href=self.url_for(
@@ -310,9 +308,7 @@ class Endpoints:
                     type=model.MediaType.json,
                 ),
                 model.Link(
-                    href=self.url_for(
-                        request, "items", collectionId=collection.id
-                    )
+                    href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
                     type=model.MediaType.geojson,
@@ -332,9 +328,7 @@ class Endpoints:
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(
-                        href=url, rel="next", type=model.MediaType.geojson
-                    ),
+                    model.Link(href=url, rel="next", type=model.MediaType.geojson),
                 )
 
             if offset:
@@ -342,22 +336,16 @@ class Endpoints:
                 query_params.pop("offset")
                 prev_offset = max(offset - items_returned, 0)
                 if prev_offset:
-                    query_params = QueryParams(
-                        {**query_params, "offset": prev_offset}
-                    )
+                    query_params = QueryParams({**query_params, "offset": prev_offset})
                 else:
                     query_params = QueryParams({**query_params})
 
-                url = self.url_for(
-                    request, "items", collectionId=collection.id
-                )
+                url = self.url_for(request, "items", collectionId=collection.id)
                 if query_params:
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(
-                        href=url, rel="prev", type=model.MediaType.geojson
-                    ),
+                    model.Link(href=url, rel="prev", type=model.MediaType.geojson),
                 )
 
             return model.Items(

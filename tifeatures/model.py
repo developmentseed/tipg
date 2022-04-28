@@ -126,6 +126,7 @@ class Items(FeatureCollection):
     Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/featureCollectionGeoJSON.yaml
 
     """
+
     id: str
     title: Optional[str]
     description: Optional[str]

@@ -1,19 +1,14 @@
 """tifeatures middlewares."""
 
+import json
 import re
 from typing import Optional, Set
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from fastapi import Response
-from starlette.types import ASGIApp
-import json
-
 from fastapi.templating import Jinja2Templates
 
-
-def existsIn(obj: dict, key: str):
-    return key in obj
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.types import ASGIApp
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -45,22 +40,29 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
                 if re.match(path, request.url.path):
                     return response
 
-            if (
-                request.method in ["HEAD", "GET"]
-                and response.status_code < 500
-            ):
+            if request.method in ["HEAD", "GET"] and response.status_code < 500:
                 response.headers["Cache-Control"] = self.cachecontrol
 
         return response
 
 
 class HTMLResponseMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, template_directory="templates"):
+    """HTML response middleware."""
+
+    def __init__(self, app: ASGIApp, template_directory: str = "templates"):
+        """Init Middleware.
+
+        Args:
+            app (ASGIApp): starlette/FastAPI application.
+            template_directory (str): path to HTML templates.
+
+        """
         super().__init__(app)
         self.template_directory = template_directory
         self.templates = Jinja2Templates(directory=template_directory)
 
     async def dispatch(self, request, call_next):
+        """Check query and return HTML if needed."""
 
         response = await call_next(request)
         if response.status_code == 200 and (
@@ -82,9 +84,7 @@ class HTMLResponseMiddleware(BaseHTTPMiddleware):
                 if part is None or part == "":
                     part = "Home"
                 crumbpath += f"/{crumb}"
-                crumbs.append(
-                    {"url": crumbpath.rstrip("/"), "part": part.capitalize()}
-                )
+                crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
 
             return self.templates.TemplateResponse(
                 tpl,
