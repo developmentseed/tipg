@@ -9,6 +9,7 @@ from tifeatures import model
 from tifeatures.dependencies import CollectionParams, bbox_query
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
+from tifeatures.resources.enums import MediaType, ResponseType
 from tifeatures.resources.response import GeoJSONResponse
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -53,7 +54,12 @@ class Endpoints:
             response_model=model.Landing,
             response_model_exclude_none=True,
         )
-        def landing(request: Request, f: str = Query("json")):
+        def landing(
+            request: Request,
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
+            ),
+        ):
             """Get conformance."""
             return model.Landing(
                 title="eoAPI Features",
@@ -61,17 +67,17 @@ class Endpoints:
                     model.Link(
                         title="Landing Page",
                         href=self.url_for(request, "landing"),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         title="Conformance",
                         href=self.url_for(request, "conformance"),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         title="List of Collections",
                         href=self.url_for(request, "collections"),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         title="Collection metadata",
@@ -80,14 +86,14 @@ class Endpoints:
                             "collection",
                             collectionId="{collectionId}",
                         ),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         title="Collection Features",
                         href=self.url_for(
                             request, "items", collectionId="{collectionId}"
                         ),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         title="Collection Feature",
@@ -97,7 +103,7 @@ class Endpoints:
                             collectionId="{collectionId}",
                             itemId="{itemId}",
                         ),
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                 ],
             )
@@ -107,7 +113,12 @@ class Endpoints:
             response_model=model.Conformance,
             response_model_exclude_none=True,
         )
-        def conformance(request: Request):
+        def conformance(
+            request: Request,
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
+            ),
+        ):
             """Get conformance."""
             return model.Conformance(
                 conformsTo=[
@@ -130,7 +141,12 @@ class Endpoints:
             response_model=model.Collections,
             response_model_exclude_none=True,
         )
-        def collections(request: Request):
+        def collections(
+            request: Request,
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
+            ),
+        ):
             """List of collections."""
             functions = getattr(request.app.state, "function_catalog", {})
             tables = getattr(request.app.state, "table_catalog", [])
@@ -140,12 +156,12 @@ class Endpoints:
                     model.Link(
                         href=self.url_for(request, "landing"),
                         rel="parent",
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         href=self.url_for(request, "collections"),
                         rel="self",
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                 ],
                 collections=[
@@ -160,7 +176,7 @@ class Endpoints:
                                         collectionId=collection.id,
                                     ),
                                     rel="collection",
-                                    type=model.MediaType.json,
+                                    type=MediaType.json,
                                 ),
                                 model.Link(
                                     href=self.url_for(
@@ -169,7 +185,7 @@ class Endpoints:
                                         collectionId=collection.id,
                                     ),
                                     rel="items",
-                                    type=model.MediaType.geojson,
+                                    type=MediaType.geojson,
                                 ),
                             ],
                         }
@@ -189,6 +205,9 @@ class Endpoints:
         def collection(
             request: Request,
             collection=Depends(self.collection_dependency),
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
+            ),
         ):
             """Metadata for a feature collection."""
             return model.Collection(
@@ -202,14 +221,14 @@ class Endpoints:
                                 collectionId=collection.id,
                             ),
                             rel="self",
-                            type=model.MediaType.json,
+                            type=MediaType.json,
                         ),
                         model.Link(
                             href=self.url_for(
                                 request, "items", collectionId=collection.id
                             ),
                             rel="items",
-                            type=model.MediaType.geojson,
+                            type=MediaType.geojson,
                         ),
                     ],
                 }
@@ -241,6 +260,9 @@ class Endpoints:
             sortby: Optional[str] = Query(
                 None,
                 description="Sort the response items by a property (ascending (default) or descending).",
+            ),
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
             ),
         ):
             offset = offset or 0
@@ -305,13 +327,13 @@ class Endpoints:
                         request, "collection", collectionId=collection.id
                     ),
                     rel="collection",
-                    type=model.MediaType.json,
+                    type=MediaType.json,
                 ),
                 model.Link(
                     href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
-                    type=model.MediaType.geojson,
+                    type=MediaType.geojson,
                 ),
             ]
 
@@ -328,7 +350,7 @@ class Endpoints:
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(href=url, rel="next", type=model.MediaType.geojson),
+                    model.Link(href=url, rel="next", type=MediaType.geojson),
                 )
 
             if offset:
@@ -345,7 +367,7 @@ class Endpoints:
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(href=url, rel="prev", type=model.MediaType.geojson),
+                    model.Link(href=url, rel="prev", type=MediaType.geojson),
                 )
 
             return model.Items(
@@ -367,7 +389,7 @@ class Endpoints:
                                         collectionId=collection.id,
                                     ),
                                     rel="collection",
-                                    type=model.MediaType.json,
+                                    type=MediaType.json,
                                 ),
                                 model.Link(
                                     href=self.url_for(
@@ -379,7 +401,7 @@ class Endpoints:
                                         ],
                                     ),
                                     rel="item",
-                                    type=model.MediaType.json,
+                                    type=MediaType.json,
                                 ),
                             ],
                         }
@@ -398,6 +420,9 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
+            f: ResponseType = Query(
+                ResponseType.json, description="Response MediaType."
+            ),
         ):
             feature = await collection.feature(
                 request.app.state.pool,
@@ -417,7 +442,7 @@ class Endpoints:
                             request, "collection", collectionId=collection.id
                         ),
                         rel="collection",
-                        type=model.MediaType.json,
+                        type=MediaType.json,
                     ),
                     model.Link(
                         href=self.url_for(
@@ -427,7 +452,7 @@ class Endpoints:
                             itemId=itemId,
                         ),
                         rel="self",
-                        type=model.MediaType.geojson,
+                        type=MediaType.geojson,
                     ),
                 ],
             )

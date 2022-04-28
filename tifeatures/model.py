@@ -1,20 +1,11 @@
 """tifeatures models."""
 
-from enum import Enum
 from typing import List, Optional
 
 from geojson_pydantic import Feature, FeatureCollection
 from pydantic import BaseModel
 
-
-class MediaType(str, Enum):
-    """Responses Media types formerly known as MIME types."""
-
-    xml = "application/xml"
-    json = "application/json"
-    geojson = "application/geo+json"
-    html = "text/html"
-    text = "text/plain"
+from tifeatures.resources.enums import MediaType
 
 
 class Link(BaseModel):
