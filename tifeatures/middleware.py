@@ -1,10 +1,7 @@
 """tifeatures middlewares."""
 
-import json
 import re
 from typing import Optional, Set
-
-from fastapi.templating import Jinja2Templates
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -43,62 +40,4 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
             if request.method in ["HEAD", "GET"] and response.status_code < 500:
                 response.headers["Cache-Control"] = self.cachecontrol
 
-        return response
-
-
-class HTMLResponseMiddleware(BaseHTTPMiddleware):
-    """HTML response middleware."""
-
-    def __init__(self, app: ASGIApp, template_directory: str = "templates"):
-        """Init Middleware.
-
-        Args:
-            app (ASGIApp): starlette/FastAPI application.
-            template_directory (str): path to HTML templates.
-
-        """
-        super().__init__(app)
-        self.template_directory = template_directory
-        self.templates = Jinja2Templates(directory=template_directory)
-
-    async def dispatch(self, request, call_next):
-        """Check query and return HTML if needed."""
-
-        response = await call_next(request)
-        if response.status_code == 200 and (
-            request.query_params.get("f") == "html"
-            or request.headers.get("content-type", None) == "text/html"
-        ):
-            data = json.loads(([r async for r in response.body_iterator][0]))
-            headers = dict(**response.headers)
-            headers["content-type"] = "text/html"
-            route = request.scope["route"]
-            tpl = f"{route.endpoint.__name__}.html"
-            urlpath = request.url.path
-            crumbs = []
-            baseurl = str(request.base_url).rstrip("/")
-            crumbpath = str(baseurl)
-            for crumb in urlpath.split("/"):
-                crumbpath = crumbpath.rstrip("/")
-                part = crumb
-                if part is None or part == "":
-                    part = "Home"
-                crumbpath += f"/{crumb}"
-                crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
-
-            return self.templates.TemplateResponse(
-                tpl,
-                {
-                    "request": request,
-                    "response": data,
-                    "template": {
-                        "api_root": baseurl,
-                        "params": request.query_params,
-                        "title": "",
-                    },
-                    "crumbs": crumbs,
-                    "json_url": str(request.url).replace("f=html", "f=json"),
-                },
-                headers=headers,
-            )
         return response

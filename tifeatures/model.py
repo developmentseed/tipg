@@ -15,11 +15,11 @@ class Link(BaseModel):
 
     """
 
-    rel: Optional[str]
-    title: Optional[str]
-    type: Optional[MediaType]
     href: str
+    rel: Optional[str]
+    type: Optional[MediaType]
     hreflang: Optional[str]
+    title: Optional[str]
     length: Optional[int]
 
     class Config:

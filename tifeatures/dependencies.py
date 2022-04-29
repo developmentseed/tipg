@@ -6,6 +6,7 @@ from typing import Optional
 from geojson_pydantic.geometries import Polygon
 
 from tifeatures.layer import CollectionLayer
+from tifeatures.resources.enums import AcceptType, ResponseType
 
 from fastapi import HTTPException, Path, Query
 
@@ -61,5 +62,20 @@ def bbox_query(
 
         bounds = tuple(map(float, split_bbox))
         return Polygon.from_bounds(*bounds)
+
+    return None
+
+
+def OutputType(
+    request: Request,
+    f: Optional[ResponseType] = Query(None, description="Response MediaType."),
+) -> Optional[ResponseType]:
+    """Output Response type."""
+    if f:
+        return f
+
+    accept_header = request.headers.get("accept", "")
+    if accept_header in AcceptType.__members__.values():
+        return ResponseType[AcceptType(accept_header).name]
 
     return None
