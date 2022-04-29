@@ -10,6 +10,14 @@ class ResponseType(str, Enum):
     json = "json"
 
 
+class AcceptType(str, Enum):
+    """Accept Headers Enums."""
+
+    html = "text/html"
+    json = "application/json"
+    geojson = "application/geo+json"
+
+
 class MediaType(str, Enum):
     """Responses Media types formerly known as MIME types."""
 

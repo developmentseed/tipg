@@ -1,24 +1,26 @@
 """tifeatures app."""
 
-import pathlib
-
 from tifeatures import __version__ as tifeatures_version
 from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog
 from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tifeatures.factory import Endpoints
 from tifeatures.layer import FunctionRegistry
-from tifeatures.middleware import CacheControlMiddleware, HTMLResponseMiddleware
+from tifeatures.middleware import CacheControlMiddleware
 from tifeatures.settings import APISettings
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
 
-app = FastAPI(title=settings.name, version=tifeatures_version, openapi_url="/api")
+app = FastAPI(
+    title=settings.name,
+    version=tifeatures_version,
+    openapi_url="/api",
+    docs_url="/api.html",
+)
 
 # Register endpoints.
 endpoints = Endpoints()
@@ -26,11 +28,6 @@ app.include_router(endpoints.router)
 
 # We add the function registry to the application state
 app.state.function_catalog = FunctionRegistry()
-
-static_dir = str(pathlib.Path(__file__).parent.joinpath("static"))
-template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
-
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Set all CORS enabled origins
 if settings.cors_origins:
@@ -43,7 +40,6 @@ if settings.cors_origins:
     )
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
-app.add_middleware(HTMLResponseMiddleware, template_directory=template_dir)
 app.add_middleware(CompressionMiddleware)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 

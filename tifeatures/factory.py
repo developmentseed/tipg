@@ -1,21 +1,60 @@
 """tifeatures.factory: router factories."""
 
+import json
+import pathlib
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from geojson_pydantic.geometries import Polygon
 
 from tifeatures import model
-from tifeatures.dependencies import CollectionParams, bbox_query
+from tifeatures.dependencies import CollectionParams, OutputType, bbox_query
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.resources.enums import MediaType, ResponseType
 from tifeatures.resources.response import GeoJSONResponse
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.templating import Jinja2Templates
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
+from starlette.responses import HTMLResponse
+
+template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
+templates = Jinja2Templates(directory=template_dir)
+
+
+def create_html_response(
+    request: Request, data: str, template_name: str
+) -> HTMLResponse:
+    """Create Template response."""
+    urlpath = request.url.path
+    crumbs = []
+    baseurl = str(request.base_url).rstrip("/")
+    crumbpath = str(baseurl)
+    for crumb in urlpath.split("/"):
+        crumbpath = crumbpath.rstrip("/")
+        part = crumb
+        if part is None or part == "":
+            part = "Home"
+        crumbpath += f"/{crumb}"
+        crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
+
+    return templates.TemplateResponse(
+        f"{template_name}.html",
+        {
+            "request": request,
+            "response": json.loads(data),
+            "template": {
+                "api_root": baseurl,
+                "params": request.query_params,
+                "title": "",
+            },
+            "crumbs": crumbs,
+            "json_url": str(request.url).replace("f=html", "f=json"),
+        },
+    )
 
 
 @dataclass
@@ -34,7 +73,9 @@ class Endpoints:
 
     def __post_init__(self):
         """Post Init: register route and configure specific options."""
-        self.register_routes()
+        self.register_landing()
+        self.register_conformance()
+        self.register_collections()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -46,38 +87,65 @@ class Endpoints:
 
         return url_path.make_absolute_url(base_url=base_url)
 
-    def register_routes(self):
-        """Register Routes."""
+    def register_landing(self) -> None:
+        """Register landing endpoint."""
 
         @self.router.get(
             "/",
             response_model=model.Landing,
             response_model_exclude_none=True,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/json": {},
+                    }
+                },
+            },
         )
         def landing(
             request: Request,
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """Get conformance."""
-            return model.Landing(
+            data = model.Landing(
                 title="eoAPI Features",
                 links=[
                     model.Link(
                         title="Landing Page",
                         href=self.url_for(request, "landing"),
                         type=MediaType.json,
+                        rel="self",
+                    ),
+                    model.Link(
+                        title="HTML Landing Page",
+                        href=self.url_for(request, "landing") + "?f=html",
+                        type=MediaType.html,
+                        rel="alternate",
+                    ),
+                    model.Link(
+                        title="the API definition",
+                        href=request.url_for("openapi"),
+                        type=MediaType.openapi30_json,
+                        rel="service-desc",
+                    ),
+                    model.Link(
+                        title="the API documentation",
+                        href=request.url_for("swagger_ui_html"),
+                        type=MediaType.html,
+                        rel="service-doc",
                     ),
                     model.Link(
                         title="Conformance",
                         href=self.url_for(request, "conformance"),
                         type=MediaType.json,
+                        rel="conformance",
                     ),
                     model.Link(
                         title="List of Collections",
                         href=self.url_for(request, "collections"),
                         type=MediaType.json,
+                        rel="data",
                     ),
                     model.Link(
                         title="Collection metadata",
@@ -87,13 +155,15 @@ class Endpoints:
                             collectionId="{collectionId}",
                         ),
                         type=MediaType.json,
+                        rel="data",
                     ),
                     model.Link(
                         title="Collection Features",
                         href=self.url_for(
                             request, "items", collectionId="{collectionId}"
                         ),
-                        type=MediaType.json,
+                        type=MediaType.geojson,
+                        rel="data",
                     ),
                     model.Link(
                         title="Collection Feature",
@@ -103,24 +173,43 @@ class Endpoints:
                             collectionId="{collectionId}",
                             itemId="{itemId}",
                         ),
-                        type=MediaType.json,
+                        type=MediaType.geojson,
+                        rel="data",
                     ),
                 ],
             )
+
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="landing",
+                )
+
+            return data
+
+    def register_conformance(self) -> None:
+        """Register conformance endpoint."""
 
         @self.router.get(
             "/conformance",
             response_model=model.Conformance,
             response_model_exclude_none=True,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/json": {},
+                    }
+                },
+            },
         )
         def conformance(
             request: Request,
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """Get conformance."""
-            return model.Conformance(
+            data = model.Conformance(
                 conformsTo=[
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
@@ -135,23 +224,40 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                 ]
             )
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="conformance",
+                )
+
+            return data
+
+    def register_collections(self):  # noqa
+        """Register Collections endpoints."""
 
         @self.router.get(
             "/collections",
             response_model=model.Collections,
             response_model_exclude_none=True,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/json": {},
+                    }
+                },
+            },
         )
         def collections(
             request: Request,
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """List of collections."""
             functions = getattr(request.app.state, "function_catalog", {})
             tables = getattr(request.app.state, "table_catalog", [])
 
-            return model.Collections(
+            data = model.Collections(
                 links=[
                     model.Link(
                         href=self.url_for(request, "landing"),
@@ -197,20 +303,35 @@ class Endpoints:
                 ],
             )
 
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="collections",
+                )
+
+            return data
+
         @self.router.get(
             "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/json": {},
+                    }
+                },
+            },
         )
         def collection(
             request: Request,
             collection=Depends(self.collection_dependency),
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
-            return model.Collection(
+            data = model.Collection(
                 **{
                     **collection.dict(),
                     "links": [
@@ -234,11 +355,28 @@ class Endpoints:
                 }
             )
 
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="collection",
+                )
+
+            return data
+
         @self.router.get(
             "/collections/{collectionId}/items",
             response_model=model.Items,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/geo+json": {},
+                    }
+                },
+            },
         )
         async def items(
             request: Request,
@@ -261,9 +399,7 @@ class Endpoints:
                 None,
                 description="Sort the response items by a property (ascending (default) or descending).",
             ),
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             offset = offset or 0
 
@@ -370,7 +506,7 @@ class Endpoints:
                     model.Link(href=url, rel="prev", type=MediaType.geojson),
                 )
 
-            return model.Items(
+            data = model.Items(
                 id=collection.id,
                 title=collection.title or collection.id,
                 description=collection.description or collection.title or collection.id,
@@ -410,19 +546,34 @@ class Endpoints:
                 ],
             )
 
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="items",
+                )
+
+            return data
+
         @self.router.get(
             "/collections/{collectionId}/items/{itemId}",
             response_model=model.Item,
             response_model_exclude_none=True,
             response_class=GeoJSONResponse,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/geo+json": {},
+                    }
+                },
+            },
         )
         async def item(
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
-            f: ResponseType = Query(
-                ResponseType.json, description="Response MediaType."
-            ),
+            output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             feature = await collection.feature(
                 request.app.state.pool,
@@ -434,7 +585,7 @@ class Endpoints:
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
 
-            return model.Item(
+            data = model.Item(
                 **feature,
                 links=[
                     model.Link(
@@ -456,3 +607,12 @@ class Endpoints:
                     ),
                 ],
             )
+
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="item",
+                )
+
+            return data
