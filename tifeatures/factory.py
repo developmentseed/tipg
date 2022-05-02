@@ -13,6 +13,7 @@ from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.resources.enums import MediaType, ResponseType
 from tifeatures.resources.response import GeoJSONResponse
+from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.templating import Jinja2Templates
@@ -23,6 +24,7 @@ from starlette.responses import HTMLResponse
 
 template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
 templates = Jinja2Templates(directory=template_dir)
+settings = APISettings()
 
 
 def create_html_response(
@@ -109,7 +111,7 @@ class Endpoints:
         ):
             """Get conformance."""
             data = model.Landing(
-                title="eoAPI Features",
+                title=settings.name,
                 links=[
                     model.Link(
                         title="Landing Page",

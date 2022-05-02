@@ -31,7 +31,7 @@ def APISettings() -> _APISettings:
     return _APISettings()
 
 
-class _PostgresSettings(pydantic.BaseSettings):
+class PostgresSettings(pydantic.BaseSettings):
     """Postgres-specific API settings.
 
     Attributes:
@@ -63,6 +63,7 @@ class _PostgresSettings(pydantic.BaseSettings):
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
     @pydantic.validator("database_url", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        """Validate db url settings."""
         if isinstance(v, str):
             return v
 
@@ -74,9 +75,3 @@ class _PostgresSettings(pydantic.BaseSettings):
             port=values.get("postgres_port", 5432),
             path=f"/{values.get('postgres_dbname') or ''}",
         )
-
-
-@lru_cache()
-def PostgresSettings() -> _PostgresSettings:
-    """Postgres Settings."""
-    return _PostgresSettings()

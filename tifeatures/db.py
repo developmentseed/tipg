@@ -1,7 +1,7 @@
 """tifeatures.db: database events."""
 
 import json
-from typing import List
+from typing import List, Optional
 
 from buildpg import asyncpg
 
@@ -9,8 +9,6 @@ from tifeatures.layer import Table
 from tifeatures.settings import PostgresSettings
 
 from fastapi import FastAPI
-
-settings = PostgresSettings()
 
 
 async def table_index(db_pool: asyncpg.BuildPgPool) -> List[Table]:
@@ -118,8 +116,13 @@ async def con_init(conn):
     )
 
 
-async def connect_to_db(app: FastAPI) -> None:
+async def connect_to_db(
+    app: FastAPI, settings: Optional[PostgresSettings] = None
+) -> None:
     """Connect."""
+    if not settings:
+        settings = PostgresSettings()
+
     app.state.pool = await asyncpg.create_pool_b(
         settings.database_url,
         min_size=settings.db_min_conn_size,
