@@ -38,8 +38,8 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        limit: int = None,
-        offset: int = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
         **kwargs: Any,
     ) -> Items:
         """Return a FeatureCollection."""
@@ -82,8 +82,8 @@ class Table(CollectionLayer):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        limit: int = None,
-        offset: int = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
         **kwargs: Any,
     ) -> Items:
         """Return a FeatureCollection."""
@@ -226,8 +226,8 @@ class Function(CollectionLayer):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        limit: int = None,
-        offset: int = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
         **kwargs: Any,
     ) -> FeatureCollection:
         """Return a FeatureCollection."""

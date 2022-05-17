@@ -1,9 +1,7 @@
 """tifeatures dependencies."""
 
 import re
-from typing import Optional
-
-from geojson_pydantic.geometries import Polygon
+from typing import List, Optional
 
 from tifeatures.layer import CollectionLayer
 from tifeatures.resources.enums import AcceptType, ResponseType
@@ -48,22 +46,39 @@ def CollectionParams(
 
 
 def bbox_query(
-    intersects: Optional[str] = Query(
+    bbox: Optional[str] = Query(
         None,
-        alias="bbox",
-        description="Filter features in response to ones intersecting a bounding box",
+        description="Spatial Filter.",
     )
-) -> Optional[Polygon]:
+) -> Optional[List[float]]:
     """BBox dependency."""
-    if intersects:
-        split_bbox = intersects.split(",")
-        if len(split_bbox) not in [4, 6]:
+    if bbox:
+        bounds = list(map(float, bbox.split(",")))
+        if len(bounds) == 4:
+            if abs(bounds[0]) > 180 or abs(bounds[2]) > 180:
+                raise ValueError(f"Invalid longitude in bbox: {bounds}")
+            if abs(bounds[1]) > 90 or abs(bounds[3]) > 90:
+                raise ValueError(f"Invalid latitude in bbox: {bounds}")
+
+        elif len(bounds) == 6:
+            if abs(bounds[0]) > 180 or abs(bounds[3]) > 180:
+                raise ValueError(f"Invalid longitude in bbox: {bounds}")
+            if abs(bounds[1]) > 90 or abs(bounds[4]) > 90:
+                raise ValueError(f"Invalid latitude in bbox: {bounds}")
+        else:
             raise Exception("Invalid BBOX.")
 
-        bounds = tuple(map(float, split_bbox))
-        return Polygon.from_bounds(*bounds)
+        return bounds
 
     return None
+
+
+def datetime_query(
+    datetime: Optional[str] = Query(None, description="Temporal Filter."),
+) -> Optional[str]:
+    """Datetime dependency."""
+    # TODO validation / format
+    return datetime
 
 
 def OutputType(

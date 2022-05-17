@@ -3,12 +3,15 @@
 import json
 import pathlib
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
-
-from geojson_pydantic.geometries import Polygon
+from typing import Any, Callable, List, Optional
 
 from tifeatures import model
-from tifeatures.dependencies import CollectionParams, OutputType, bbox_query
+from tifeatures.dependencies import (
+    CollectionParams,
+    OutputType,
+    bbox_query,
+    datetime_query,
+)
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.resources.enums import MediaType, ResponseType
@@ -392,66 +395,31 @@ class Endpoints:
                 ge=0,
                 description="Starts the response at an offset.",
             ),
-            intersects: Optional[Polygon] = Depends(bbox_query),
+            bbox: Optional[List[float]] = Depends(bbox_query),
+            datetime: Optional[str] = Depends(datetime_query),
             properties: Optional[str] = Query(
                 None,
                 description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
-            ),
-            sortby: Optional[str] = Query(
-                None,
-                description="Sort the response items by a property (ascending (default) or descending).",
             ),
             output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             offset = offset or 0
 
-            # req ={}
-            # if bbox:
-            #     req["filter"]["args"].append(
-            #         {
-            #             "op": "s_intersects",
-            #             "args": [{"property": "geometry"}, bbox.dict()],
-            #         }
-            #     )
-            # # <propname>=val - filter features for a property having a value. Multiple property filters are ANDed together.
-            # qs_key_to_remove = ["limit", "offset", "bbox", "properties", "sortby"]
-            # propname = [
+            # <NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
+            # qs_key_to_remove = [
+            #     "limit",
+            #     "offset",
+            #     "bbox",
+            #     "datetime",
+            #     "properties",
+            #     "f",
+            # ]
+            # properties_filter = [
             #     {"op": "eq", "args": [{"property": key}, value]}
             #     for (key, value) in request.query_params.items()
             #     if key.lower() not in qs_key_to_remove
             # ]
-            # if propname:
-            #     req["filter"]["args"].append(*propname)
-            #
-            # # sortby=[+|-]PROP - sort the response items by a property (ascending (default) or descending).
-            # if sortby:
-            #     sort_expr = []
-            #     for s in sortby.split(","):
-            #         parts = re.match(
-            #             "^(?P<dir>[+-]?)(?P<prop>.*)$", s
-            #         ).groupdict()  # type:ignore
-            #         sort_expr.append(
-            #             {
-            #                 "field": f"properties.{parts['prop']}",
-            #                 "direction": "desc" if parts["dir"] == "-" else "asc",
-            #             }
-            #         )
-            #     req["sortby"] = sort_expr
-            # # properties=PROP-LIST- return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.
-            # if properties is not None:
-            #     if properties == "":
-            #         req["fields"]["exclude"].append("properties")
-            #     else:
-            #         required_props = ["type", "geometry", "id", "bbox", "assets"]
-            #         req["fields"].update(
-            #             {
-            #                 "include": required_props
-            #                 + [f"properties.{p}" for p in properties.split(",")]
-            #             }
-            #         )
 
-            # TODO: create filter using bbox/properties by using pygeofilter
-            # TODO: use sortby
             items = await collection.features(
                 request.app.state.pool,
                 limit=limit,

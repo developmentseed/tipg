@@ -35,3 +35,5 @@ services:
     ports:
       - "5439:5432"
     command: postgres -N 500
+    volumes:
+      - ./.pgdata:/var/lib/postgresql/data
