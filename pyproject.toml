@@ -21,7 +21,7 @@ dynamic = ["version"]
 dependencies = [
     "asyncpg>=0.23.0",
     "buildpg>=0.3",
-    "fastapi>=0.73",
+    "fastapi>=0.77",
     "jinja2>=2.11.2,<4.0.0",
     "geojson-pydantic",
     "starlette-cramjam>=0.1.0,<0.2",

@@ -1,9 +1,10 @@
 """tifeatures.factory: router factories."""
 
 import json
-import pathlib
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
+
+import jinja2
 
 from tifeatures import model
 from tifeatures.dependencies import (
@@ -19,20 +20,29 @@ from tifeatures.resources.response import GeoJSONResponse
 from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
-from fastapi.templating import Jinja2Templates
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
-from starlette.responses import HTMLResponse
+from starlette.templating import Jinja2Templates, _TemplateResponse
 
-template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
-templates = Jinja2Templates(directory=template_dir)
 settings = APISettings()
+
+templates_location: List[Any] = (
+    [jinja2.FileSystemLoader(settings.template_directory)]
+    if settings.template_directory
+    else []
+)
+templates_location.append(jinja2.PackageLoader(__package__, "templates"))
+
+templates = Jinja2Templates(
+    directory="templates",
+    loader=jinja2.ChoiceLoader(templates_location),
+)
 
 
 def create_html_response(
     request: Request, data: str, template_name: str
-) -> HTMLResponse:
+) -> _TemplateResponse:
     """Create Template response."""
     urlpath = request.url.path
     crumbs = []
