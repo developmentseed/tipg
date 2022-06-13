@@ -27,15 +27,17 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 
 settings = APISettings()
 
+# custom template directory
 templates_location: List[Any] = (
     [jinja2.FileSystemLoader(settings.template_directory)]
     if settings.template_directory
     else []
 )
+# default template directory
 templates_location.append(jinja2.PackageLoader(__package__, "templates"))
 
 templates = Jinja2Templates(
-    directory="templates",
+    directory="",  # we need to set a dummy directory variable, see https://github.com/encode/starlette/issues/1214
     loader=jinja2.ChoiceLoader(templates_location),
 )
 
