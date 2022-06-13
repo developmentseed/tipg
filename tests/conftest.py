@@ -32,8 +32,15 @@ def database_url(test_db):
 def app(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
     monkeypatch.setenv("DATABASE_URL", str(database_url))
+    monkeypatch.setenv(
+        "TIFEATURES_TEMPLATE_DIRECTORY", os.path.join(DATA_DIR, "templates")
+    )
 
     from tifeatures.main import app
+
+    # Remove middlewares https://github.com/encode/starlette/issues/472
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
 
     # register functions to app.state.function_catalog here
 
