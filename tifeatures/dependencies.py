@@ -51,9 +51,9 @@ def CollectionParams(
                 type="Table",
                 schema=table.dbschema,
                 table=table.table,
-                geometry_type=table.geom_col().geometry_type,
-                geometry_column=table.geom_col().name,
-                geometry_srid=table.geom_col().srid,
+                geometry_type=table.geom_column().geometry_type,
+                geometry_column=table.geom_column().name,
+                geometry_srid=table.geom_column().srid,
                 id_column=table.id_col,
                 properties=props,
             )

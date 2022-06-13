@@ -30,7 +30,7 @@ class Table(BaseModel):
     table: str
     dbschema: str
     description: Optional[str]
-    id_col: Optional[str]
+    id_column: Optional[str]
     geometry_columns: Optional[List[GeometryColumn]]
     properties: List[Column]
 
@@ -39,14 +39,14 @@ class Table(BaseModel):
         """Return the name of all timestamptz columns."""
         return [p for p in self.properties if p.type.startswith("timestamp")]
 
-    def datetime_col(self, dtcol: Optional[str] = None):
+    def datetime_column(self, dtcol: Optional[str] = None):
         """Return the Column for either the passed in tstz column or the first tstz column."""
         if self.datetime_columns is not None:
             for col in self.datetime_columns:
                 if dtcol is None or col.name == dtcol:
                     return col
 
-    def geom_col(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
+    def geom_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
         if self.geometry_columns is not None and len(self.geometry_columns) > 0:
             for c in self.geometry_columns:
@@ -59,19 +59,19 @@ class Table(BaseModel):
     def id_column_info(self):
         """Return Column for a unique identifier."""
         for c in self.properties:
-            if c.name == self.id_col:
+            if c.name == self.id_column:
                 return c
 
     def columns(self, properties: Optional[List[str]]) -> List[str]:
         """Return table columns optionally filtered to only include columns from properties."""
         cols = [c.name for c in self.properties]
         if properties is not None:
-            if self.id_col is not None and self.id_col not in properties:
-                properties.append(self.id_col)
+            if self.id_column is not None and self.id_column not in properties:
+                properties.append(self.id_column)
 
             geom_col = self.geom_col()
             if geom_col:
-                properties.append(geom_col.name)
+                properties.append(geom_column.name)
 
             cols = [c for c in cols if c in properties]
 
@@ -86,7 +86,7 @@ class Database(BaseModel):
     tables: Dict[str, Table]
 
 
-async def table_index(
+async def get_table_index(
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,

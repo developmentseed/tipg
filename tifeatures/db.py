@@ -5,7 +5,7 @@ from typing import Optional
 
 from buildpg import asyncpg
 
-from tifeatures.dbmodel import table_index
+from tifeatures.dbmodel import get_table_index
 from tifeatures.settings import PostgresSettings
 
 from fastapi import FastAPI
@@ -40,7 +40,7 @@ async def connect_to_db(
 
 async def register_table_catalog(app: FastAPI) -> None:
     """Register Table catalog."""
-    app.state.table_catalog = await table_index(app.state.pool)
+    app.state.table_catalog = await get_table_index(app.state.pool)
 
 
 async def close_db_connection(app: FastAPI) -> None:
