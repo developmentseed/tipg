@@ -5,10 +5,11 @@ from typing import Optional
 
 from buildpg import asyncpg
 
-from tifeatures.settings import PostgresSettings
 from tifeatures.dbmodel import table_index
+from tifeatures.settings import PostgresSettings
 
 from fastapi import FastAPI
+
 
 async def con_init(conn):
     """Use json for json returns."""

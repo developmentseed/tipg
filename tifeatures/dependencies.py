@@ -3,7 +3,8 @@
 import re
 from typing import List, Optional
 
-from tifeatures.layer import CollectionLayer, Table as TableLayer
+from tifeatures.layer import CollectionLayer
+from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import AcceptType, ResponseType
 
 from fastapi import HTTPException, Path, Query
@@ -41,7 +42,7 @@ def CollectionParams(
         if table is not None:
             props = {}
             for p in table.properties:
-                props[p.name]=p
+                props[p.name] = p
 
             return TableLayer(
                 id=table.id,
@@ -54,7 +55,7 @@ def CollectionParams(
                 geometry_column=table.geom_col().name,
                 geometry_srid=table.geom_col().srid,
                 id_column=table.id_col,
-                properties=props
+                properties=props,
             )
 
     raise HTTPException(

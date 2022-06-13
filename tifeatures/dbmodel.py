@@ -1,16 +1,14 @@
 """tifeatures.db: database events."""
 
-import json
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from buildpg import asyncpg
-from typing import List, Optional, Dict
-
 from pydantic import BaseModel
 
 
 class Column(BaseModel):
     """Model for database Column."""
+
     name: str
     type: str
     description: Optional[str]
@@ -18,6 +16,7 @@ class Column(BaseModel):
 
 class GeometryColumn(BaseModel):
     """Model for PostGIS geometry/geography column."""
+
     name: str
     bounds: List[float]
     srid: int
@@ -26,6 +25,7 @@ class GeometryColumn(BaseModel):
 
 class Table(BaseModel):
     """Model for DB Table."""
+
     id: str
     table: str
     dbschema: str
@@ -48,13 +48,12 @@ class Table(BaseModel):
 
     def geom_col(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if (
-            self.geometry_columns is not None
-            and len(self.geometry_columns) > 0
-        ):
+        if self.geometry_columns is not None and len(self.geometry_columns) > 0:
             for c in self.geometry_columns:
                 if gcol is None or c.name == gcol:
                     return c
+
+        return None
 
     @property
     def id_column_info(self):
@@ -69,9 +68,13 @@ class Table(BaseModel):
         if properties is not None:
             if self.id_col is not None and self.id_col not in properties:
                 properties.append(self.id_col)
-            if self.geom_col:
-                properties.append(self.geom_col.name)
+
+            geom_col = self.geom_col()
+            if geom_col:
+                properties.append(geom_col.name)
+
             cols = [c for c in cols if c in properties]
+
         if len(cols) < 1:
             raise TypeError("No columns selected")
         return cols
@@ -79,6 +82,7 @@ class Table(BaseModel):
 
 class Database(BaseModel):
     """Keyed tables for a Database."""
+
     tables: Dict[str, Table]
 
 
