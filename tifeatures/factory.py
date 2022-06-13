@@ -272,7 +272,8 @@ class Endpoints:
         ):
             """List of collections."""
             functions = getattr(request.app.state, "function_catalog", {})
-            tables = getattr(request.app.state, "table_catalog", [])
+            db = getattr(request.app.state, "table_catalog", None)
+            tables = db.tables
 
             data = model.Collections(
                 links=[
@@ -314,7 +315,7 @@ class Endpoints:
                         }
                     )
                     for collection in [
-                        *tables,
+                        *tables.values(),
                         *list(functions.values()),
                     ]
                 ],

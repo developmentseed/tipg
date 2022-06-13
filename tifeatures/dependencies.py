@@ -3,7 +3,7 @@
 import re
 from typing import List, Optional
 
-from tifeatures.layer import CollectionLayer
+from tifeatures.layer import CollectionLayer, Table as TableLayer
 from tifeatures.resources.enums import AcceptType, ResponseType
 
 from fastapi import HTTPException, Path, Query
@@ -35,10 +35,27 @@ def CollectionParams(
         assert table_pattern.groupdict()["schema"]
         assert table_pattern.groupdict()["table"]
 
-        table_catalog = getattr(request.app.state, "table_catalog", [])
-        for r in table_catalog:
-            if r.id == collectionId:
-                return r
+        table_catalog = getattr(request.app.state, "table_catalog", {})
+
+        table = table_catalog.tables[collectionId]
+        if table is not None:
+            props = {}
+            for p in table.properties:
+                props[p.name]=p
+
+            return TableLayer(
+                id=table.id,
+                title=table.id,
+                description=table.description,
+                type="Table",
+                schema=table.dbschema,
+                table=table.table,
+                geometry_type=table.geom_col().geometry_type,
+                geometry_column=table.geom_col().name,
+                geometry_srid=table.geom_col().srid,
+                id_column=table.id_col,
+                properties=props
+            )
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."

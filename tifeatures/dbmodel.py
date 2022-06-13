@@ -207,9 +207,9 @@ async def table_index(
                 id=row[0],
                 dbschema=row[1],
                 table=row[2],
-                geometry_columns=json.loads(row[3]),
+                geometry_columns=row[3],
                 id_col=row[4],
-                properties=json.loads(row[5]),
+                properties=row[5],
                 description=row[6],
             )
     return Database(tables=d)
