@@ -29,6 +29,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+all = [
+    "orjson"
+]
 test = [
     "pytest",
     "pytest-cov",
