@@ -71,7 +71,7 @@ class Table(BaseModel):
 
             geom_col = self.geom_col()
             if geom_col:
-                properties.append(geom_column.name)
+                properties.append(geom_col.name)
 
             cols = [c for c in cols if c in properties]
 
