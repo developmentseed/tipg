@@ -1,6 +1,5 @@
 """tifeatures.db: database events."""
 
-import json
 from typing import Optional
 
 from buildpg import asyncpg
@@ -9,6 +8,12 @@ from tifeatures.dbmodel import get_table_index
 from tifeatures.settings import PostgresSettings
 
 from fastapi import FastAPI
+
+try:
+    import orjson as json
+
+except ModuleNotFoundError:
+    import json  # type: ignore
 
 
 async def con_init(conn):

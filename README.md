@@ -28,7 +28,7 @@
 ```bash
 $ git clone https://github.com/developmentseed/tifeatures.git
 $ cd tifeatures
-$ python -m pip install -e .
+$ python -m pip install -e .  # or .["all"] to install optional dependencies
 ```
 
 ## Launch

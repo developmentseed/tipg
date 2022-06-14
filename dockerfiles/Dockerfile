@@ -8,7 +8,7 @@ COPY README.md README.md
 COPY tifeatures/ tifeatures/
 COPY pyproject.toml pyproject.toml
 
-RUN pip install . --no-cache-dir
+RUN pip install .["all"] --no-cache-dir
 RUN rm -rf tifeatures/ README.md pyproject.toml
 
 ENV MODULE_NAME tifeatures.main
