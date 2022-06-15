@@ -1,9 +1,9 @@
-"""tifeatures.db: database events."""
+"""tifeatures.dbmodel: database events."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from buildpg import asyncpg
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Column(BaseModel):
@@ -28,7 +28,7 @@ class Table(BaseModel):
 
     id: str
     table: str
-    dbschema: str
+    dbschema: str = Field(..., alias="schema")
     description: Optional[str]
     id_column: Optional[str]
     geometry_columns: Optional[List[GeometryColumn]]
@@ -46,7 +46,7 @@ class Table(BaseModel):
                 if dtcol is None or col.name == dtcol:
                     return col
 
-    def geom_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
+    def geometry_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
         if self.geometry_columns is not None and len(self.geometry_columns) > 0:
             for c in self.geometry_columns:
@@ -56,20 +56,20 @@ class Table(BaseModel):
         return None
 
     @property
-    def id_column_info(self):
+    def id_column_info(self) -> Column:  # type: ignore
         """Return Column for a unique identifier."""
         for c in self.properties:
             if c.name == self.id_column:
                 return c
 
-    def columns(self, properties: Optional[List[str]]) -> List[str]:
+    def columns(self, properties: Optional[List[str]] = None) -> List[str]:
         """Return table columns optionally filtered to only include columns from properties."""
         cols = [c.name for c in self.properties]
         if properties is not None:
             if self.id_column is not None and self.id_column not in properties:
                 properties.append(self.id_column)
 
-            geom_col = self.geom_col()
+            geom_col = self.geometry_column()
             if geom_col:
                 properties.append(geom_col.name)
 
@@ -77,20 +77,18 @@ class Table(BaseModel):
 
         if len(cols) < 1:
             raise TypeError("No columns selected")
+
         return cols
 
 
-class Database(BaseModel):
-    """Keyed tables for a Database."""
-
-    tables: Dict[str, Table]
+Database = Dict[str, Dict[str, Any]]
 
 
 async def get_table_index(
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,
-    spatial: Optional[bool] = True,
+    spatial: bool = True,
 ) -> Database:
     """Fetch Table index."""
 
@@ -205,15 +203,13 @@ async def get_table_index(
         rows = await conn.fetch_b(
             query, schemas=schemas, tables=tables, spatial=spatial
         )
-        d = {}
-        for row in rows:
-            d[row["id"]] = Table(
-                id=row[0],
-                dbschema=row[1],
-                table=row[2],
-                geometry_columns=row[3],
-                id_col=row[4],
-                properties=row[5],
-                description=row[6],
-            )
-    return Database(tables=d)
+        keys = [
+            "id",
+            "schema",
+            "table",
+            "geometry_columns",
+            "id_column",
+            "properties",
+            "description",
+        ]
+        return {row["id"]: dict(zip(keys, tuple(row))) for row in rows}
