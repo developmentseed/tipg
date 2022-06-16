@@ -18,7 +18,7 @@ def CollectionParams(
 ) -> CollectionLayer:
     """Return Layer Object."""
     # Check function_catalog
-    function_catalog = getattr(request.app.state, "function_catalog", {})
+    function_catalog = getattr(request.app.state, "tifeatures_function_catalog", {})
     func = function_catalog.get(collectionId)
     if func:
         return func

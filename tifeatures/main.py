@@ -27,7 +27,7 @@ endpoints = Endpoints()
 app.include_router(endpoints.router)
 
 # We add the function registry to the application state
-app.state.function_catalog = FunctionRegistry()
+app.state.tifeatures_function_catalog = FunctionRegistry()
 
 # Set all CORS enabled origins
 if settings.cors_origins:

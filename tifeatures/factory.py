@@ -272,7 +272,9 @@ class Endpoints:
             output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """List of collections."""
-            function_catalog = getattr(request.app.state, "function_catalog", {})
+            function_catalog = getattr(
+                request.app.state, "tifeatures_function_catalog", {}
+            )
             table_catalog = getattr(request.app.state, "table_catalog", {})
             # convert all table to Table object
             tables = [TableLayer(**t) for t in table_catalog.values()]
