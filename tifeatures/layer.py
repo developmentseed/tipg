@@ -9,7 +9,9 @@ from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import render
 from geojson_pydantic import Feature, FeatureCollection
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, root_validator
+
+from tifeatures.dbmodel import Table as DBTable
 
 
 class Items(FeatureCollection):
@@ -55,7 +57,7 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         ...
 
 
-class Table(CollectionLayer):
+class Table(CollectionLayer, DBTable):
     """Table Reader.
 
     Attributes:
@@ -71,13 +73,14 @@ class Table(CollectionLayer):
     """
 
     type: str = "Table"
-    dbschema: str = Field(..., alias="schema")
-    table: str
-    geometry_type: str
-    geometry_column: str
-    geometry_srid: int
-    id_column: str
-    properties: Dict[str, Dict[str, Any]]
+
+    @root_validator
+    def bounds_default(cls, values):
+        """Get default bounds from the first geometry columns."""
+        geoms = values.get("geometry_columns")
+        if geoms:
+            values["bounds"] = geoms[0].bounds
+        return values
 
     async def features(
         self,
@@ -126,13 +129,20 @@ class Table(CollectionLayer):
                 GROUP BY total_count.count;
             """
 
+            geometry_column = self.geometry_column(kwargs.get("geom"))
+            if not geometry_column:
+                raise Exception(
+                    f"Could not find any geometry column for Table {self.id}"
+                )
+            geometry_srid = geometry_column.srid
+
             q, p = render(
                 sql_query,
                 tablename=pg_variable(self.id),
                 id_column=pg_variable(self.id_column),
-                geometry_column=pg_variable(self.geometry_column),
-                geometry_column_str=self.geometry_column,
-                srid=self.geometry_srid,
+                geometry_column=pg_variable(geometry_column.name),
+                geometry_column_str=geometry_column.name,
+                srid=geometry_srid,
                 limit=limit,
                 offset=offset,
             )
@@ -143,6 +153,7 @@ class Table(CollectionLayer):
         self,
         pool: asyncpg.BuildPgPool,
         item_id: str,
+        **kwargs: Any,
     ) -> Feature:
         """Return a Feature."""
         async with pool.acquire() as conn:
@@ -168,11 +179,18 @@ class Table(CollectionLayer):
                         )
                 FROM features
             """
+            geometry_column = self.geometry_column(kwargs.get("geom"))
+            if not geometry_column:
+                raise Exception(
+                    f"Could not find any geometry column for Table {self.id}"
+                )
+            geometry_srid = geometry_column.srid
+
             where_logic = clauses.Where(
                 pg_variable(self.id_column)
                 == pg_funcs.cast(
                     pg_funcs.cast(item_id, "text"),
-                    self.properties[self.id_column]["type"],
+                    self.id_column_info.type,
                 )
             )
 
@@ -180,9 +198,9 @@ class Table(CollectionLayer):
                 sql_query,
                 tablename=pg_variable(self.id),
                 id_column=pg_variable(self.id_column),
-                geometry_column=pg_variable(self.geometry_column),
-                geometry_column_str=self.geometry_column,
-                srid=self.geometry_srid,
+                geometry_column=pg_variable(geometry_column.name),
+                geometry_column_str=geometry_column.name,
+                srid=geometry_srid,
                 where_logic=where_logic,
             )
 

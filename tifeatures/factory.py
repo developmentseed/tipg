@@ -15,6 +15,7 @@ from tifeatures.dependencies import (
 )
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
+from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType, ResponseType
 from tifeatures.resources.response import GeoJSONResponse
 from tifeatures.settings import APISettings
@@ -271,9 +272,12 @@ class Endpoints:
             output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             """List of collections."""
-            functions = getattr(request.app.state, "function_catalog", {})
-            db = getattr(request.app.state, "table_catalog", None)
-            tables = db.tables
+            function_catalog = getattr(
+                request.app.state, "tifeatures_function_catalog", {}
+            )
+            table_catalog = getattr(request.app.state, "table_catalog", {})
+            # convert all table to Table object
+            tables = [TableLayer(**t) for t in table_catalog.values()]
 
             data = model.Collections(
                 links=[
@@ -314,10 +318,7 @@ class Endpoints:
                             ],
                         }
                     )
-                    for collection in [
-                        *tables.values(),
-                        *list(functions.values()),
-                    ]
+                    for collection in [*tables, *list(function_catalog.values())]
                 ],
             )
 

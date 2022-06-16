@@ -18,7 +18,7 @@ def CollectionParams(
 ) -> CollectionLayer:
     """Return Layer Object."""
     # Check function_catalog
-    function_catalog = getattr(request.app.state, "function_catalog", {})
+    function_catalog = getattr(request.app.state, "tifeatures_function_catalog", {})
     func = function_catalog.get(collectionId)
     if func:
         return func
@@ -37,26 +37,8 @@ def CollectionParams(
         assert table_pattern.groupdict()["table"]
 
         table_catalog = getattr(request.app.state, "table_catalog", {})
-
-        table = table_catalog.tables[collectionId]
-        if table is not None:
-            props = {}
-            for p in table.properties:
-                props[p.name] = p
-
-            return TableLayer(
-                id=table.id,
-                title=table.id,
-                description=table.description,
-                type="Table",
-                schema=table.dbschema,
-                table=table.table,
-                geometry_type=table.geom_column().geometry_type,
-                geometry_column=table.geom_column().name,
-                geometry_srid=table.geom_column().srid,
-                id_column=table.id_col,
-                properties=props,
-            )
+        if collectionId in table_catalog:
+            return TableLayer(**table_catalog[collectionId])
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."
