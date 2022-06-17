@@ -23,7 +23,8 @@ dependencies = [
     "buildpg>=0.3",
     "fastapi>=0.77",
     "jinja2>=2.11.2,<4.0.0",
-    "geojson-pydantic",
+    "geojson-pydantic>=0.4.0",
+    "pygeofilter",
     "starlette-cramjam>=0.1.0,<0.2",
     "importlib_resources>=1.1.0; python_version < '3.9'",
 ]

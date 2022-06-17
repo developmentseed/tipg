@@ -20,8 +20,13 @@ class NotFound(TiFeaturesError):
     """Invalid table name."""
 
 
+class MissingGeometryColumn(TiFeaturesError):
+    """Table has no geometry column."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
+    MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 
 import jinja2
+from pygeofilter.ast import AstType
 
 from tifeatures import model
 from tifeatures.dependencies import (
@@ -12,6 +13,9 @@ from tifeatures.dependencies import (
     OutputType,
     bbox_query,
     datetime_query,
+    filter_query,
+    ids_query,
+    properties_query,
 )
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
@@ -295,7 +299,10 @@ class Endpoints:
                 collections=[
                     model.Collection(
                         **{
-                            **collection.dict(),
+                            "id": collection.id,
+                            "title": collection.id,
+                            "description": collection.description,
+                            # TODO: Add Spatial/Temporal Extent
                             "links": [
                                 model.Link(
                                     href=self.url_for(
@@ -400,6 +407,11 @@ class Endpoints:
         async def items(
             request: Request,
             collection=Depends(self.collection_dependency),
+            ids: Optional[List[str]] = Depends(ids_query),
+            bbox: Optional[List[float]] = Depends(bbox_query),
+            datetime: Optional[List[str]] = Depends(datetime_query),
+            properties: Optional[List[str]] = Depends(properties_query),
+            filter_query: Optional[AstType] = Depends(filter_query),
             limit: int = Query(
                 10,
                 description="Limits the number of features in the response.",
@@ -409,33 +421,17 @@ class Endpoints:
                 ge=0,
                 description="Starts the response at an offset.",
             ),
-            bbox: Optional[List[float]] = Depends(bbox_query),
-            datetime: Optional[str] = Depends(datetime_query),
-            properties: Optional[str] = Query(
-                None,
-                description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
-            ),
             output_type: Optional[ResponseType] = Depends(OutputType),
         ):
             offset = offset or 0
 
-            # <NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
-            # qs_key_to_remove = [
-            #     "limit",
-            #     "offset",
-            #     "bbox",
-            #     "datetime",
-            #     "properties",
-            #     "f",
-            # ]
-            # properties_filter = [
-            #     {"op": "eq", "args": [{"property": key}, value]}
-            #     for (key, value) in request.query_params.items()
-            #     if key.lower() not in qs_key_to_remove
-            # ]
-
             items = await collection.features(
                 request.app.state.pool,
+                ids=ids,
+                bbox=bbox,
+                datetime=datetime,
+                properties=properties,
+                filter_query=filter_query,
                 limit=limit,
                 offset=offset,
             )

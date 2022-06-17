@@ -1,7 +1,11 @@
 """tifeatures dependencies."""
 
 import re
-from typing import List, Optional
+from typing import List, Literal, Optional
+
+from pygeofilter.ast import AstType
+from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
+from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
@@ -45,6 +49,21 @@ def CollectionParams(
     )
 
 
+def OutputType(
+    request: Request,
+    f: Optional[ResponseType] = Query(None, description="Response MediaType."),
+) -> Optional[ResponseType]:
+    """Output Response type."""
+    if f:
+        return f
+
+    accept_header = request.headers.get("accept", "")
+    if accept_header in AcceptType.__members__.values():
+        return ResponseType[AcceptType(accept_header).name]
+
+    return None
+
+
 def bbox_query(
     bbox: Optional[str] = Query(
         None,
@@ -65,32 +84,62 @@ def bbox_query(
                 raise ValueError(f"Invalid longitude in bbox: {bounds}")
             if abs(bounds[1]) > 90 or abs(bounds[4]) > 90:
                 raise ValueError(f"Invalid latitude in bbox: {bounds}")
+
         else:
-            raise Exception("Invalid BBOX.")
+            raise HTTPException(status_code=500, detail=f"Invalid bbox: {bbox}")
 
         return bounds
 
     return None
 
 
+def ids_query(
+    ids: Optional[str] = Query(None, description="Filter by Ids."),
+) -> Optional[List[str]]:
+    """Ids dependency."""
+    return ids.split(",") if ids else None
+
+
 def datetime_query(
     datetime: Optional[str] = Query(None, description="Temporal Filter."),
-) -> Optional[str]:
+) -> Optional[List[str]]:
     """Datetime dependency."""
-    # TODO validation / format
-    return datetime
+    if datetime:
+        dt = datetime.split("/")
+        if len(dt) > 2:
+            raise HTTPException(status_code=500, detail="Invalid datetime: {datetime}")
+
+        return dt
+
+    return None
 
 
-def OutputType(
-    request: Request,
-    f: Optional[ResponseType] = Query(None, description="Response MediaType."),
-) -> Optional[ResponseType]:
-    """Output Response type."""
-    if f:
-        return f
+def properties_query(
+    properties: Optional[str] = Query(
+        None,
+        description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
+    )
+) -> Optional[List[str]]:
+    """Return property list."""
+    if properties is not None:
+        return [p.strip() for p in properties.split(",")]
 
-    accept_header = request.headers.get("accept", "")
-    if accept_header in AcceptType.__members__.values():
-        return ResponseType[AcceptType(accept_header).name]
+    return None
+
+
+def filter_query(
+    query: Optional[str] = Query(None, description="CQL2 Filter", alias="filter"),
+    filter_lang: Optional[Literal["cql2-text", "cql2-json"]] = Query(
+        "cql2-text",
+        description="CQL2 Language (cql2-text, cql2-json)",
+        alias="filter-lang",
+    ),
+) -> Optional[AstType]:
+    """Parse Filter Query."""
+    if query is not None:
+        if filter_lang == "cql2-json":
+            return cql2_json_parser(query)
+        else:
+            return cql2_text_parser(query)
 
     return None

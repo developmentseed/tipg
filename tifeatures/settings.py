@@ -69,7 +69,7 @@ class PostgresSettings(pydantic.BaseSettings):
             return v
 
         return pydantic.PostgresDsn.build(
-            scheme="postgresql",
+            scheme="postgresql+asyncpg",
             user=values.get("postgres_user"),
             password=values.get("postgres_pass"),
             host=values.get("postgres_host", ""),
