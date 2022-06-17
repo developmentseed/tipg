@@ -1,7 +1,7 @@
 """tifeatures dependencies."""
 
 import re
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
@@ -9,7 +9,7 @@ from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
-from tifeatures.resources.enums import AcceptType, ResponseType
+from tifeatures.resources.enums import AcceptType, FilterLang, ResponseType
 
 from fastapi import HTTPException, Path, Query
 
@@ -129,15 +129,15 @@ def properties_query(
 
 def filter_query(
     query: Optional[str] = Query(None, description="CQL2 Filter", alias="filter"),
-    filter_lang: Optional[Literal["cql2-text", "cql2-json"]] = Query(
-        "cql2-text",
+    filter_lang: Optional[FilterLang] = Query(
+        FilterLang.cql2_text,
         description="CQL2 Language (cql2-text, cql2-json)",
         alias="filter-lang",
     ),
 ) -> Optional[AstType]:
     """Parse Filter Query."""
     if query is not None:
-        if filter_lang == "cql2-json":
+        if filter_lang == FilterLang.cql2_json:
             return cql2_json_parser(query)
         else:
             return cql2_text_parser(query)
