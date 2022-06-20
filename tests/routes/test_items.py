@@ -163,10 +163,10 @@ def test_items_properties_filter(app):
     assert body["numberReturned"] == 10
     assert body["features"][0]["properties"]["path"] == 13
 
-    # # invalid type (str instead of int)
-    # response = app.get("/collections/public.landsat_wrs/items?path=d")
-    # assert response.status_code == 500
-    # assert "invalid input syntax for type integer" in response.json()["detail"]
+    # invalid type (str instead of int)
+    response = app.get("/collections/public.landsat_wrs/items?path=d")
+    assert response.status_code == 500
+    assert "invalid input syntax for type integer" in response.json()["detail"]
 
     response = app.get("/collections/public.landsat_wrs/items?path=13&row=10")
     assert response.status_code == 200

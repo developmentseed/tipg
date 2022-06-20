@@ -3,6 +3,8 @@
 import logging
 from typing import Callable, Dict, Type
 
+from asyncpg.exceptions._base import PostgresError
+
 from fastapi import FastAPI
 
 from starlette import status
@@ -33,6 +35,7 @@ DEFAULT_STATUS_CODES = {
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 
 
