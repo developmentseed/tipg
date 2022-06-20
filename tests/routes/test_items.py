@@ -182,3 +182,7 @@ def test_items_properties_filter(app):
     # # no items for path=1000000
     # response = app.get("/collections/public.landsat_wrs/items?path=1000000")
     # assert response.status_code == 404
+
+    # TODO: fix, Table.query shouldn't return items when filtering on invalid properties (gpath isn't a valid property name)
+    # response = app.get("/collections/public.landsat_wrs/items?gpath=10")
+    # assert response.status_code == 404
