@@ -407,11 +407,17 @@ class Endpoints:
         async def items(
             request: Request,
             collection=Depends(self.collection_dependency),
-            ids: Optional[List[str]] = Depends(ids_query),
-            bbox: Optional[List[float]] = Depends(bbox_query),
-            datetime: Optional[List[str]] = Depends(datetime_query),
+            ids_filter: Optional[List[str]] = Depends(ids_query),
+            bbox_filter: Optional[List[float]] = Depends(bbox_query),
+            datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
-            filter_query: Optional[AstType] = Depends(filter_query),
+            cql_filter: Optional[AstType] = Depends(filter_query),
+            geom_column: Optional[str] = Query(
+                None, description="Select geometry column."
+            ),
+            datetime_column: Optional[str] = Query(
+                None, description="Select datetime column."
+            ),
             limit: int = Query(
                 10,
                 description="Limits the number of features in the response.",
@@ -425,15 +431,36 @@ class Endpoints:
         ):
             offset = offset or 0
 
+            # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
+            exclude = [
+                "ids",
+                "datetime",
+                "bbox",
+                "properties",
+                "filter",
+                "geom_column",
+                "datetime_column",
+                "limit",
+                "offset",
+            ]
+            properties_filter = [
+                (key, value)
+                for (key, value) in request.query_params.items()
+                if key.lower() not in exclude
+            ]
+
             items = await collection.features(
                 request.app.state.pool,
-                ids=ids,
-                bbox=bbox,
-                datetime=datetime,
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter,
+                cql_filter=cql_filter,
                 properties=properties,
-                filter_query=filter_query,
                 limit=limit,
                 offset=offset,
+                geom=geom_column,
+                dt=datetime_column,
             )
 
             qs = "?" + str(request.query_params) if request.query_params else ""

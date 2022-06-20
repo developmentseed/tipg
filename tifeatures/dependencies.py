@@ -7,6 +7,7 @@ from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
+from tifeatures.errors import InvalidBBox
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import AcceptType, FilterLang, ResponseType
@@ -34,7 +35,7 @@ def CollectionParams(
         )
         if not table_pattern:
             raise HTTPException(
-                status_code=404, detail=f"Invalid Table format '{collectionId}'."
+                status_code=422, detail=f"Invalid Table format '{collectionId}'."
             )
 
         assert table_pattern.groupdict()["schema"]
@@ -75,18 +76,18 @@ def bbox_query(
         bounds = list(map(float, bbox.split(",")))
         if len(bounds) == 4:
             if abs(bounds[0]) > 180 or abs(bounds[2]) > 180:
-                raise ValueError(f"Invalid longitude in bbox: {bounds}")
+                raise InvalidBBox(f"Invalid longitude in bbox: {bounds}")
             if abs(bounds[1]) > 90 or abs(bounds[3]) > 90:
-                raise ValueError(f"Invalid latitude in bbox: {bounds}")
+                raise InvalidBBox(f"Invalid latitude in bbox: {bounds}")
 
         elif len(bounds) == 6:
             if abs(bounds[0]) > 180 or abs(bounds[3]) > 180:
-                raise ValueError(f"Invalid longitude in bbox: {bounds}")
+                raise InvalidBBox(f"Invalid longitude in bbox: {bounds}")
             if abs(bounds[1]) > 90 or abs(bounds[4]) > 90:
-                raise ValueError(f"Invalid latitude in bbox: {bounds}")
+                raise InvalidBBox(f"Invalid latitude in bbox: {bounds}")
 
         else:
-            raise HTTPException(status_code=500, detail=f"Invalid bbox: {bbox}")
+            raise InvalidBBox(f"Invalid bbox: {bounds}")
 
         return bounds
 
@@ -107,7 +108,7 @@ def datetime_query(
     if datetime:
         dt = datetime.split("/")
         if len(dt) > 2:
-            raise HTTPException(status_code=500, detail="Invalid datetime: {datetime}")
+            raise HTTPException(status_code=422, detail="Invalid datetime: {datetime}")
 
         return dt
 

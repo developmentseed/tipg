@@ -2,7 +2,7 @@
 
 import abc
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
@@ -43,10 +43,11 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, Any]]] = None,
+        cql_filter: Optional[AstType] = None,
         properties: Optional[List[str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
@@ -106,7 +107,8 @@ class Table(CollectionLayer, DBTable):
         ids: Optional[List[str]] = None,
         datetime: Optional[List[str]] = None,
         bbox: Optional[List[float]] = None,
-        filter_query: Optional[AstType] = None,
+        properties: Optional[List[Tuple[str, Any]]] = None,
+        cql: Optional[AstType] = None,
         geom: str = None,
         dt: str = None,
     ):
@@ -125,12 +127,29 @@ class Table(CollectionLayer, DBTable):
             else:
                 w = [
                     logic.V(self.id_column)
-                    == logic.S(pg_funcs.cast(i, self.id_column_info.type))
+                    == logic.S(
+                        pg_funcs.cast(
+                            pg_funcs.cast(i, "text"), self.id_column_info.type
+                        )
+                    )
                     for i in ids
                 ]
                 wheres.append(pg_funcs.OR(*w))
 
-        # `bbox`` filter
+        # `properties filter
+        if properties is not None:
+            w = []
+            for (prop, val) in properties:
+                col = self.get_column(prop)
+                if col:
+                    w.append(
+                        logic.V(col.name)
+                        == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
+                    )
+            if w:
+                wheres.append(pg_funcs.AND(*w))
+
+        # `bbox` filter
         geometry_column = self.geometry_column(geom)
         if bbox is not None and geometry_column is not None:
             wheres.append(
@@ -141,7 +160,7 @@ class Table(CollectionLayer, DBTable):
                 )
             )
 
-        # datetime filter
+        # `datetime` filter
         datetime_column = self.datetime_column(dt)
         if datetime is not None and datetime_column is not None:
             if len(datetime) == 1:
@@ -154,33 +173,38 @@ class Table(CollectionLayer, DBTable):
                     )
                 )
 
-        # filter
-        if filter_query is not None:
-            wheres.append(to_filter(filter_query, [p.name for p in self.properties]))
+        # `CQL` filter
+        if cql is not None:
+            wheres.append(to_filter(cql, [p.name for p in self.properties]))
 
         return clauses.Where(pg_funcs.AND(*wheres))
 
     def _features_query(
         self,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
+        *,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
         properties: Optional[List[str]] = None,
+        geom: str = None,
+        dt: str = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        **kwargs: Any,
     ):
         """Build Features query."""
         return (
             self._select(properties)
             + self._from()
             + self._where(
-                ids=ids,
-                datetime=datetime,
-                bbox=bbox,
-                filter_query=filter_query,
-                **kwargs,
+                ids=ids_filter,
+                datetime=datetime_filter,
+                bbox=bbox_filter,
+                properties=properties_filter,
+                cql=cql_filter,
+                geom=geom,
+                dt=dt,
             )
             + clauses.Limit(limit or 10)
             + clauses.Offset(offset or 0)
@@ -188,39 +212,46 @@ class Table(CollectionLayer, DBTable):
 
     def _features_count_query(
         self,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
-        **kwargs: Any,
+        *,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
+        geom: str = None,
+        dt: str = None,
     ):
         """Build features COUNT query."""
         return (
             self._select_count()
             + self._from()
             + self._where(
-                ids=ids,
-                datetime=datetime,
-                bbox=bbox,
-                filter_query=filter_query,
-                **kwargs,
+                ids=ids_filter,
+                datetime=datetime_filter,
+                bbox=bbox_filter,
+                properties=properties_filter,
+                cql=cql_filter,
+                geom=geom,
+                dt=dt,
             )
         )
 
     async def query(
         self,
         pool: asyncpg.BuildPgPool,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
+        *,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
         properties: Optional[List[str]] = None,
+        geom: str = None,
+        dt: str = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        **kwargs: Any,
     ):
         """Build and run Pg query."""
-        geom = kwargs.get("geom")
         geometry_column = self.geometry_column(geom)
         if not geometry_column:
             raise MissingGeometryColumn("Must have geometry column for geojson output.")
@@ -256,21 +287,25 @@ class Table(CollectionLayer, DBTable):
         q, p = render(
             sql_query,
             features_q=self._features_query(
-                ids=ids,
-                bbox=bbox,
-                datetime=datetime,
-                filter_query=filter_query,
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter,
+                cql_filter=cql_filter,
                 properties=properties,
+                geom=geom,
+                dt=dt,
                 limit=limit,
                 offset=offset,
-                **kwargs,
             ),
             count_q=self._features_count_query(
-                ids=ids,
-                bbox=bbox,
-                datetime=datetime,
-                filter_query=filter_query,
-                **kwargs,
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter,
+                cql_filter=cql_filter,
+                geom=geom,
+                dt=dt,
             ),
             id_column=logic.V(self.id_column),
             srid=geometry_column.srid,
@@ -284,10 +319,11 @@ class Table(CollectionLayer, DBTable):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
         properties: Optional[List[str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
@@ -296,10 +332,11 @@ class Table(CollectionLayer, DBTable):
         """Return a FeatureCollection."""
         return await self.query(
             pool=pool,
-            ids=ids,
-            bbox=bbox,
-            datetime=datetime,
-            filter_query=filter_query,
+            ids_filter=ids_filter,
+            bbox_filter=bbox_filter,
+            datetime_filter=datetime_filter,
+            properties_filter=properties_filter,
+            cql_filter=cql_filter,
             properties=properties,
             limit=limit,
             offset=offset,
@@ -316,7 +353,7 @@ class Table(CollectionLayer, DBTable):
         """Return a Feature."""
         geojson = await self.query(
             pool=pool,
-            ids=[item_id],
+            ids_filter=[item_id],
             properties=properties,
             **kwargs,
         )
@@ -360,10 +397,11 @@ class Function(CollectionLayer):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        ids: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        datetime: Optional[List[str]] = None,
-        filter_query: Optional[AstType] = None,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
         properties: Optional[List[str]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,

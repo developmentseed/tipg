@@ -24,8 +24,13 @@ class MissingGeometryColumn(TiFeaturesError):
     """Table has no geometry column."""
 
 
+class InvalidBBox(TiFeaturesError):
+    """Invalid bounding box coordinates."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
+    InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }

@@ -80,6 +80,14 @@ class Table(BaseModel):
 
         return cols
 
+    def get_column(self, property_name: str) -> Optional[Column]:
+        """Return column info."""
+        for p in self.properties:
+            if p.name == property_name:
+                return p
+
+        return None
+
 
 Database = Dict[str, Dict[str, Any]]
 
