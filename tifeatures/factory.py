@@ -244,6 +244,7 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
                 ]
             )
             if output_type and output_type == ResponseType.html:
@@ -449,7 +450,7 @@ class Endpoints:
                 if key.lower() not in exclude
             ]
 
-            items = await collection.features(
+            items, matched_items = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
@@ -480,8 +481,7 @@ class Endpoints:
                 ),
             ]
 
-            items_returned = len(items["features"])
-            matched_items = items["total_count"]
+            items_returned = len(items)
 
             if (matched_items - items_returned) > offset:
                 next_offset = offset + items_returned
@@ -523,7 +523,7 @@ class Endpoints:
                 features=[
                     model.Item(
                         **{
-                            **feature,
+                            **feature.dict(),
                             "links": [
                                 model.Link(
                                     href=self.url_for(
@@ -539,9 +539,7 @@ class Endpoints:
                                         request,
                                         "item",
                                         collectionId=collection.id,
-                                        itemId=feature["properties"][
-                                            collection.id_column
-                                        ],
+                                        itemId=feature.properties[collection.id_column],
                                     ),
                                     rel="item",
                                     type=MediaType.json,
@@ -549,7 +547,7 @@ class Endpoints:
                             ],
                         }
                     )
-                    for feature in items["features"]
+                    for feature in items
                 ],
             )
 
@@ -593,7 +591,7 @@ class Endpoints:
                 )
 
             data = model.Item(
-                **feature,
+                **feature.dict(),
                 links=[
                     model.Link(
                         href=self.url_for(

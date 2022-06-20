@@ -132,3 +132,53 @@ def test_items_ids(app):
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["features"][1]["id"] == "2"
     assert body["features"][1]["properties"]["ogc_fid"] == 2
+
+
+def test_items_properties(app):
+    """Test /items endpoint with properties options."""
+    response = app.get("/collections/public.landsat_wrs/items?properties=path,row")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert sorted(["path", "row", "ogc_fid"]) == sorted(
+        list(body["features"][0]["properties"])
+    )
+
+    # no properties
+    response = app.get("/collections/public.landsat_wrs/items?properties=")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert ["ogc_fid"] == list(body["features"][0]["properties"])
+
+
+def test_items_properties_filter(app):
+    """Test /items endpoint with properties filter options."""
+    response = app.get("/collections/public.landsat_wrs/items?path=13")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 10
+    assert body["numberMatched"] == 104
+    assert body["numberReturned"] == 10
+    assert body["features"][0]["properties"]["path"] == 13
+
+    # # invalid type (str instead of int)
+    # response = app.get("/collections/public.landsat_wrs/items?path=d")
+    # assert response.status_code == 500
+    # assert "invalid input syntax for type integer" in response.json()["detail"]
+
+    response = app.get("/collections/public.landsat_wrs/items?path=13&row=10")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["path"] == 13
+    assert body["features"][0]["properties"]["row"] == 10
+
+    # TODO: fix, Table.query returns None instead of empty feature collection
+    # # no items for path=1000000
+    # response = app.get("/collections/public.landsat_wrs/items?path=1000000")
+    # assert response.status_code == 404

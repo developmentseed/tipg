@@ -17,12 +17,6 @@ from tifeatures.filter.evaluate import to_filter
 from tifeatures.filter.filters import bbox_to_wkt
 
 
-class Items(FeatureCollection):
-    """Custom FeatureCollection Model return by `features` methods."""
-
-    total_count: int
-
-
 class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     """Layer's Abstract BaseClass.
 
@@ -52,8 +46,8 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         **kwargs: Any,
-    ) -> Items:
-        """Return a FeatureCollection."""
+    ) -> Tuple[FeatureCollection, int]:
+        """Return a FeatureCollection and the number of matched items."""
         ...
 
     @abc.abstractmethod
@@ -250,7 +244,7 @@ class Table(CollectionLayer, DBTable):
         dt: str = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ):
+    ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
         geometry_column = self.geometry_column(geom)
         if not geometry_column:
@@ -314,7 +308,12 @@ class Table(CollectionLayer, DBTable):
         )
 
         async with pool.acquire() as conn:
-            return await conn.fetchval(q, *p)
+            items = await conn.fetchval(q, *p)
+
+        # TODO:
+        # - make sure we always return features (even empty)
+        # - make sure we always return total_count
+        return FeatureCollection(features=items["features"]), items["total_count"]
 
     async def features(
         self,
@@ -328,8 +327,8 @@ class Table(CollectionLayer, DBTable):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         **kwargs: Any,
-    ) -> Items:
-        """Return a FeatureCollection."""
+    ) -> Tuple[FeatureCollection, int]:
+        """Return a FeatureCollection and the number of matched items."""
         return await self.query(
             pool=pool,
             ids_filter=ids_filter,
@@ -349,15 +348,18 @@ class Table(CollectionLayer, DBTable):
         item_id: str,
         properties: Optional[List[str]] = None,
         **kwargs: Any,
-    ) -> Feature:
+    ) -> Optional[Feature]:
         """Return a Feature."""
-        geojson = await self.query(
+        feature_collection, _ = await self.query(
             pool=pool,
             ids_filter=[item_id],
             properties=properties,
             **kwargs,
         )
-        return geojson["features"][0]
+        if len(feature_collection):
+            return feature_collection.features[0]
+
+        return None
 
 
 class Function(CollectionLayer):
@@ -406,8 +408,8 @@ class Function(CollectionLayer):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         **kwargs: Any,
-    ) -> FeatureCollection:
-        """Return a FeatureCollection."""
+    ) -> Tuple[FeatureCollection, int]:
+        """Return a FeatureCollection and the number of matched items."""
         # TODO
         pass
 
