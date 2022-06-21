@@ -10,6 +10,8 @@ from buildpg import V
 from buildpg.funcs import AND as and_
 from buildpg.funcs import NOT as not_
 from buildpg.funcs import OR as or_
+from buildpg.funcs import any
+from buildpg.logic import Func
 from geojson_pydantic.geometries import Polygon, parse_geometry_obj
 
 
@@ -52,21 +54,21 @@ class Operator:
         "like": lambda f, a: f.like(a),
         "ilike": lambda f, a: f.ilike(a),
         "not_ilike": lambda f, a: ~f.ilike(a),
-        "in": lambda f, a: f.in_(a),
-        "not_in": lambda f, a: ~f.in_(a),
+        "in": lambda f, a: f == any(a),
+        "not_in": lambda f, a: ~f == any(a),
         "any": lambda f, a: f.any(a),
         "not_any": lambda f, a: f.not_(f.any(a)),
-        "INTERSECTS": lambda f, a: f.ST_Intersects(a),
-        "DISJOINT": lambda f, a: f.ST_Disjoint(a),
-        "CONTAINS": lambda f, a: f.ST_Contains(a),
-        "WITHIN": lambda f, a: f.ST_Within(a),
-        "TOUCHES": lambda f, a: f.ST_Touches(a),
-        "CROSSES": lambda f, a: f.ST_Crosses(a),
-        "OVERLAPS": lambda f, a: f.ST_Overlaps(a),
-        "EQUALS": lambda f, a: f.ST_Equals(a),
-        "RELATE": lambda f, a, pattern: f.ST_Relate(a, pattern),
-        "DWITHIN": lambda f, a, distance: f.ST_Dwithin(a, distance),
-        "BEYOND": lambda f, a, distance: ~f.ST_Dwithin(a, distance),
+        "INTERSECTS": lambda f, a: Func('st_intersects', f, a),
+        "DISJOINT": lambda f, a: Func('st_disjoint', f, a),
+        "CONTAINS": lambda f, a: Func('st_contains', f, a),
+        "WITHIN": lambda f, a: Func('st_within', f, a),
+        "TOUCHES": lambda f, a: Func('st_touches', f, a),
+        "CROSSES": lambda f, a: Func('st_crosses', f, a),
+        "OVERLAPS": lambda f, a: Func('st_overlaps', f, a),
+        "EQUALS": lambda f, a: Func('st_equals', f, a),
+        "RELATE": lambda f, a, pattern: Func('st_relate', f, a, pattern),
+        "DWITHIN": lambda f, a, distance: Func('st_dwithin', f, a, distance),
+        "BEYOND": lambda f, a, distance: ~Func('st_dwithin', f, a, distance),
         "+": lambda f, a: f + a,
         "-": lambda f, a: f - a,
         "*": lambda f, a: f * a,
@@ -227,7 +229,7 @@ def spatial(lhs, rhs, op, pattern=None, distance=None, units=None):
 
     _op = Operator(op)
     if op == "RELATE":
-        return _op.function(lhs, rhs, pattern)
+        return Func(op, lhs, rhs, pattern)
     elif op in ("DWITHIN", "BEYOND"):
         if units == "kilometers":
             distance = distance / 1000

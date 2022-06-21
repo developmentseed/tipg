@@ -1,5 +1,5 @@
 """Test /items endpoints."""
-
+import json
 
 def test_items(app):
     """Test /items endpoint."""
@@ -186,3 +186,125 @@ def test_items_properties_filter(app):
     # TODO: fix, Table.query shouldn't return items when filtering on invalid properties (gpath isn't a valid property name)
     # response = app.get("/collections/public.landsat_wrs/items?gpath=10")
     # assert response.status_code == 404
+
+
+
+
+def test_items_filter_cql_ids(app):
+    """Test /items endpoint with ids options."""
+    filter = {
+        "op": "=",
+        "args": [
+            {"property": "ogc_fid"},
+            1
+        ]
+    }
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid=1")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)")
+    print(response.content)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 2
+    assert body["numberMatched"] == 2
+    assert body["numberReturned"] == 2
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert body["features"][1]["id"] == "2"
+    assert body["features"][1]["properties"]["ogc_fid"] == 2
+
+def test_items_properties_filter_cql2(app):
+    """Test /items endpoint with properties filter options."""
+    filter = {
+        "op": "=",
+        "args": [
+            {"property": "path"},
+            13
+        ]
+    }
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 10
+    assert body["numberMatched"] == 104
+    assert body["numberReturned"] == 10
+    assert body["features"][0]["properties"]["path"] == 13
+
+    # invalid type (str instead of int)
+    filter = {
+        "op": "=",
+        "args": [
+            {"property": "path"},
+            "d"
+        ]
+    }
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}")
+    assert response.status_code == 500
+    assert "integer is required" in response.json()["detail"]
+
+
+    filter = {
+        "op": "and",
+        "args": [
+            {
+                "op": "=",
+                "args": [
+                    {"property": "path"},
+                    13
+                ]
+            },
+                    {
+                "op": "=",
+                "args": [
+                    {"property": "row"},
+                    10
+                ]
+            }
+        ]
+    }
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["path"] == 13
+    assert body["features"][0]["properties"]["row"] == 10
+
+    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=path=13 AND row=10")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["path"] == 13
+    assert body["features"][0]["properties"]["row"] == 10
+
+def test_items_geo_filter_cql2(app):
+    response = app.get("/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-22.2153 79.6888,-22.2153 81.8555,-8.97407 81.8555,-8.97407 79.6888,-22.2153 79.6888)))")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 10
+    assert body["numberMatched"] == 78
