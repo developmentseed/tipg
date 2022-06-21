@@ -209,7 +209,7 @@ def test_items_filter_cql_ids(app):
     assert body["features"][0]["id"] == "1"
     assert body["features"][0]["properties"]["ogc_fid"] == 1
 
-    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid=1")
+    response = app.get("/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid=1")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
@@ -219,7 +219,7 @@ def test_items_filter_cql_ids(app):
     assert body["features"][0]["id"] == "1"
     assert body["features"][0]["properties"]["ogc_fid"] == 1
 
-    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)")
+    response = app.get("/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)")
     print(response.content)
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -292,7 +292,7 @@ def test_items_properties_filter_cql2(app):
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
 
-    response = app.get(f"/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=path=13 AND row=10")
+    response = app.get("/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=path=13 AND row=10")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()

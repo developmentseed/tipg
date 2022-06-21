@@ -229,7 +229,7 @@ def spatial(lhs, rhs, op, pattern=None, distance=None, units=None):
 
     _op = Operator(op)
     if op == "RELATE":
-        return Func(op, lhs, rhs, pattern)
+        return _op.function(lhs, rhs, pattern)
     elif op in ("DWITHIN", "BEYOND"):
         if units == "kilometers":
             distance = distance / 1000
@@ -253,7 +253,7 @@ def bbox(lhs, minx, miny, maxx, maxy, crs: int = 4326):
 
     """
 
-    return lhs.ST_Intersects(bbox_to_wkt([minx, miny, maxx, maxy], crs))
+    return Func('st_intersects', lhs, bbox_to_wkt([minx, miny, maxx, maxy], crs))
 
 
 def quote_ident(s: str) -> str:
