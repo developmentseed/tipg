@@ -41,10 +41,12 @@ class Table(BaseModel):
 
     def datetime_column(self, dtcol: Optional[str] = None):
         """Return the Column for either the passed in tstz column or the first tstz column."""
-        if self.datetime_columns is not None:
+        if self.datetime_columns:
             for col in self.datetime_columns:
                 if dtcol is None or col.name == dtcol:
                     return col
+
+        return None
 
     def geometry_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
@@ -79,6 +81,14 @@ class Table(BaseModel):
             raise TypeError("No columns selected")
 
         return cols
+
+    def get_column(self, property_name: str) -> Optional[Column]:
+        """Return column info."""
+        for p in self.properties:
+            if p.name == property_name:
+                return p
+
+        return None
 
 
 Database = Dict[str, Dict[str, Any]]

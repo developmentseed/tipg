@@ -28,3 +28,13 @@ class MediaType(str, Enum):
     text = "text/plain"
     openapi30_json = "application/vnd.oai.openapi+json;version=3.0"
     openapi30_yaml = "application/vnd.oai.openapi;version=3.0"
+
+
+class FilterLang(str, Enum):
+    """filter language.
+
+    ref: https://github.com/radiantearth/stac-api-spec/tree/master/fragments/filter#get-query-parameters-and-post-json-fields
+    """
+
+    cql2_text = "cql2-text"
+    cql2_json = "cql2-json"

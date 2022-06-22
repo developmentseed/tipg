@@ -25,6 +25,10 @@ def database_url(test_db):
     assert test_db.install_extension("postgis")
     test_db.run_sql_file(os.path.join(DATA_DIR, "landsat_wrs.sql"))
     assert test_db.has_table("landsat_wrs")
+
+    test_db.run_sql_file(os.path.join(DATA_DIR, "my_data.sql"))
+    assert test_db.has_table("my_data")
+
     return test_db.connection.engine.url
 
 

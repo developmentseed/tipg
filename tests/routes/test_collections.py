@@ -10,6 +10,7 @@ def test_collections(app):
     assert ["collections", "links"] == list(body)
 
     assert list(filter(lambda x: x["id"] == "public.landsat_wrs", body["collections"]))
+    assert list(filter(lambda x: x["id"] == "public.my_data", body["collections"]))
 
     response = app.get("/?f=html")
     assert response.status_code == 200
@@ -37,3 +38,9 @@ def test_collections_landsat(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert body["detail"] == "Table/Function 'public.landsat_wr' not found."
+
+    # bad collection name
+    response = app.get("/collections/landsat_wrs")
+    assert response.status_code == 422
+    body = response.json()
+    assert body["detail"] == "Invalid Table format 'landsat_wrs'."

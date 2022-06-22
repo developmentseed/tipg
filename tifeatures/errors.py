@@ -3,6 +3,8 @@
 import logging
 from typing import Callable, Dict, Type
 
+from asyncpg.exceptions._base import PostgresError
+
 from fastapi import FastAPI
 
 from starlette import status
@@ -20,8 +22,44 @@ class NotFound(TiFeaturesError):
     """Invalid table name."""
 
 
+class MissingGeometryColumn(TiFeaturesError):
+    """Table has no geometry column."""
+
+
+class MissingDatetimeColumn(TiFeaturesError):
+    """Table has no datetime column."""
+
+
+class InvalidBBox(TiFeaturesError):
+    """Invalid bounding box coordinates."""
+
+
+class InvalidPropertyName(TiFeaturesError):
+    """Invalid property/column name."""
+
+
+class InvalidGeometryColumnName(TiFeaturesError):
+    """Invalid geometry column name."""
+
+
+class InvalidDatetimeColumnName(TiFeaturesError):
+    """Invalid datetime column name."""
+
+
+class InvalidDatetime(TiFeaturesError):
+    """Invalid datetime."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
+    InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    InvalidDatetime: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    MissingDatetimeColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    InvalidPropertyName: status.HTTP_404_NOT_FOUND,
+    InvalidGeometryColumnName: status.HTTP_404_NOT_FOUND,
+    InvalidDatetimeColumnName: status.HTTP_404_NOT_FOUND,
+    PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 
