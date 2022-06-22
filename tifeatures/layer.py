@@ -433,7 +433,6 @@ class Table(CollectionLayer, DBTable):
     def queryables(self) -> Dict:
         """Return the queryables."""
         geometries = self.geometry_columns or []
-        print(geometries)
         geoms = {
             col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
             for col in geometries
