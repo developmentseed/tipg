@@ -179,10 +179,13 @@ def test_items_properties_filter(app):
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
 
-    # TODO: fix, Table.query returns None instead of empty feature collection
-    # # no items for path=1000000
-    # response = app.get("/collections/public.landsat_wrs/items?path=1000000")
-    # assert response.status_code == 404
+    response = app.get("/collections/public.landsat_wrs/items?path=1000000")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 0
+    assert body["numberMatched"] == 0
+    assert body["numberReturned"] == 0
 
     # TODO: fix, Table.query shouldn't return items when filtering on invalid properties (gpath isn't a valid property name)
     response = app.get("/collections/public.landsat_wrs/items?gpath=10")

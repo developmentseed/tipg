@@ -316,14 +316,19 @@ class Table(CollectionLayer, DBTable):
             geometry_column=logic.V(geometry_column.name),
             geom_columns=geometry_column.name,
         )
-
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 
         # TODO:
         # - make sure we always return features (even empty)
         # - make sure we always return total_count
-        return FeatureCollection(features=items["features"]), items["total_count"]
+        if items:
+            return (
+                FeatureCollection(features=items["features"]),
+                items["total_count"],
+            )
+        else:
+            return FeatureCollection(features=[]), 0
 
     async def features(
         self,
