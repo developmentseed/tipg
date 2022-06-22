@@ -58,17 +58,17 @@ class Operator:
         "not_in": lambda f, a: ~f == any(a),
         "any": lambda f, a: f.any(a),
         "not_any": lambda f, a: f.not_(f.any(a)),
-        "INTERSECTS": lambda f, a: Func('st_intersects', f, a),
-        "DISJOINT": lambda f, a: Func('st_disjoint', f, a),
-        "CONTAINS": lambda f, a: Func('st_contains', f, a),
-        "WITHIN": lambda f, a: Func('st_within', f, a),
-        "TOUCHES": lambda f, a: Func('st_touches', f, a),
-        "CROSSES": lambda f, a: Func('st_crosses', f, a),
-        "OVERLAPS": lambda f, a: Func('st_overlaps', f, a),
-        "EQUALS": lambda f, a: Func('st_equals', f, a),
-        "RELATE": lambda f, a, pattern: Func('st_relate', f, a, pattern),
-        "DWITHIN": lambda f, a, distance: Func('st_dwithin', f, a, distance),
-        "BEYOND": lambda f, a, distance: ~Func('st_dwithin', f, a, distance),
+        "INTERSECTS": lambda f, a: Func("st_intersects", f, a),
+        "DISJOINT": lambda f, a: Func("st_disjoint", f, a),
+        "CONTAINS": lambda f, a: Func("st_contains", f, a),
+        "WITHIN": lambda f, a: Func("st_within", f, a),
+        "TOUCHES": lambda f, a: Func("st_touches", f, a),
+        "CROSSES": lambda f, a: Func("st_crosses", f, a),
+        "OVERLAPS": lambda f, a: Func("st_overlaps", f, a),
+        "EQUALS": lambda f, a: Func("st_equals", f, a),
+        "RELATE": lambda f, a, pattern: Func("st_relate", f, a, pattern),
+        "DWITHIN": lambda f, a, distance: Func("st_dwithin", f, a, distance),
+        "BEYOND": lambda f, a, distance: ~Func("st_dwithin", f, a, distance),
         "+": lambda f, a: f + a,
         "-": lambda f, a: f - a,
         "*": lambda f, a: f * a,
@@ -253,7 +253,7 @@ def bbox(lhs, minx, miny, maxx, maxy, crs: int = 4326):
 
     """
 
-    return Func('st_intersects', lhs, bbox_to_wkt([minx, miny, maxx, maxy], crs))
+    return Func("st_intersects", lhs, bbox_to_wkt([minx, miny, maxx, maxy], crs))
 
 
 def quote_ident(s: str) -> str:
