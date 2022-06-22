@@ -37,3 +37,9 @@ def test_collections_landsat(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert body["detail"] == "Table/Function 'public.landsat_wr' not found."
+
+    # bad collection name
+    response = app.get("/collections/landsat_wrs")
+    assert response.status_code == 422
+    body = response.json()
+    assert body["detail"] == "Invalid Table format 'landsat_wrs'."

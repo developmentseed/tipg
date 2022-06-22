@@ -12,7 +12,11 @@ from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
 from tifeatures.dbmodel import Table as DBTable
-from tifeatures.errors import MissingGeometryColumn
+from tifeatures.errors import (
+    InvalidGeometryColumnName,
+    InvalidPropertyName,
+    MissingGeometryColumn,
+)
 from tifeatures.filter.evaluate import to_filter
 from tifeatures.filter.filters import bbox_to_wkt
 
@@ -135,11 +139,14 @@ class Table(CollectionLayer, DBTable):
             w = []
             for (prop, val) in properties:
                 col = self.get_column(prop)
-                if col:
-                    w.append(
-                        logic.V(col.name)
-                        == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
-                    )
+                if not col:
+                    raise InvalidPropertyName(f"Invalid property name: {prop}")
+
+                w.append(
+                    logic.V(col.name)
+                    == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
+                )
+
             if w:
                 wheres.append(pg_funcs.AND(*w))
 
@@ -246,9 +253,12 @@ class Table(CollectionLayer, DBTable):
         offset: Optional[int] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
+        if not self.geometry_columns:
+            raise MissingGeometryColumn("Must have geometry column for geojson output.")
+
         geometry_column = self.geometry_column(geom)
         if not geometry_column:
-            raise MissingGeometryColumn("Must have geometry column for geojson output.")
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column name: {geom}.")
 
         sql_query = """
             WITH

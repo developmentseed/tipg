@@ -414,10 +414,14 @@ class Endpoints:
             properties: Optional[List[str]] = Depends(properties_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             geom_column: Optional[str] = Query(
-                None, description="Select geometry column."
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
             ),
             datetime_column: Optional[str] = Query(
-                None, description="Select datetime column."
+                None,
+                description="Select datetime column.",
+                alias="datetime-column",
             ),
             limit: int = Query(
                 10,
@@ -434,13 +438,15 @@ class Endpoints:
 
             # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
             exclude = [
+                "f",
                 "ids",
                 "datetime",
                 "bbox",
                 "properties",
                 "filter",
-                "geom_column",
-                "datetime_column",
+                "filter-lang",
+                "geom-column",
+                "datetime-column",
                 "limit",
                 "offset",
             ]

@@ -185,8 +185,8 @@ def test_items_properties_filter(app):
     # assert response.status_code == 404
 
     # TODO: fix, Table.query shouldn't return items when filtering on invalid properties (gpath isn't a valid property name)
-    # response = app.get("/collections/public.landsat_wrs/items?gpath=10")
-    # assert response.status_code == 404
+    response = app.get("/collections/public.landsat_wrs/items?gpath=10")
+    assert response.status_code == 404
 
 
 def test_items_filter_cql_ids(app):
@@ -294,3 +294,24 @@ def test_items_geo_filter_cql2(app):
     body = response.json()
     assert len(body["features"]) == 10
     assert body["numberMatched"] == 78
+
+
+def test_items_geom_column(app):
+    """Test /items endpoint geom_column."""
+    response = app.get("/collections/public.landsat_wrs/items?geom-column=geom")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["type"] == "FeatureCollection"
+    assert body["id"] == "public.landsat_wrs"
+    assert body["title"] == "public.landsat_wrs"
+    assert body["links"]
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 10
+
+    # Invalid geom-column name
+    response = app.get("/collections/public.landsat_wrs/items?geom-column=the_geom")
+    assert response.status_code == 404
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["detail"] == "Invalid Geometry Column name: the_geom."
