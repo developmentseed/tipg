@@ -7,14 +7,18 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
+from ciso8601 import parse_rfc3339
 from geojson_pydantic import Feature, FeatureCollection
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
 from tifeatures.dbmodel import Table as DBTable
 from tifeatures.errors import (
+    InvalidDatetime,
+    InvalidDatetimeColumnName,
     InvalidGeometryColumnName,
     InvalidPropertyName,
+    MissingDatetimeColumn,
     MissingGeometryColumn,
 )
 from tifeatures.filter.evaluate import to_filter
@@ -162,23 +166,55 @@ class Table(CollectionLayer, DBTable):
             )
 
         # `datetime` filter
-        datetime_column = self.datetime_column(dt)
-        if datetime is not None and datetime_column is not None:
-            if len(datetime) == 1:
-                wheres.append(logic.V(datetime_column) == logic.S(datetime[0]))
-            else:
-                wheres.append(
-                    pg_funcs.AND(
-                        logic.V(datetime_column) >= logic.S(datetime[0]),
-                        logic.V(datetime_column) < logic.S(datetime[1]),
-                    )
+        if datetime:
+            if not self.datetime_columns:
+                raise MissingDatetimeColumn(
+                    "Must have timestamp typed column to filter with datetime."
                 )
+
+            datetime_column = self.datetime_column(dt)
+            if not datetime_column:
+                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
+
+            wheres.append(self._datetime_filter_to_sql(datetime, datetime_column.name))
 
         # `CQL` filter
         if cql is not None:
             wheres.append(to_filter(cql, [p.name for p in self.properties]))
 
         return clauses.Where(pg_funcs.AND(*wheres))
+
+    def _datetime_filter_to_sql(self, interval: List[str], dt_name: str):
+        if len(interval) == 1:
+            return logic.V(dt_name) == logic.S(
+                pg_funcs.cast(parse_rfc3339(interval[0]), "timestamptz")
+            )
+
+        else:
+            start = (
+                parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
+            )
+            end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
+
+            if start is None and end is None:
+                raise InvalidDatetime(
+                    "Double open-ended datetime intervals are not allowed."
+                )
+
+            if start is not None and end is not None and start > end:
+                raise InvalidDatetime("Start datetime cannot be before end datetime.")
+
+            if not start:
+                return logic.V(dt_name) <= logic.S(pg_funcs.cast(end, "timestamptz"))
+
+            elif not end:
+                return logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz"))
+
+            else:
+                return pg_funcs.AND(
+                    logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz")),
+                    logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
+                )
 
     def _features_query(
         self,
@@ -258,7 +294,7 @@ class Table(CollectionLayer, DBTable):
 
         geometry_column = self.geometry_column(geom)
         if not geometry_column:
-            raise InvalidGeometryColumnName(f"Invalid Geometry Column name: {geom}.")
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         sql_query = """
             WITH

@@ -26,6 +26,10 @@ class MissingGeometryColumn(TiFeaturesError):
     """Table has no geometry column."""
 
 
+class MissingDatetimeColumn(TiFeaturesError):
+    """Table has no datetime column."""
+
+
 class InvalidBBox(TiFeaturesError):
     """Invalid bounding box coordinates."""
 
@@ -38,14 +42,25 @@ class InvalidGeometryColumnName(TiFeaturesError):
     """Invalid geometry column name."""
 
 
+class InvalidDatetimeColumnName(TiFeaturesError):
+    """Invalid datetime column name."""
+
+
+class InvalidDatetime(TiFeaturesError):
+    """Invalid datetime."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    InvalidDatetime: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
-    Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
-    PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    MissingDatetimeColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     InvalidPropertyName: status.HTTP_404_NOT_FOUND,
     InvalidGeometryColumnName: status.HTTP_404_NOT_FOUND,
+    InvalidDatetimeColumnName: status.HTTP_404_NOT_FOUND,
+    PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 
 

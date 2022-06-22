@@ -317,4 +317,108 @@ def test_items_geom_column(app):
     assert response.status_code == 404
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["detail"] == "Invalid Geometry Column name: the_geom."
+    assert body["detail"] == "Invalid Geometry Column: the_geom."
+
+
+def test_items_datetime(app):
+    """Test /items endpoint datetime."""
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["type"] == "FeatureCollection"
+    assert body["id"] == "public.my_data"
+    assert body["title"] == "public.my_data"
+    assert body["links"]
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+
+    # no datetime column
+    response = app.get(
+        "/collections/public.landsat_wrs/items?datetime=2004-10-19T10:23:54Z&datetime-column=the_datetime"
+    )
+    assert response.status_code == 500
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["detail"] == "Must have timestamp typed column to filter with datetime."
+
+    # Invalid datetime column
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z&datetime-column=the_datetime"
+    )
+    assert response.status_code == 404
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["detail"] == "Invalid Datetime Column: the_datetime."
+
+    # TODO Fix table.Query
+    # no items for 2004-10-10T10:23:54
+    # response = app.get("/collections/public.my_data/items?datetime=2004-10-10T10:23:54Z")
+    # assert response.status_code == 200
+    # assert response.headers["content-type"] == "application/geo+json"
+    # body = response.json()
+    # assert body["numberMatched"] == 0
+    # assert body["numberReturned"] == 0
+
+    # Closed Interval
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z/2004-10-21T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+
+    assert body["numberMatched"] == 2
+    assert body["numberReturned"] == 2
+
+    # Open end-Interval (2004-10-20T10:23:54Z or later)
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-20T10:23:54Z/.."
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 5
+    assert body["numberReturned"] == 5
+
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-20T10:23:54Z/"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 5
+    assert body["numberReturned"] == 5
+
+    # Open start-Interval (2004-10-20T10:23:54 or earlier)
+    response = app.get(
+        "/collections/public.my_data/items?datetime=../2004-10-20T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 2
+    assert body["numberReturned"] == 2
+
+    response = app.get(
+        "/collections/public.my_data/items?datetime=/2004-10-20T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 2
+    assert body["numberReturned"] == 2
+
+    # bad interval
+    response = app.get("/collections/public.my_data/items?datetime=../..")
+    assert response.status_code == 422
+    assert response.headers["content-type"] == "application/json"
+
+    # bad interval
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-21T10:23:54Z/2004-10-20T10:23:54Z"
+    )
+    assert response.status_code == 422
+    assert response.headers["content-type"] == "application/json"

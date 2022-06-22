@@ -10,6 +10,7 @@ def test_collections(app):
     assert ["collections", "links"] == list(body)
 
     assert list(filter(lambda x: x["id"] == "public.landsat_wrs", body["collections"]))
+    assert list(filter(lambda x: x["id"] == "public.my_data", body["collections"]))
 
     response = app.get("/?f=html")
     assert response.status_code == 200
