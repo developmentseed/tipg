@@ -24,6 +24,7 @@ class MediaType(str, Enum):
     xml = "application/xml"
     json = "application/json"
     geojson = "application/geo+json"
+    schemajson = "application/schema+json"
     html = "text/html"
     text = "text/plain"
     openapi30_json = "application/vnd.oai.openapi+json;version=3.0"
