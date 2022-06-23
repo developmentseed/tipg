@@ -527,6 +527,7 @@ class Endpoints:
             bbox_only: Optional[bool] = Query(
                 None,
                 description="Only return the bounding box of the feature.",
+                alias="bbox-only",
             ),
             simplify: Optional[float] = Query(
                 None, description="Simplify the output geometry."
