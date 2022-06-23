@@ -1,0 +1,20 @@
+{% include "header.html" %}
+
+<h1>Collection: {{ response.title or response.id }}</h1>
+
+<div class="row">
+  <div class="col-sm">
+    <h2>Queryables</h2>
+    <ul>
+    {% for k,v in response.properties.items() %}
+      <li>{% if '$ref' in v %}
+          <a href="{{ v['$ref'] }}">{{ k }}</a>
+          {% else %}
+          {{ k }}: {{ v['type'] }}
+          {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% include "footer.html" %}

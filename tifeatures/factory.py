@@ -460,7 +460,7 @@ class Endpoints:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
-                    template_name="collection",
+                    template_name="queryables",
                 )
 
             return data
