@@ -12,14 +12,13 @@ from geojson_pydantic import Feature, FeatureCollection
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
+from tifeatures.dbmodel import GeometryColumn
 from tifeatures.dbmodel import Table as DBTable
 from tifeatures.errors import (
     InvalidDatetime,
     InvalidDatetimeColumnName,
-    InvalidGeometryColumnName,
     InvalidPropertyName,
     MissingDatetimeColumn,
-    MissingGeometryColumn,
 )
 from tifeatures.filter.evaluate import to_filter
 from tifeatures.filter.filters import bbox_to_wkt
@@ -120,6 +119,36 @@ class Table(CollectionLayer, DBTable):
 
     def _from(self):
         return clauses.From(self.id)
+
+    def _geom(
+        self,
+        geometry_column: Optional[GeometryColumn],
+        bbox_only: Optional[bool],
+        simplify: Optional[float],
+    ):
+        if geometry_column is None:
+            return pg_funcs.cast(None, "json")
+
+        g = logic.V(geometry_column.name)
+
+        if bbox_only:
+            g = logic.Func("ST_Envelope", g)
+        elif simplify:
+            g = logic.Func(
+                "ST_SnapToGrid",
+                logic.Func("ST_Simplify", g, simplify),
+                simplify,
+            )
+
+        if geometry_column.srid == 4326:
+            g = logic.Func("ST_AsGeoJson", g)
+        else:
+            g = logic.Func(
+                "ST_Transform",
+                logic.Func("ST_AsGeoJson", g),
+                4326,
+            )
+        return g
 
     def _where(
         self,
@@ -304,14 +333,12 @@ class Table(CollectionLayer, DBTable):
         dt: str = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        bbox_only: Optional[bool] = None,
+        simplify: Optional[float] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
-        if not self.geometry_columns:
-            raise MissingGeometryColumn("Must have geometry column for geojson output.")
 
         geometry_column = self.geometry_column(geom)
-        if not geometry_column:
-            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         sql_query = """
             WITH
@@ -327,13 +354,8 @@ class Table(CollectionLayer, DBTable):
                     json_build_object(
                         'type', 'Feature',
                         'id', :id_column,
-                        'geometry', ST_AsGeoJSON(
-                            CASE
-                                WHEN :srid = 4326 THEN :geometry_column
-                                ELSE ST_Transform(:geometry_column, 4326)
-                            END
-                            )::json,
-                        'properties', to_jsonb( features.* ) - :geom_columns
+                        'geometry', :geometry_q,
+                        'properties', to_jsonb( features.* ) - :geom_columns::text[]
                     )
                 ),
                 'total_count', total_count.count
@@ -365,10 +387,14 @@ class Table(CollectionLayer, DBTable):
                 dt=dt,
             ),
             id_column=logic.V(self.id_column),
-            srid=geometry_column.srid,
-            geometry_column=logic.V(geometry_column.name),
-            geom_columns=geometry_column.name,
+            geometry_q=self._geom(
+                geometry_column=geometry_column,
+                bbox_only=bbox_only,
+                simplify=simplify,
+            ),
+            geom_columns=[g.name for g in self.geometry_columns],
         )
+        print(q, p)
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 

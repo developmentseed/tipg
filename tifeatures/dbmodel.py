@@ -70,7 +70,11 @@ class Table(BaseModel):
 
     def geometry_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if self.geometry_columns is not None and len(self.geometry_columns) > 0:
+        if (
+            self.geometry_columns is not None
+            and len(self.geometry_columns) > 0
+            and gcol != "none"
+        ):
             for c in self.geometry_columns:
                 if gcol is None or c.name == gcol:
                     return c
