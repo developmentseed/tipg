@@ -63,7 +63,6 @@ Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
 Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
 Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
 
-
 ## Contribution & Development
 
 See [CONTRIBUTING.md](https://github.com/developmentseed/tifeatures/blob/master/CONTRIBUTING.md)
