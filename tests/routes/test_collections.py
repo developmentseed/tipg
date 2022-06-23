@@ -19,7 +19,7 @@ def test_collections(app):
 
 
 def test_collections_landsat(app):
-    """Test /collections endpoint."""
+    """Test /collections/{collectionId} endpoint."""
     response = app.get("/collections/public.landsat_wrs")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -44,3 +44,19 @@ def test_collections_landsat(app):
     assert response.status_code == 422
     body = response.json()
     assert body["detail"] == "Invalid Table format 'landsat_wrs'."
+
+
+def test_collections_queryables(app):
+    """Test /collections/{collectionId}/queryables endpoint."""
+    response = app.get("/collections/public.landsat_wrs/queryables")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/schema+json"
+    body = response.json()
+    assert body["title"] == "public.landsat_wrs"
+    assert body["type"] == "object"
+    assert ["title", "properties", "type", "$schema", "$id"] == list(body)
+
+    response = app.get("/collections/public.landsat_wrs/queryables?f=html")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Queryables" in response.text
