@@ -76,7 +76,7 @@ class Collection(BaseModel):
     links: List[Link]
     extent: Optional[Extent]
     itemType: str = "feature"
-    crs: str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    crs: List[str] = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
 
     class Config:
         """Collection model configuration."""

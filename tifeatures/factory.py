@@ -21,7 +21,7 @@ from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType, ResponseType
-from tifeatures.resources.response import GeoJSONResponse
+from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -307,6 +307,11 @@ class Endpoints:
                         rel="self",
                         type=MediaType.json,
                     ),
+                    model.Link(
+                        href=self.url_for(request, "collections") + "?f=html",
+                        rel="alternate",
+                        type=MediaType.html,
+                    ),
                 ],
                 collections=[
                     model.Collection(
@@ -396,6 +401,14 @@ class Endpoints:
                         ),
                         model.Link(
                             href=self.url_for(
+                                request, "collection", collectionId=collection.id
+                            )
+                            + "?f=html",
+                            rel="alternate",
+                            type=MediaType.html,
+                        ),
+                        model.Link(
+                            href=self.url_for(
                                 request, "items", collectionId=collection.id
                             ),
                             rel="items",
@@ -428,6 +441,7 @@ class Endpoints:
             response_model=model.Queryables,
             response_model_exclude_none=True,
             response_model_by_alias=True,
+            response_class=SchemaJSONResponse,
             responses={
                 200: {
                     "content": {

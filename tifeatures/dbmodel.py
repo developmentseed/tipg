@@ -14,23 +14,28 @@ class Column(BaseModel):
     description: Optional[str]
 
     @property
-    def json_type(self):
+    def json_type(self) -> str:
         """Return JSON field type."""
-        type = self.type
+        pgtype = self.type
+
         if any(
             [
-                type.startswith("int"),
-                type.startswith("num"),
-                type.startswith("float"),
+                pgtype.startswith("int"),
+                pgtype.startswith("num"),
+                pgtype.startswith("float"),
             ]
         ):
             return "number"
-        if type.startswith("bool"):
+
+        if pgtype.startswith("bool"):
             return "boolean"
-        if type.endswith("[]"):
+
+        if pgtype.endswith("[]"):
             return "array"
-        if any([type.startswith("json"), type.startswith("geo")]):
+
+        if any([pgtype.startswith("json"), pgtype.startswith("geo")]):
             return "object"
+
         return "string"
 
 
