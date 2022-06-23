@@ -21,7 +21,7 @@ from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType, ResponseType
-from tifeatures.resources.response import GeoJSONResponse
+from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -180,6 +180,16 @@ class Endpoints:
                         rel="data",
                     ),
                     model.Link(
+                        title="Collection queryables",
+                        href=self.url_for(
+                            request,
+                            "queryables",
+                            collectionId="{collectionId}",
+                        ),
+                        type=MediaType.schemajson,
+                        rel="queryables",
+                    ),
+                    model.Link(
                         title="Collection Features",
                         href=self.url_for(
                             request, "items", collectionId="{collectionId}"
@@ -245,6 +255,7 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
+                    "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                 ]
             )
             if output_type and output_type == ResponseType.html:
@@ -328,6 +339,15 @@ class Endpoints:
                                     rel="items",
                                     type=MediaType.geojson,
                                 ),
+                                model.Link(
+                                    href=self.url_for(
+                                        request,
+                                        "queryables",
+                                        collectionId=collection.id,
+                                    ),
+                                    rel="queryables",
+                                    type=MediaType.schemajson,
+                                ),
                             ],
                         }
                     )
@@ -391,6 +411,15 @@ class Endpoints:
                             rel="items",
                             type=MediaType.geojson,
                         ),
+                        model.Link(
+                            href=self.url_for(
+                                request,
+                                "queryables",
+                                collectionId=collection.id,
+                            ),
+                            rel="queryables",
+                            type=MediaType.schemajson,
+                        ),
                     ],
                 }
             )
@@ -400,6 +429,52 @@ class Endpoints:
                     request,
                     data.json(exclude_none=True),
                     template_name="collection",
+                )
+
+            return data
+
+        @self.router.get(
+            "/collections/{collectionId}/queryables",
+            response_model=model.Queryables,
+            response_model_exclude_none=True,
+            response_model_by_alias=True,
+            response_class=SchemaJSONResponse,
+            responses={
+                200: {
+                    "content": {
+                        "text/html": {},
+                        "application/schema+json": {},
+                    }
+                },
+            },
+        )
+        def queryables(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            output_type: Optional[ResponseType] = Depends(OutputType),
+        ):
+            """Queryables for a feature collection.
+
+            ref: http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables
+            """
+            qs = "?" + str(request.query_params) if request.query_params else ""
+
+            data = model.Queryables(
+                **{
+                    "title": collection.id,
+                    "$id": self.url_for(
+                        request, "queryables", collectionId=collection.id
+                    )
+                    + qs,
+                    "properties": collection.queryables,
+                }
+            )
+
+            if output_type and output_type == ResponseType.html:
+                return create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="queryables",
                 )
 
             return data

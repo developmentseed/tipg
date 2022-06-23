@@ -62,6 +62,12 @@ curl http://127.0.0.1:8081 | jq
       "title": "Collection metadata"
     },
     {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/queryables",
+      "rel": "queryables",
+      "type": "application/schema+json",
+      "title": "Collection queryables"
+    },
+    {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/items",
       "rel": "data",
       "type": "application/geo+json",
@@ -108,7 +114,8 @@ curl http://127.0.0.1:8081/conformance | jq
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,"
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
+    "http://www.opengis.net/def/rel/ogc/1.0/queryables"
   ]
 }
 ```
@@ -146,6 +153,11 @@ curl http://127.0.0.1:8081/collections | jq
           "href": "http://127.0.0.1:8081/collections/public.countries/items",
           "rel": "items",
           "type": "application/geo+json"
+        },
+        {
+          "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
+          "rel": "queryables",
+          "type": "application/schema+json"
         }
       ],
       "itemType": "feature",
@@ -214,6 +226,11 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
       "href": "http://127.0.0.1:8081/collections/public.countries/items",
       "rel": "items",
       "type": "application/geo+json"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
+      "rel": "queryables",
+      "type": "application/schema+json"
     }
   ],
   "itemType": "feature",
@@ -226,10 +243,64 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
 Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_
 
 
+## Feature Collection's Queryables
+
+Path: `/collections/{collectionId}/queryables`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+
+QueryParams:
+
+- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+
+HeaderParams:
+
+- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+
+Example:
+
+```json
+curl http://127.0.0.1:8081/collections/public.landsat_wrs/queryables | jq
+{
+  "title": "public.landsat_wrs",
+  "properties": {
+    "geom": {
+      "$ref": "https://geojson.org/schema/Geometry.json"
+    },
+    "ogc_fid": {
+      "name": "ogc_fid",
+      "type": "number"
+    },
+    "id": {
+      "name": "id",
+      "type": "string"
+    },
+    "pr": {
+      "name": "pr",
+      "type": "string"
+    },
+    "path": {
+      "name": "path",
+      "type": "number"
+    },
+    "row": {
+      "name": "row",
+      "type": "number"
+    }
+  },
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "http://127.0.0.1:8081/collections/public.landsat_wrs/queryables"
+}
+```
+
+Ref: http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables
+
 ## Features
 
 Path: `/collections/{collectionId}/items`
-
 
 PathParams:
 
@@ -261,7 +332,6 @@ HeaderParams:
 
 \*  **Not in OGC API Features Specification**
 
-
 !!! Important
     Additional query-parameters (form `PROP=VALUE`) will be considered as a **property filter**.
 
@@ -291,7 +361,6 @@ Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_ and https://docs.ogc
 ## Feature
 
 Path: `/collections/{collectionId}/items/{itemId}`
-
 
 PathParams:
 

@@ -1,9 +1,9 @@
 """tifeatures models."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from geojson_pydantic import Feature, FeatureCollection
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tifeatures.resources.enums import MediaType
 
@@ -154,3 +154,19 @@ class Landing(BaseModel):
     title: Optional[str]
     description: Optional[str]
     links: List[Link]
+
+
+class Queryables(BaseModel):
+    """Queryables model.
+
+    Ref: https://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables
+
+    """
+
+    title: str
+    properties: Dict[str, Dict[str, str]]
+    type: str = "object"
+    schema_name: str = Field(
+        "https://json-schema.org/draft/2019-09/schema", alias="$schema"
+    )
+    link: str = Field(..., alias="$id")

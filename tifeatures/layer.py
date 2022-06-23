@@ -24,6 +24,18 @@ from tifeatures.errors import (
 from tifeatures.filter.evaluate import to_filter
 from tifeatures.filter.filters import bbox_to_wkt
 
+# Links to geojson schema
+geojson_schema = {
+    "GEOMETRY": "https://geojson.org/schema/Geometry.json",
+    "POINT": "https://geojson.org/schema/Point.json",
+    "MULTIPOINT": "https://geojson.org/schema/MultiPoint.json",
+    "LINESTRING": "https://geojson.org/schema/LineString.json",
+    "MULTILINESTRING": "https://geojson.org/schema/MultiLineString.json",
+    "POLYGON": "https://geojson.org/schema/Polygon.json",
+    "MULTIPOLYGON": "https://geojson.org/schema/MultiPolygon.json",
+    "GEOMETRYCOLLECTION": "https://geojson.org/schema/GeometryCollection.json",
+}
+
 
 class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     """Layer's Abstract BaseClass.
@@ -67,6 +79,11 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         **kwargs: Any,
     ) -> Feature:
         """Return a Feature."""
+        ...
+
+    @property
+    def queryables(self) -> Dict:
+        """Return the queryables."""
         ...
 
 
@@ -412,6 +429,21 @@ class Table(CollectionLayer, DBTable):
 
         return None
 
+    @property
+    def queryables(self) -> Dict:
+        """Return the queryables."""
+        geometries = self.geometry_columns or []
+        geoms = {
+            col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
+            for col in geometries
+        }
+        props = {
+            col.name: {"name": col.name, "type": col.json_type}
+            for col in self.properties
+            if col.name not in geoms
+        }
+        return {**geoms, **props}
+
 
 class Function(CollectionLayer):
     """Function Reader.
@@ -472,6 +504,12 @@ class Function(CollectionLayer):
         **kwargs: Any,
     ) -> Feature:
         """Return a Feature."""
+        # TODO
+        pass
+
+    @property
+    def queryables(self) -> Dict:
+        """Return the queryables."""
         # TODO
         pass
 
