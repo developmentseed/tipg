@@ -338,7 +338,8 @@ class Table(CollectionLayer, DBTable):
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
 
-        geometry_column = self.geometry_column(geom)
+        geometry_columns = self.geometry_columns or []
+        selected_geom_column = self.geometry_column(geom)
 
         sql_query = """
             WITH
@@ -388,13 +389,13 @@ class Table(CollectionLayer, DBTable):
             ),
             id_column=logic.V(self.id_column),
             geometry_q=self._geom(
-                geometry_column=geometry_column,
+                geometry_column=selected_geom_column,
                 bbox_only=bbox_only,
                 simplify=simplify,
             ),
-            geom_columns=[g.name for g in self.geometry_columns],
+            geom_columns=[g.name for g in geometry_columns],
         )
-        print(q, p)
+
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 
