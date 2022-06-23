@@ -296,6 +296,11 @@ class Endpoints:
                         rel="self",
                         type=MediaType.json,
                     ),
+                    model.Link(
+                        href=self.url_for(request, "collections") + "?f=html",
+                        rel="alternate",
+                        type=MediaType.html,
+                    ),
                 ],
                 collections=[
                     model.Collection(
@@ -370,6 +375,14 @@ class Endpoints:
                             ),
                             rel="self",
                             type=MediaType.json,
+                        ),
+                        model.Link(
+                            href=self.url_for(
+                                request, "collection", collectionId=collection.id
+                            )
+                            + "?f=html",
+                            rel="alternate",
+                            type=MediaType.html,
                         ),
                         model.Link(
                             href=self.url_for(
