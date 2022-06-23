@@ -1,8 +1,7 @@
 <p align="center">
   <img width="500" src="https://user-images.githubusercontent.com/10407788/172736520-18da1910-87ac-41a9-b6f0-6c6ae503bd5e.png"/>
-  <p align="center">Simple and Fast Geospatial Feature Server for PostGIS.</p>
+  <p align="center">Simple and Fast Geospatial Features API for PostGIS.</p>
 </p>
-
 <p align="center">
   <a href="https://github.com/developmentseed/tifeatures/actions?query=workflow%3ACI" target="_blank">
       <img src="https://github.com/developmentseed/tifeatures/workflows/CI/badge.svg" alt="Test">
@@ -18,10 +17,11 @@
 
 ---
 
+**Documentation**: <a href="https://developmentseed.org/tifeatures/" target="_blank">https://developmentseed.org/tifeatures/</a>
+
 **Source Code**: <a href="https://github.com/developmentseed/tifeatures" target="_blank">https://github.com/developmentseed/tifeatures</a>
 
 ---
-
 
 ## Install
 
@@ -36,6 +36,8 @@ $ python -m pip install -e .  # or .["all"] to install optional dependencies
 ```bash
 $ pip install uvicorn
 
+# Set you postgis database instance URL in the environment
+$ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 $ uvicorn tifeatures.main:app
 ```
 
@@ -51,6 +53,14 @@ Example of `.env` file can be found in [.env.example](https://github.com/develop
 # you need define the DATABASE_URL directly
 DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 ```
+
+## OGC Specification
+
+Specification | Status | link |
+|          -- |     -- |   -- |
+Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
+Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
+Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
 
 ## Contribution & Development
 

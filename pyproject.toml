@@ -1,6 +1,6 @@
 [project]
 name = "tifeatures"
-description = "Simple and Fast Geospatial Feature Server for PostGIS."
+description = "Simple and Fast Geospatial Features API for PostGIS."
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
@@ -49,10 +49,8 @@ server = [
     "uvicorn[standard]>=0.12.0,<0.16.0",
 ]
 docs = [
-    "nbconvert",
     "mkdocs",
     "mkdocs-material",
-    "mkdocs-jupyter",
     "pygments",
     "pdocs",
 ]
