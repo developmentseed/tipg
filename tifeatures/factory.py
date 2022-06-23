@@ -548,7 +548,7 @@ class Endpoints:
                 "datetime-column",
                 "limit",
                 "offset",
-                "bbox_only",
+                "bbox-only",
                 "simplify",
             ]
             properties_filter = [
