@@ -62,6 +62,12 @@ curl http://127.0.0.1:8081 | jq
       "title": "Collection metadata"
     },
     {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/queryables",
+      "rel": "queryables",
+      "type": "application/schema+json",
+      "title": "Collection queryables"
+    },
+    {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/items",
       "rel": "data",
       "type": "application/geo+json",
@@ -108,7 +114,8 @@ curl http://127.0.0.1:8081/conformance | jq
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,"
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
+    "http://www.opengis.net/def/rel/ogc/1.0/queryables"
   ]
 }
 ```
@@ -146,6 +153,11 @@ curl http://127.0.0.1:8081/collections | jq
           "href": "http://127.0.0.1:8081/collections/public.countries/items",
           "rel": "items",
           "type": "application/geo+json"
+        },
+        {
+          "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
+          "rel": "queryables",
+          "type": "application/schema+json"
         }
       ],
       "itemType": "feature",
@@ -214,6 +226,11 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
       "href": "http://127.0.0.1:8081/collections/public.countries/items",
       "rel": "items",
       "type": "application/geo+json"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
+      "rel": "queryables",
+      "type": "application/schema+json"
     }
   ],
   "itemType": "feature",
