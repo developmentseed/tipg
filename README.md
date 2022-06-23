@@ -23,6 +23,8 @@
 
 ---
 
+`TiFeatures`, pronounced **tee-Features**, is a python package which helps creating lightweight **Features** server for PostGIS Database. The API has been designed with respect to [OGC Features API specification](https://github.com/opengeospatial/ogcapi-features).
+
 ## Install
 
 ```bash
@@ -61,6 +63,12 @@ Specification | Status | link |
 Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
 Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
 Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
+
+Notes:
+
+The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
+
+While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capacities (e.g geometry column selection).
 
 ## Contribution & Development
 

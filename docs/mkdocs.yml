@@ -20,6 +20,8 @@ nav:
   - TiFeatures: "index.md"
   - Tutorial - User Guide:
     - "Endpoints": endpoints.md
+  - Advanced User Guide:
+    - "Combine MVT and Features": advanced/timvt_and_tifeatures.md
   - API:
     - db: api/tifeatures/db.md
     - dbmodel: api/tifeatures/dbmodel.md
