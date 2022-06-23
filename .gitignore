@@ -108,3 +108,4 @@ cdk.out/
 benchmark/
 
 .pgdata/
+docs/src/api/*
