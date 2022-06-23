@@ -438,7 +438,7 @@ class Table(CollectionLayer, DBTable):
             for col in geometries
         }
         props = {
-            col.name: {"name": col.name, "type": col.type}
+            col.name: {"name": col.name, "type": col.json_type}
             for col in self.properties
             if col.name not in geoms
         }

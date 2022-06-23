@@ -13,6 +13,26 @@ class Column(BaseModel):
     type: str
     description: Optional[str]
 
+    @property
+    def json_type(self):
+        """Return JSON field type."""
+        type = self.type
+        if any(
+            [
+                type.startswith("int"),
+                type.startswith("num"),
+                type.startswith("float"),
+            ]
+        ):
+            return "number"
+        if type.startswith("bool"):
+            return "boolean"
+        if type.endswith("[]"):
+            return "array"
+        if any([type.startswith("json"), type.startswith("geo")]):
+            return "object"
+        return "string"
+
 
 class GeometryColumn(BaseModel):
     """Model for PostGIS geometry/geography column."""
