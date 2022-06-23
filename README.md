@@ -2,7 +2,6 @@
   <img width="500" src="https://user-images.githubusercontent.com/10407788/172736520-18da1910-87ac-41a9-b6f0-6c6ae503bd5e.png"/>
   <p align="center">Simple and Fast Geospatial Features API for PostGIS.</p>
 </p>
-
 <p align="center">
   <a href="https://github.com/developmentseed/tifeatures/actions?query=workflow%3ACI" target="_blank">
       <img src="https://github.com/developmentseed/tifeatures/workflows/CI/badge.svg" alt="Test">
