@@ -16,7 +16,6 @@ def test_item(app):
     assert "text/html" in response.headers["content-type"]
     assert "Collection Item: 1" in response.text
 
-    # TODO Fix Table.query response
-    # # not found
-    # response = app.get("/collections/public.landsat_wrs/items/50000")
-    # assert response.status_code == 404
+    # not found
+    response = app.get("/collections/public.landsat_wrs/items/50000")
+    assert response.status_code == 404

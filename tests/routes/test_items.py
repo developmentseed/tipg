@@ -353,14 +353,15 @@ def test_items_datetime(app):
     body = response.json()
     assert body["detail"] == "Invalid Datetime Column: the_datetime."
 
-    # TODO Fix table.Query
     # no items for 2004-10-10T10:23:54
-    # response = app.get("/collections/public.my_data/items?datetime=2004-10-10T10:23:54Z")
-    # assert response.status_code == 200
-    # assert response.headers["content-type"] == "application/geo+json"
-    # body = response.json()
-    # assert body["numberMatched"] == 0
-    # assert body["numberReturned"] == 0
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-10T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 0
+    assert body["numberReturned"] == 0
 
     # Closed Interval
     response = app.get(
