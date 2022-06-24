@@ -56,38 +56,37 @@ class Table(BaseModel):
     dbschema: str = Field(..., alias="schema")
     description: Optional[str]
     id_column: Optional[str]
-    geometry_columns: Optional[List[GeometryColumn]]
+    geometry_columns: List[GeometryColumn]
     properties: List[Column]
 
     @property
-    def datetime_columns(self) -> Optional[List[Column]]:
+    def datetime_columns(self) -> List[Column]:
         """Return the name of all timestamptz columns."""
         return [p for p in self.properties if p.type.startswith("timestamp")]
 
-    def datetime_column(self, dtcol: Optional[str] = None):
+    def datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
-        if self.datetime_columns:
-            for col in self.datetime_columns:
-                if dtcol is None or col.name == dtcol:
-                    return col
+        for col in self.datetime_columns:
+            if name is None or col.name == name:
+                return col
 
         return None
 
-    def geometry_column(self, gcol: Optional[str] = None) -> Optional[GeometryColumn]:
+    def geometry_column(self, name: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if self.geometry_columns is not None and len(self.geometry_columns) > 0:
-            for c in self.geometry_columns:
-                if gcol is None or c.name == gcol:
-                    return c
+        if self.geometry_columns:
+            for col in self.geometry_columns:
+                if name is None or col.name == name:
+                    return col
 
         return None
 
     @property
     def id_column_info(self) -> Column:  # type: ignore
         """Return Column for a unique identifier."""
-        for c in self.properties:
-            if c.name == self.id_column:
-                return c
+        for col in self.properties:
+            if col.name == self.id_column:
+                return col
 
     def columns(self, properties: Optional[List[str]] = None) -> List[str]:
         """Return table columns optionally filtered to only include columns from properties."""
@@ -100,7 +99,7 @@ class Table(BaseModel):
             if geom_col:
                 properties.append(geom_col.name)
 
-            cols = [c for c in cols if c in properties]
+            cols = [col for col in cols if col in properties]
 
         if len(cols) < 1:
             raise TypeError("No columns selected")
