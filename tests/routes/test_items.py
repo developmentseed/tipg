@@ -194,9 +194,9 @@ def test_items_properties_filter(app):
 
 def test_items_filter_cql_ids(app):
     """Test /items endpoint with ids options."""
-    filter = {"op": "=", "args": [{"property": "ogc_fid"}, 1]}
+    filter_query = {"op": "=", "args": [{"property": "ogc_fid"}, 1]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -222,7 +222,7 @@ def test_items_filter_cql_ids(app):
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)"
     )
-    print(response.content)
+
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
@@ -237,9 +237,9 @@ def test_items_filter_cql_ids(app):
 
 def test_items_properties_filter_cql2(app):
     """Test /items endpoint with properties filter options."""
-    filter = {"op": "=", "args": [{"property": "path"}, 13]}
+    filter_query = {"op": "=", "args": [{"property": "path"}, 13]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -250,14 +250,14 @@ def test_items_properties_filter_cql2(app):
     assert body["features"][0]["properties"]["path"] == 13
 
     # invalid type (str instead of int)
-    filter = {"op": "=", "args": [{"property": "path"}, "d"]}
+    filter_query = {"op": "=", "args": [{"property": "path"}, "d"]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 500
     assert "integer is required" in response.json()["detail"]
 
-    filter = {
+    filter_query = {
         "op": "and",
         "args": [
             {"op": "=", "args": [{"property": "path"}, 13]},
@@ -265,7 +265,7 @@ def test_items_properties_filter_cql2(app):
         ],
     }
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -353,14 +353,15 @@ def test_items_datetime(app):
     body = response.json()
     assert body["detail"] == "Invalid Datetime Column: the_datetime."
 
-    # TODO Fix table.Query
     # no items for 2004-10-10T10:23:54
-    # response = app.get("/collections/public.my_data/items?datetime=2004-10-10T10:23:54Z")
-    # assert response.status_code == 200
-    # assert response.headers["content-type"] == "application/geo+json"
-    # body = response.json()
-    # assert body["numberMatched"] == 0
-    # assert body["numberReturned"] == 0
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-10T10:23:54Z"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 0
+    assert body["numberReturned"] == 0
 
     # Closed Interval
     response = app.get(

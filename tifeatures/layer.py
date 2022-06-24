@@ -17,6 +17,7 @@ from tifeatures.dbmodel import Table as DBTable
 from tifeatures.errors import (
     InvalidDatetime,
     InvalidDatetimeColumnName,
+    InvalidGeometryColumnName,
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
@@ -133,6 +134,7 @@ class Table(CollectionLayer, DBTable):
 
         if bbox_only:
             g = logic.Func("ST_Envelope", g)
+
         elif simplify:
             g = logic.Func(
                 "ST_SnapToGrid",
@@ -142,12 +144,14 @@ class Table(CollectionLayer, DBTable):
 
         if geometry_column.srid == 4326:
             g = logic.Func("ST_AsGeoJson", g)
+
         else:
             g = logic.Func(
                 "ST_Transform",
                 logic.Func("ST_AsGeoJson", g),
                 4326,
             )
+
         return g
 
     def _where(
@@ -337,9 +341,8 @@ class Table(CollectionLayer, DBTable):
         simplify: Optional[float] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
-
-        geometry_columns = self.geometry_columns or []
-        selected_geom_column = self.geometry_column(geom)
+        if geom and geom.lower() != "none" and not self.geometry_column(geom):
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         sql_query = """
             WITH
@@ -389,19 +392,16 @@ class Table(CollectionLayer, DBTable):
             ),
             id_column=logic.V(self.id_column),
             geometry_q=self._geom(
-                geometry_column=selected_geom_column,
+                geometry_column=self.geometry_column(geom),
                 bbox_only=bbox_only,
                 simplify=simplify,
             ),
-            geom_columns=[g.name for g in geometry_columns],
+            geom_columns=[g.name for g in self.geometry_columns],
         )
 
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 
-        # TODO:
-        # - make sure we always return features (even empty)
-        # - make sure we always return total_count
         if items:
             return (
                 FeatureCollection(features=items["features"]),
@@ -459,10 +459,9 @@ class Table(CollectionLayer, DBTable):
     @property
     def queryables(self) -> Dict:
         """Return the queryables."""
-        geometries = self.geometry_columns or []
         geoms = {
             col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
-            for col in geometries
+            for col in self.geometry_columns
         }
         props = {
             col.name: {"name": col.name, "type": col.json_type}
