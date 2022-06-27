@@ -194,9 +194,9 @@ def test_items_properties_filter(app):
 
 def test_items_filter_cql_ids(app):
     """Test /items endpoint with ids options."""
-    filter = {"op": "=", "args": [{"property": "ogc_fid"}, 1]}
+    filter_query = {"op": "=", "args": [{"property": "ogc_fid"}, 1]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -222,7 +222,7 @@ def test_items_filter_cql_ids(app):
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)"
     )
-    print(response.content)
+
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
@@ -237,9 +237,9 @@ def test_items_filter_cql_ids(app):
 
 def test_items_properties_filter_cql2(app):
     """Test /items endpoint with properties filter options."""
-    filter = {"op": "=", "args": [{"property": "path"}, 13]}
+    filter_query = {"op": "=", "args": [{"property": "path"}, 13]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -250,14 +250,14 @@ def test_items_properties_filter_cql2(app):
     assert body["features"][0]["properties"]["path"] == 13
 
     # invalid type (str instead of int)
-    filter = {"op": "=", "args": [{"property": "path"}, "d"]}
+    filter_query = {"op": "=", "args": [{"property": "path"}, "d"]}
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 500
     assert "integer is required" in response.json()["detail"]
 
-    filter = {
+    filter_query = {
         "op": "and",
         "args": [
             {"op": "=", "args": [{"property": "path"}, 13]},
@@ -265,7 +265,7 @@ def test_items_properties_filter_cql2(app):
         ],
     }
     response = app.get(
-        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter)}"
+        f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -423,3 +423,63 @@ def test_items_datetime(app):
     )
     assert response.status_code == 422
     assert response.headers["content-type"] == "application/json"
+
+
+def test_items_geometry_return_options(app):
+    """Test /items endpoint with geometry return options."""
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&geom-column=none")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert "geometry" not in body["features"][0]
+
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&bbox-only=true")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert body["features"][0]["geometry"] == {
+        "coordinates": [
+            [
+                [-22.2153, 79.6888],
+                [-22.2153, 81.8555],
+                [-8.97407, 81.8555],
+                [-8.97407, 79.6888],
+                [-22.2153, 79.6888],
+            ]
+        ],
+        "type": "Polygon",
+    }
+
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&simplify=.001")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    print(body["features"][0]["geometry"])
+    assert body["features"][0]["geometry"] == {
+        "coordinates": [
+            [
+                [-10.803, 80.989],
+                [-8.974, 80.342],
+                [-16.985, 79.689],
+                [-22.215, 81.092],
+                [-13.255, 81.856],
+                [-10.803, 80.989],
+            ]
+        ],
+        "type": "Polygon",
+    }

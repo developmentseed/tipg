@@ -351,7 +351,10 @@ class Endpoints:
                             ],
                         }
                     )
-                    for collection in [*tables, *list(function_catalog.values())]
+                    for collection in [
+                        *tables,
+                        *list(function_catalog.values()),
+                    ]
                 ],
             )
 
@@ -398,7 +401,9 @@ class Endpoints:
                         ),
                         model.Link(
                             href=self.url_for(
-                                request, "collection", collectionId=collection.id
+                                request,
+                                "collection",
+                                collectionId=collection.id,
                             )
                             + "?f=html",
                             rel="alternate",
@@ -521,6 +526,15 @@ class Endpoints:
                 description="Starts the response at an offset.",
             ),
             output_type: Optional[ResponseType] = Depends(OutputType),
+            bbox_only: Optional[bool] = Query(
+                None,
+                description="Only return the bounding box of the feature.",
+                alias="bbox-only",
+            ),
+            simplify: Optional[float] = Query(
+                None,
+                description="Simplify the output geometry to given threshold in decimal degrees.",
+            ),
         ):
             offset = offset or 0
 
@@ -537,6 +551,8 @@ class Endpoints:
                 "datetime-column",
                 "limit",
                 "offset",
+                "bbox-only",
+                "simplify",
             ]
             properties_filter = [
                 (key, value)
@@ -556,6 +572,8 @@ class Endpoints:
                 offset=offset,
                 geom=geom_column,
                 dt=datetime_column,
+                bbox_only=bbox_only,
+                simplify=simplify,
             )
 
             qs = "?" + str(request.query_params) if request.query_params else ""
