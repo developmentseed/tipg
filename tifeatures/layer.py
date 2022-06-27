@@ -198,9 +198,7 @@ class Table(CollectionLayer, DBTable):
 
                 w.append(
                     logic.V(col.name)
-                    == logic.S(
-                        pg_funcs.cast(pg_funcs.cast(val, "text"), col.type)
-                    )
+                    == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
                 )
 
             if w:
@@ -226,13 +224,9 @@ class Table(CollectionLayer, DBTable):
 
             datetime_column = self.datetime_column(dt)
             if not datetime_column:
-                raise InvalidDatetimeColumnName(
-                    f"Invalid Datetime Column: {dt}."
-                )
+                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
 
-            wheres.append(
-                self._datetime_filter_to_sql(datetime, datetime_column.name)
-            )
+            wheres.append(self._datetime_filter_to_sql(datetime, datetime_column.name))
 
         # `CQL` filter
         if cql is not None:
@@ -248,15 +242,9 @@ class Table(CollectionLayer, DBTable):
 
         else:
             start = (
-                parse_rfc3339(interval[0])
-                if not interval[0] in ["..", ""]
-                else None
+                parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
             )
-            end = (
-                parse_rfc3339(interval[1])
-                if not interval[1] in ["..", ""]
-                else None
-            )
+            end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
 
             if start is None and end is None:
                 raise InvalidDatetime(
@@ -264,26 +252,18 @@ class Table(CollectionLayer, DBTable):
                 )
 
             if start is not None and end is not None and start > end:
-                raise InvalidDatetime(
-                    "Start datetime cannot be before end datetime."
-                )
+                raise InvalidDatetime("Start datetime cannot be before end datetime.")
 
             if not start:
-                return logic.V(dt_name) <= logic.S(
-                    pg_funcs.cast(end, "timestamptz")
-                )
+                return logic.V(dt_name) <= logic.S(pg_funcs.cast(end, "timestamptz"))
 
             elif not end:
-                return logic.V(dt_name) >= logic.S(
-                    pg_funcs.cast(start, "timestamptz")
-                )
+                return logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz"))
 
             else:
                 return pg_funcs.AND(
-                    logic.V(dt_name)
-                    >= logic.S(pg_funcs.cast(start, "timestamptz")),
-                    logic.V(dt_name)
-                    < logic.S(pg_funcs.cast(end, "timestamptz")),
+                    logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz")),
+                    logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
                 )
 
     def _features_query(
@@ -362,9 +342,7 @@ class Table(CollectionLayer, DBTable):
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
         if geom and geom.lower() != "none" and not self.geometry_column(geom):
-            raise InvalidGeometryColumnName(
-                f"Invalid Geometry Column: {geom}."
-            )
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         sql_query = """
             WITH
@@ -482,9 +460,7 @@ class Table(CollectionLayer, DBTable):
     def queryables(self) -> Dict:
         """Return the queryables."""
         geoms = {
-            col.name: {
-                "$ref": geojson_schema.get(col.geometry_type.upper(), "")
-            }
+            col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
             for col in self.geometry_columns
         }
         props = {

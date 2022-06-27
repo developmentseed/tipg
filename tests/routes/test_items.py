@@ -480,5 +480,6 @@ def test_items_geometry_return_options(app):
                 [-13.255, 81.856],
                 [-10.803, 80.989],
             ]
-        ]
+        ],
+        "type": "Polygon",
     }
