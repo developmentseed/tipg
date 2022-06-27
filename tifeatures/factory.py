@@ -401,7 +401,9 @@ class Endpoints:
                         ),
                         model.Link(
                             href=self.url_for(
-                                request, "collection", collectionId=collection.id
+                                request,
+                                "collection",
+                                collectionId=collection.id,
                             )
                             + "?f=html",
                             rel="alternate",
@@ -530,7 +532,8 @@ class Endpoints:
                 alias="bbox-only",
             ),
             simplify: Optional[float] = Query(
-                None, description="Simplify the output geometry."
+                None,
+                description="Simplify the output geometry to given threshold in decimal degrees.",
             ),
         ):
             offset = offset or 0

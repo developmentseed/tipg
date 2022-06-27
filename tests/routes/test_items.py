@@ -423,3 +423,62 @@ def test_items_datetime(app):
     )
     assert response.status_code == 422
     assert response.headers["content-type"] == "application/json"
+
+
+def test_items_geometry_return_options(app):
+    """Test /items endpoint with geometry return options."""
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&geom-column=none")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert "geometry" not in body["features"][0]
+
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&bbox-only=true")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert body["features"][0]["geometry"] == {
+        "coordinates": [
+            [
+                [-22.2153, 79.6888],
+                [-22.2153, 81.8555],
+                [-8.97407, 81.8555],
+                [-8.97407, 79.6888],
+                [-22.2153, 79.6888],
+            ]
+        ],
+        "type": "Polygon",
+    }
+
+    response = app.get("/collections/public.landsat_wrs/items?ids=1&simplify=.001")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["id"] == "1"
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    print(body["features"][0]["geometry"])
+    assert body["features"][0]["geometry"] == {
+        "coordinates": [
+            [
+                [-10.803, 80.989],
+                [-8.974, 80.342],
+                [-16.985, 79.689],
+                [-22.215, 81.092],
+                [-13.255, 81.856],
+                [-10.803, 80.989],
+            ]
+        ]
+    }
