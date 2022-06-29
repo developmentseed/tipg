@@ -535,3 +535,23 @@ def test_output_response_type(app):
     body = response.text.splitlines()
     assert len(body) == 10
     assert json.loads(body[0])["type"] == "Feature"
+
+    # json output
+    response = app.get("/collections/public.landsat_wrs/items?f=json")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
+    feat = body[0]
+    assert ["colectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
+        feat.keys()
+    )
+
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/json"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
