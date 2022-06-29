@@ -1,5 +1,18 @@
 {% include "header.html" %}
 
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb bg-light">
+    {% for crumb in crumbs %}
+      {% if not loop.last %}
+    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
+      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=json">JSON</a></li>
+  </ol>
+</nav>
+
 <h1>{{ response.title }}</h1>
 <p>
   {{ response.description }}
@@ -8,7 +21,7 @@
 <h2>Links</h2>
 <ul>
 {% for link in response.links %}
-  <li> <a href="{{ link.href }}?f=html">{{ link.title }}</a></li>
+  <li> <a href="{{ link.href }}">{{ link.title }}</a></li>
 {% endfor %}
 </ul>
 

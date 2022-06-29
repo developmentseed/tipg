@@ -8,6 +8,18 @@
   {% if link.rel == "next" %}{% set next_link = link %}{% set show_next_link = true %}{% endif %}
 {% endfor %}
 
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb bg-light">
+    {% for crumb in crumbs %}
+      {% if not loop.last %}
+    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
+      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=geojson">GeoJSON</a></li>
+  </ol>
+</nav>
 
 <h1>Collection Items: {{ response.title or response.id }}</h1>
 
@@ -47,7 +59,7 @@
   <tbody>
 {% for feature in response.features %}
     <tr>
-      <td><a target="_blank" href="{{ template.api_root }}/collections/{{ response.id }}/items/{{ feature.id }}?f=html">{{ feature.id }}</a></td>
+      <td><a target="_blank" href="{{ template.api_root }}/collections/{{ response.id }}/items/{{ feature.id }}">{{ feature.id }}</a></td>
   {% for key, value in feature.properties.items() %}
       <td>{{ value }}</td>
   {% endfor %}
@@ -59,7 +71,7 @@
 
 <script>
 function changePageSize() {
-  var url = "{{ template.api_root }}/collections/{{ response.id }}/items?f=html&";
+  var url = "{{ template.api_root }}/collections/{{ response.id }}/items?";
   url += "limit=" + $("#limit").val();
   window.location.href = url;
 }

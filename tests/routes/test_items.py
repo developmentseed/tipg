@@ -1,4 +1,5 @@
 """Test /items endpoints."""
+
 import json
 
 
@@ -469,7 +470,6 @@ def test_items_geometry_return_options(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["id"] == "1"
     assert body["features"][0]["properties"]["ogc_fid"] == 1
-    print(body["features"][0]["geometry"])
     assert body["features"][0]["geometry"] == {
         "coordinates": [
             [
@@ -483,3 +483,118 @@ def test_items_geometry_return_options(app):
         ],
         "type": "Polygon",
     }
+
+
+def test_output_response_type(app):
+    """Make sure /items returns wanted output response type."""
+    # CSV output
+    response = app.get("/collections/public.landsat_wrs/items?f=csv")
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+    body = response.text.splitlines()
+    assert len(body) == 11
+    assert body[0] == "collectionId,itemId,id,pr,row,path,ogc_fid,geometry"
+
+    # we only accept csv
+    response = app.get(
+        "/collections/public.landsat_wrs/items", headers={"accept": "text/csv"}
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+
+    # we accept csv or json (CSV should be returned)
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "text/csv;q=1.0, application/json;q=0.4"},
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+
+    # the first preference is geo+json
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/geo+json, text/csv;q=0.1"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+
+    # geojsonseq output
+    response = app.get("/collections/public.landsat_wrs/items?f=geojsonseq")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json-seq"
+    body = response.text.splitlines()
+    assert len(body) == 10
+    assert json.loads(body[0])["type"] == "Feature"
+
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/geo+json-seq"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json-seq"
+    body = response.text.splitlines()
+    assert len(body) == 10
+    assert json.loads(body[0])["type"] == "Feature"
+
+    # json output
+    response = app.get("/collections/public.landsat_wrs/items?f=json")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
+    feat = body[0]
+    assert [
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    ] == list(feat.keys())
+
+    # json output no geometry
+    response = app.get("/collections/public.landsat_wrs/items?f=json&geom-column=none")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
+    feat = body[0]
+    assert "geometry" not in feat.keys()
+
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/json"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
+
+    # ndjson output
+    response = app.get("/collections/public.landsat_wrs/items?f=ndjson")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/ndjson"
+    body = response.text.splitlines()
+    assert len(body) == 10
+    feat = json.loads(body[0])
+    assert [
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    ] == list(feat.keys())
+
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/ndjson"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/ndjson"
+    body = response.text.splitlines()
+    assert len(body) == 10

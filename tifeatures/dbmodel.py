@@ -18,6 +18,9 @@ class Column(BaseModel):
         """Return JSON field type."""
         pgtype = self.type
 
+        if pgtype.endswith("[]"):
+            return "array"
+
         if any(
             [
                 pgtype.startswith("int"),
@@ -29,9 +32,6 @@ class Column(BaseModel):
 
         if pgtype.startswith("bool"):
             return "boolean"
-
-        if pgtype.endswith("[]"):
-            return "array"
 
         if any([pgtype.startswith("json"), pgtype.startswith("geo")]):
             return "object"

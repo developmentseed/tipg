@@ -1,8 +1,9 @@
 """tifeatures.factory: router factories."""
 
+import csv
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional
 
 import jinja2
 from pygeofilter.ast import AstType
@@ -10,7 +11,10 @@ from pygeofilter.ast import AstType
 from tifeatures import model
 from tifeatures.dependencies import (
     CollectionParams,
+    ItemOutputType,
+    ItemsOutputType,
     OutputType,
+    QueryablesOutputType,
     bbox_query,
     datetime_query,
     filter_query,
@@ -20,14 +24,19 @@ from tifeatures.dependencies import (
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
-from tifeatures.resources.enums import MediaType, ResponseType
-from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tifeatures.resources.enums import MediaType
+from tifeatures.resources.response import (
+    GeoJSONResponse,
+    JSONResponse,
+    SchemaJSONResponse,
+)
 from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
+from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 settings = APISettings()
@@ -74,9 +83,35 @@ def create_html_response(
                 "title": "",
             },
             "crumbs": crumbs,
-            "json_url": str(request.url).replace("f=html", "f=json"),
+            "url": str(request.url),
         },
     )
+
+
+def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
+    """Creates an iterator that returns lines of csv from an iterable of dicts."""
+
+    class DummyWriter:
+        """Dummy writer that implements write for use with csv.writer."""
+
+        def write(self, line: str):
+            """Return line."""
+            return line
+
+    # Get the first row and construct the column names
+    row = next(data)  # type: ignore
+    fieldnames = row.keys()
+    writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
+
+    # Write header
+    yield writer.writerow(dict(zip(fieldnames, fieldnames)))
+
+    # Write first row
+    yield writer.writerow(row)
+
+    # Write all remaining rows
+    for row in data:
+        yield writer.writerow(row)
 
 
 @dataclass
@@ -116,18 +151,19 @@ class Endpoints:
             "/",
             response_model=model.Landing,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/json": {},
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
                     }
                 },
             },
         )
         def landing(
             request: Request,
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Get conformance."""
             data = model.Landing(
@@ -140,13 +176,7 @@ class Endpoints:
                         rel="self",
                     ),
                     model.Link(
-                        title="HTML Landing Page",
-                        href=self.url_for(request, "landing") + "?f=html",
-                        type=MediaType.html,
-                        rel="alternate",
-                    ),
-                    model.Link(
-                        title="the API definition",
+                        title="the API definition (JSON)",
                         href=request.url_for("openapi"),
                         type=MediaType.openapi30_json,
                         rel="service-desc",
@@ -211,7 +241,7 @@ class Endpoints:
                 ],
             )
 
-            if output_type and output_type == ResponseType.html:
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
@@ -227,18 +257,19 @@ class Endpoints:
             "/conformance",
             response_model=model.Conformance,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/json": {},
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
                     }
                 },
             },
         )
         def conformance(
             request: Request,
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Get conformance."""
             data = model.Conformance(
@@ -258,7 +289,8 @@ class Endpoints:
                     "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                 ]
             )
-            if output_type and output_type == ResponseType.html:
+
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
@@ -274,18 +306,19 @@ class Endpoints:
             "/collections",
             response_model=model.Collections,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/json": {},
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
                     }
                 },
             },
         )
         def collections(
             request: Request,
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """List of collections."""
             function_catalog = getattr(
@@ -306,11 +339,6 @@ class Endpoints:
                         href=self.url_for(request, "collections"),
                         rel="self",
                         type=MediaType.json,
-                    ),
-                    model.Link(
-                        href=self.url_for(request, "collections") + "?f=html",
-                        rel="alternate",
-                        type=MediaType.html,
                     ),
                 ],
                 collections=[
@@ -358,7 +386,7 @@ class Endpoints:
                 ],
             )
 
-            if output_type and output_type == ResponseType.html:
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
@@ -371,11 +399,12 @@ class Endpoints:
             "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/json": {},
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
                     }
                 },
             },
@@ -383,7 +412,7 @@ class Endpoints:
         def collection(
             request: Request,
             collection=Depends(self.collection_dependency),
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
             data = model.Collection(
@@ -400,16 +429,7 @@ class Endpoints:
                             type=MediaType.json,
                         ),
                         model.Link(
-                            href=self.url_for(
-                                request,
-                                "collection",
-                                collectionId=collection.id,
-                            )
-                            + "?f=html",
-                            rel="alternate",
-                            type=MediaType.html,
-                        ),
-                        model.Link(
+                            title="Items",
                             href=self.url_for(
                                 request, "items", collectionId=collection.id
                             ),
@@ -417,6 +437,25 @@ class Endpoints:
                             type=MediaType.geojson,
                         ),
                         model.Link(
+                            title="Items (CSV)",
+                            href=self.url_for(
+                                request, "items", collectionId=collection.id
+                            )
+                            + "?f=csv",
+                            rel="alternate",
+                            type=MediaType.csv,
+                        ),
+                        model.Link(
+                            title="Items (GeoJSONSeq)",
+                            href=self.url_for(
+                                request, "items", collectionId=collection.id
+                            )
+                            + "?f=geojsonseq",
+                            rel="alternate",
+                            type=MediaType.geojsonseq,
+                        ),
+                        model.Link(
+                            title="Queryables",
                             href=self.url_for(
                                 request,
                                 "queryables",
@@ -429,7 +468,7 @@ class Endpoints:
                 }
             )
 
-            if output_type and output_type == ResponseType.html:
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
@@ -447,8 +486,8 @@ class Endpoints:
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/schema+json": {},
+                        MediaType.schemajson.value: {},
+                        MediaType.html.value: {},
                     }
                 },
             },
@@ -456,7 +495,7 @@ class Endpoints:
         def queryables(
             request: Request,
             collection=Depends(self.collection_dependency),
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(QueryablesOutputType),
         ):
             """Queryables for a feature collection.
 
@@ -475,7 +514,7 @@ class Endpoints:
                 }
             )
 
-            if output_type and output_type == ResponseType.html:
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
@@ -492,8 +531,12 @@ class Endpoints:
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/geo+json": {},
+                        MediaType.geojson.value: {},
+                        MediaType.html.value: {},
+                        MediaType.csv.value: {},
+                        MediaType.json.value: {},
+                        MediaType.geojsonseq.value: {},
+                        MediaType.ndjson.value: {},
                     }
                 },
             },
@@ -525,7 +568,6 @@ class Endpoints:
                 ge=0,
                 description="Starts the response at an offset.",
             ),
-            output_type: Optional[ResponseType] = Depends(OutputType),
             bbox_only: Optional[bool] = Query(
                 None,
                 description="Only return the bounding box of the feature.",
@@ -535,6 +577,7 @@ class Endpoints:
                 None,
                 description="Simplify the output geometry to given threshold in decimal degrees.",
             ),
+            output_type: Optional[MediaType] = Depends(ItemsOutputType),
         ):
             offset = offset or 0
 
@@ -576,9 +619,60 @@ class Endpoints:
                 simplify=simplify,
             )
 
+            if output_type in (
+                MediaType.csv,
+                MediaType.json,
+                MediaType.ndjson,
+            ):
+                if items and items[0].geometry is not None:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.id,
+                            **f.properties,
+                            "geometry": f.geometry.wkt,
+                        }
+                        for f in items
+                    )
+
+                else:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.id,
+                            **f.properties,
+                        }
+                        for f in items
+                    )
+
+                # CSV Response
+                if output_type == MediaType.csv:
+                    return StreamingResponse(
+                        create_csv_rows(rows),
+                        media_type=MediaType.csv,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.csv"
+                        },
+                    )
+
+                # JSON Response
+                if output_type == MediaType.json:
+                    return JSONResponse([row for row in rows])
+
+                # NDJSON Response
+                if output_type == MediaType.ndjson:
+                    return StreamingResponse(
+                        (json.dumps(row) + "\n" for row in rows),
+                        media_type=MediaType.ndjson,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.ndjson"
+                        },
+                    )
+
             qs = "?" + str(request.query_params) if request.query_params else ""
             links = [
                 model.Link(
+                    title="Collection",
                     href=self.url_for(
                         request, "collection", collectionId=collection.id
                     ),
@@ -586,6 +680,7 @@ class Endpoints:
                     type=MediaType.json,
                 ),
                 model.Link(
+                    title="Items",
                     href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
@@ -605,7 +700,12 @@ class Endpoints:
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(href=url, rel="next", type=MediaType.geojson),
+                    model.Link(
+                        href=url,
+                        rel="next",
+                        type=MediaType.geojson,
+                        title="Next page",
+                    ),
                 )
 
             if offset:
@@ -622,7 +722,12 @@ class Endpoints:
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(href=url, rel="prev", type=MediaType.geojson),
+                    model.Link(
+                        href=url,
+                        rel="prev",
+                        type=MediaType.geojson,
+                        title="Previous page",
+                    ),
                 )
 
             data = model.Items(
@@ -638,6 +743,7 @@ class Endpoints:
                             **feature.dict(),
                             "links": [
                                 model.Link(
+                                    title="Collection",
                                     href=self.url_for(
                                         request,
                                         "collection",
@@ -647,6 +753,7 @@ class Endpoints:
                                     type=MediaType.json,
                                 ),
                                 model.Link(
+                                    title="Item",
                                     href=self.url_for(
                                         request,
                                         "item",
@@ -663,13 +770,25 @@ class Endpoints:
                 ],
             )
 
-            if output_type and output_type == ResponseType.html:
+            # HTML Response
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="items",
                 )
 
+            # GeoJSONSeq Response
+            elif output_type == MediaType.geojsonseq:
+                return StreamingResponse(
+                    data.json_seq(exclude_none=True),
+                    media_type=MediaType.geojsonseq,
+                    headers={
+                        "Content-Disposition": "attachment;filename=items.geojson"
+                    },
+                )
+
+            # Default to GeoJSON Response
             return data
 
         @self.router.get(
@@ -680,8 +799,9 @@ class Endpoints:
             responses={
                 200: {
                     "content": {
-                        "text/html": {},
-                        "application/geo+json": {},
+                        MediaType.geojson.value: {},
+                        MediaType.html.value: {},
+                        MediaType.json.value: {},
                     }
                 },
             },
@@ -690,7 +810,7 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
-            output_type: Optional[ResponseType] = Depends(OutputType),
+            output_type: Optional[MediaType] = Depends(ItemOutputType),
         ):
             feature = await collection.feature(
                 request.app.state.pool,
@@ -725,11 +845,23 @@ class Endpoints:
                 ],
             )
 
-            if output_type and output_type == ResponseType.html:
+            # HTML Response
+            if output_type == MediaType.html:
                 return create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="item",
                 )
 
+            # JSON Response
+            if output_type == MediaType.json:
+                return JSONResponse(
+                    {
+                        "collectionId": collection.id,
+                        "itemId": data.id,
+                        **data.properties,
+                    },
+                )
+
+            # Default to GeoJSON Response
             return data

@@ -133,6 +133,11 @@ class Items(FeatureCollection):
 
         arbitrary_types_allowed = True
 
+    def json_seq(self, **kwargs):
+        """return a GeoJSON sequence representation."""
+        for f in self.features:
+            yield f.json(**kwargs) + "\n"
+
 
 class Conformance(BaseModel):
     """Conformance model.

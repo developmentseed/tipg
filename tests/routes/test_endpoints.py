@@ -15,6 +15,49 @@ def test_landing(app):
     assert "text/html" in response.headers["content-type"]
     assert "TiFeatures" in response.text
 
+    # Check accept headers
+    response = app.get("/", headers={"accept": "text/html"})
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "TiFeatures" in response.text
+
+    # accept quality
+    response = app.get(
+        "/", headers={"accept": "application/json;q=0.9, text/html;q=1.0"}
+    )
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "TiFeatures" in response.text
+
+    # accept quality but only json is available
+    response = app.get("/", headers={"accept": "text/csv;q=1.0, application/json"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["title"] == "TiFeatures"
+
+    # accept quality but only json is available
+    response = app.get("/", headers={"accept": "text/csv;q=1.0, */*"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["title"] == "TiFeatures"
+
+    # Invalid accept, return default
+    response = app.get("/", headers={"accept": "text/htm"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["title"] == "TiFeatures"
+    assert body["links"]
+
+    # make sure `?f=` has priority over headers
+    response = app.get("/?f=json", headers={"accept": "text/html"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["title"] == "TiFeatures"
+
 
 def test_docs(app):
     """Test /api endpoint."""
