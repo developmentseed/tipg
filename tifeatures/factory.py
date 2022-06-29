@@ -99,16 +99,15 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
             return line
 
     # Get the first row and construct the column names
-    first = next(data)  # type: ignore
-    fieldnames = first.keys()
+    row = next(data)  # type: ignore
+    fieldnames = row.keys()
     writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
 
     # Write header
-    row = dict(zip(fieldnames, fieldnames))
-    yield writer.writerow(row)
+    yield writer.writerow(dict(zip(fieldnames, fieldnames)))
 
     # Write first row
-    yield writer.writerow(first)
+    yield writer.writerow(row)
 
     # Write all remaining rows
     for row in data:
