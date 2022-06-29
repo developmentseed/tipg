@@ -853,7 +853,7 @@ class Endpoints:
             if output_type == MediaType.json:
                 return JSONResponse(
                     {
-                        "colectionId": collection.id,
+                        "collectionId": collection.id,
                         "itemId": data.id,
                         **data.properties,
                     },

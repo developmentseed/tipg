@@ -543,7 +543,25 @@ def test_output_response_type(app):
     body = response.json()
     assert len(body) == 10
     feat = body[0]
-    assert ["colectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
+    assert [
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    ] == list(feat.keys())
+
+    # json output no geometry
+    response = app.get("/collections/public.landsat_wrs/items?f=json&geom-column=none")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert len(body) == 10
+    feat = body[0]
+    assert ["collectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
         feat.keys()
     )
 

@@ -21,7 +21,7 @@ def test_item(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     feat = response.json()
-    assert ["colectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
+    assert ["collectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
         feat.keys()
     )
 
