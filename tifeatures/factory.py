@@ -1,8 +1,9 @@
 """tifeatures.factory: router factories."""
 
+import csv
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import jinja2
 from pygeofilter.ast import AstType
@@ -37,6 +38,30 @@ from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
+
+
+class DummyWriter:
+    """Dummy writer that implements write for use with csv.writer."""
+
+    def write(self, line: str):
+        """Return line."""
+        return line
+
+
+def iter_csv(data: Iterable[Dict]):
+    """Creates an iterator that returns lines of csv from an iterable of dicts."""
+
+    initial = True
+    writer = None
+    for row in data:
+        if initial:
+            fieldnames = row.keys()
+            writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
+            yield writer.writeheader()
+            initial = False
+        if writer:
+            yield writer.writerow(row)
+
 
 settings = APISettings()
 
@@ -591,41 +616,54 @@ class Endpoints:
                 simplify=simplify,
             )
 
-            # CSV Response
-            if output_type == MediaType.csv:
-                props = list(items[0].properties.keys()) + ["geometry"] if items else []
-                rows = [";".join(["collectionId", "itemId", *props]) + "\n"]
-                for f in items:
-                    rows.append(
-                        ";".join(
-                            list(
-                                map(
-                                    str,
-                                    [
-                                        collection.id,
-                                        f.id,
-                                        *f.properties.values(),
-                                        f.geometry.wkt,
-                                    ],
-                                )
-                            )
-                        )
-                        + "\n"
-                    )
-                return StreamingResponse(
-                    iter(rows),
-                    media_type=MediaType.csv,
-                    headers={"Content-Disposition": "attachment;filename=items.csv"},
-                )
-
-            # JSON Response
-            if output_type == MediaType.json:
-                return JSONResponse(
-                    [
-                        {"colectionId": collection.id, "itemId": f.id, **f.properties}
+            if output_type in (
+                MediaType.csv,
+                MediaType.json,
+                MediaType.ndjson,
+            ):
+                if items[0].geometry is not None:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.id,
+                            **f.properties,
+                            "geometry": f.geometry.wkt,
+                        }
                         for f in items
-                    ]
-                )
+                    )
+                else:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.id,
+                            **f.properties,
+                        }
+                        for f in items
+                    )
+
+                # CSV Response
+                if output_type == MediaType.csv:
+                    return StreamingResponse(
+                        iter_csv(rows),
+                        media_type=MediaType.csv,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.csv"
+                        },
+                    )
+
+                # JSON Response
+                if output_type == MediaType.json:
+                    return JSONResponse([row for row in rows])
+
+                # NDJSON Response
+                if output_type == MediaType.ndjson:
+                    return StreamingResponse(
+                        (row + "\n" for row in rows),
+                        media_type=MediaType.ndjson,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.ndjson"
+                        },
+                    )
 
             qs = "?" + str(request.query_params) if request.query_params else ""
             links = [
@@ -659,7 +697,10 @@ class Endpoints:
                 )
                 links.append(
                     model.Link(
-                        href=url, rel="next", type=MediaType.geojson, title="Next page"
+                        href=url,
+                        rel="next",
+                        type=MediaType.geojson,
+                        title="Next page",
                     ),
                 )
 

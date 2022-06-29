@@ -493,7 +493,7 @@ def test_output_response_type(app):
     assert "text/csv" in response.headers["content-type"]
     body = response.text.splitlines()
     assert len(body) == 11
-    assert body[0] == "collectionId;itemId;id;pr;row;path;ogc_fid;geometry"
+    assert body[0] == "collectionId,itemId,id,pr,row,path,ogc_fid,geometry"
 
     # we only accept csv
     response = app.get(

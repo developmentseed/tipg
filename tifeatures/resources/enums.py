@@ -25,6 +25,7 @@ class ItemsResponseType(str, Enum):
     json = "json"
     csv = "csv"
     geojsonseq = "geojsonseq"
+    ndjson = "ndjson"
 
 
 class ItemResponseType(str, Enum):
@@ -40,6 +41,7 @@ class MediaType(str, Enum):
 
     xml = "application/xml"
     json = "application/json"
+    ndjson = "application/ndjson"
     geojson = "application/geo+json"
     geojsonseq = "application/geo+json-seq"
     schemajson = "application/schema+json"
