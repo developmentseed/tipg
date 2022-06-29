@@ -561,9 +561,7 @@ def test_output_response_type(app):
     body = response.json()
     assert len(body) == 10
     feat = body[0]
-    assert ["collectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
-        feat.keys()
-    )
+    assert "geometry" not in feat.keys()
 
     response = app.get(
         "/collections/public.landsat_wrs/items",
@@ -572,4 +570,31 @@ def test_output_response_type(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
+    assert len(body) == 10
+
+    # ndjson output
+    response = app.get("/collections/public.landsat_wrs/items?f=ndjson")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/ndjson"
+    body = response.text.splitlines()
+    assert len(body) == 10
+    feat = json.loads(body[0])
+    assert [
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    ] == list(feat.keys())
+
+    response = app.get(
+        "/collections/public.landsat_wrs/items",
+        headers={"accept": "application/ndjson"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/ndjson"
+    body = response.text.splitlines()
     assert len(body) == 10

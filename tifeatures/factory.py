@@ -3,7 +3,7 @@
 import csv
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional
 
 import jinja2
 from pygeofilter.ast import AstType
@@ -38,30 +38,6 @@ from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
-
-
-class DummyWriter:
-    """Dummy writer that implements write for use with csv.writer."""
-
-    def write(self, line: str):
-        """Return line."""
-        return line
-
-
-def iter_csv(data: Iterable[Dict]):
-    """Creates an iterator that returns lines of csv from an iterable of dicts."""
-
-    initial = True
-    writer = None
-    for row in data:
-        if initial:
-            fieldnames = row.keys()
-            writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
-            yield writer.writeheader()
-            initial = False
-        if writer:
-            yield writer.writerow(row)
-
 
 settings = APISettings()
 
@@ -110,6 +86,29 @@ def create_html_response(
             "url": str(request.url),
         },
     )
+
+
+def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
+    """Create Template response."""
+
+    class DummyWriter:
+        """Dummy writer that implements write for use with csv.writer."""
+
+        def write(self, line: str):
+            """Return line."""
+            return line
+
+    """Creates an iterator that returns lines of csv from an iterable of dicts."""
+    initial = True
+    writer = None
+    for row in data:
+        if initial:
+            fieldnames = row.keys()
+            writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
+            yield writer.writeheader()
+            initial = False
+        if writer:
+            yield writer.writerow(row)
 
 
 @dataclass
@@ -534,6 +533,7 @@ class Endpoints:
                         MediaType.csv.value: {},
                         MediaType.json.value: {},
                         MediaType.geojsonseq.value: {},
+                        MediaType.ndjson.value: {},
                     }
                 },
             },
@@ -621,7 +621,7 @@ class Endpoints:
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if items[0].geometry is not None:
+                if items and items[0].geometry is not None:
                     rows = (
                         {
                             "collectionId": collection.id,
@@ -631,6 +631,7 @@ class Endpoints:
                         }
                         for f in items
                     )
+
                 else:
                     rows = (
                         {
@@ -644,7 +645,7 @@ class Endpoints:
                 # CSV Response
                 if output_type == MediaType.csv:
                     return StreamingResponse(
-                        iter_csv(rows),
+                        create_csv_rows(rows),
                         media_type=MediaType.csv,
                         headers={
                             "Content-Disposition": "attachment;filename=items.csv"
@@ -658,7 +659,7 @@ class Endpoints:
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (row + "\n" for row in rows),
+                        (json.dumps(row) + "\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
