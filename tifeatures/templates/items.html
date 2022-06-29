@@ -47,7 +47,7 @@
   <tbody>
 {% for feature in response.features %}
     <tr>
-      <td><a target="_blank" href="{{ template.api_root }}/collections/{{ response.id }}/items/{{ feature.id }}?f=html">{{ feature.id }}</a></td>
+      <td><a target="_blank" href="{{ template.api_root }}/collections/{{ response.id }}/items/{{ feature.id }}">{{ feature.id }}</a></td>
   {% for key, value in feature.properties.items() %}
       <td>{{ value }}</td>
   {% endfor %}
@@ -59,7 +59,7 @@
 
 <script>
 function changePageSize() {
-  var url = "{{ template.api_root }}/collections/{{ response.id }}/items?f=html&";
+  var url = "{{ template.api_root }}/collections/{{ response.id }}/items?";
   url += "limit=" + $("#limit").val();
   window.location.href = url;
 }

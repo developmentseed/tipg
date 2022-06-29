@@ -8,7 +8,7 @@
 <h2>Links</h2>
 <ul>
 {% for link in response.links %}
-  <li> <a href="{{ link.href }}?f=html">{{ link.title }}</a></li>
+  <li> <a href="{{ link.href }}">{{ link.title }}</a></li>
 {% endfor %}
 </ul>
 

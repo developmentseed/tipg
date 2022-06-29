@@ -6,16 +6,33 @@ from enum import Enum
 class ResponseType(str, Enum):
     """Response Type Enums."""
 
+    json = "json"
+    html = "html"
+
+
+class QueryablesResponseType(str, Enum):
+    """Response Type Enums."""
+
+    schemajson = "schemajson"
+    html = "html"
+
+
+class ItemsResponseType(str, Enum):
+    """Response Type Enums."""
+
+    geojson = "geojson"
     html = "html"
     json = "json"
+    csv = "csv"
+    geojsonseq = "geojsonseq"
 
 
-class AcceptType(str, Enum):
-    """Accept Headers Enums."""
+class ItemResponseType(str, Enum):
+    """Response Type Enums."""
 
-    html = "text/html"
-    json = "application/json"
-    geojson = "application/geo+json"
+    geojson = "geojson"
+    html = "html"
+    json = "json"
 
 
 class MediaType(str, Enum):
@@ -24,9 +41,11 @@ class MediaType(str, Enum):
     xml = "application/xml"
     json = "application/json"
     geojson = "application/geo+json"
+    geojsonseq = "application/geo+json-seq"
     schemajson = "application/schema+json"
     html = "text/html"
     text = "text/plain"
+    csv = "text/csv"
     openapi30_json = "application/vnd.oai.openapi+json;version=3.0"
     openapi30_yaml = "application/vnd.oai.openapi;version=3.0"
 
