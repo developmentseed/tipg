@@ -89,7 +89,7 @@ def create_html_response(
 
 
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
-    """Create Template response."""
+    """Creates an iterator that returns lines of csv from an iterable of dicts."""
 
     class DummyWriter:
         """Dummy writer that implements write for use with csv.writer."""
@@ -98,17 +98,21 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
             """Return line."""
             return line
 
-    """Creates an iterator that returns lines of csv from an iterable of dicts."""
-    initial = True
-    writer = None
+    # Get the first row and construct the column names
+    first = next(data)  # type: ignore
+    fieldnames = first.keys()
+    writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
+
+    # Write header
+    row = dict(zip(fieldnames, fieldnames))
+    yield writer.writerow(row)
+
+    # Write first row
+    yield writer.writerow(first)
+
+    # Write all remaining rows
     for row in data:
-        if initial:
-            fieldnames = row.keys()
-            writer = csv.DictWriter(DummyWriter(), fieldnames=fieldnames)
-            yield writer.writeheader()
-            initial = False
-        if writer:
-            yield writer.writerow(row)
+        yield writer.writerow(row)
 
 
 @dataclass
