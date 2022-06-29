@@ -42,17 +42,3 @@
 
     <main role="main" class="container-fluid">
       <div id="page">
-
-
-<nav aria-label="breadcrumb">
-  <ol class="breadcrumb bg-light">
-    {% for crumb in crumbs %}
-      {% if not loop.last %}
-    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
-      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
-      {% endif %}
-    {% endfor %}
-
-    <li class="ml-auto json-link"><a target="_blank" href="{{ json_url }}">JSON</a></li>
-  </ol>
-</nav>

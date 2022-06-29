@@ -24,7 +24,11 @@ from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType
-from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tifeatures.resources.response import (
+    GeoJSONResponse,
+    JSONResponse,
+    SchemaJSONResponse,
+)
 from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -78,7 +82,7 @@ def create_html_response(
                 "title": "",
             },
             "crumbs": crumbs,
-            "json_url": str(request.url) + "?f=json",
+            "url": str(request.url),
         },
     )
 
@@ -120,6 +124,7 @@ class Endpoints:
             "/",
             response_model=model.Landing,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
@@ -225,6 +230,7 @@ class Endpoints:
             "/conformance",
             response_model=model.Conformance,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
@@ -273,6 +279,7 @@ class Endpoints:
             "/collections",
             response_model=model.Collections,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
@@ -365,6 +372,7 @@ class Endpoints:
             "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
+            response_class=JSONResponse,
             responses={
                 200: {
                     "content": {
@@ -394,6 +402,7 @@ class Endpoints:
                             type=MediaType.json,
                         ),
                         model.Link(
+                            title="Items",
                             href=self.url_for(
                                 request, "items", collectionId=collection.id
                             ),
@@ -401,6 +410,25 @@ class Endpoints:
                             type=MediaType.geojson,
                         ),
                         model.Link(
+                            title="Items (CSV)",
+                            href=self.url_for(
+                                request, "items", collectionId=collection.id
+                            )
+                            + "?f=csv",
+                            rel="alternate",
+                            type=MediaType.csv,
+                        ),
+                        model.Link(
+                            title="Items (GeoJSONSeq)",
+                            href=self.url_for(
+                                request, "items", collectionId=collection.id
+                            )
+                            + "?f=geojsonseq",
+                            rel="alternate",
+                            type=MediaType.geojsonseq,
+                        ),
+                        model.Link(
+                            title="Queryables",
                             href=self.url_for(
                                 request,
                                 "queryables",
@@ -584,15 +612,21 @@ class Endpoints:
                         )
                         + "\n"
                     )
-                return StreamingResponse(iter(rows), media_type="text/csv")
+                return StreamingResponse(iter(rows), media_type=MediaType.csv)
 
             # JSON Response
             if output_type == MediaType.json:
-                pass
+                return JSONResponse(
+                    [
+                        {"colectionId": collection.id, "itemId": f.id, **f.properties}
+                        for f in items
+                    ]
+                )
 
             qs = "?" + str(request.query_params) if request.query_params else ""
             links = [
                 model.Link(
+                    title="Collection",
                     href=self.url_for(
                         request, "collection", collectionId=collection.id
                     ),
@@ -600,6 +634,7 @@ class Endpoints:
                     type=MediaType.json,
                 ),
                 model.Link(
+                    title="Items",
                     href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
@@ -619,7 +654,9 @@ class Endpoints:
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(href=url, rel="next", type=MediaType.geojson),
+                    model.Link(
+                        href=url, rel="next", type=MediaType.geojson, title="Next page"
+                    ),
                 )
 
             if offset:
@@ -636,7 +673,12 @@ class Endpoints:
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(href=url, rel="prev", type=MediaType.geojson),
+                    model.Link(
+                        href=url,
+                        rel="prev",
+                        type=MediaType.geojson,
+                        title="Previous page",
+                    ),
                 )
 
             data = model.Items(
@@ -652,6 +694,7 @@ class Endpoints:
                             **feature.dict(),
                             "links": [
                                 model.Link(
+                                    title="Collection",
                                     href=self.url_for(
                                         request,
                                         "collection",
@@ -661,6 +704,7 @@ class Endpoints:
                                     type=MediaType.json,
                                 ),
                                 model.Link(
+                                    title="Item",
                                     href=self.url_for(
                                         request,
                                         "item",
@@ -690,6 +734,9 @@ class Endpoints:
                 return StreamingResponse(
                     data.json_seq(exclude_none=True),
                     media_type=MediaType.geojsonseq,
+                    headers={
+                        "Content-Disposition": "attachment;filename=items.geojson"
+                    },
                 )
 
             # Default to GeoJSON Response
@@ -759,7 +806,13 @@ class Endpoints:
 
             # JSON Response
             if output_type == MediaType.json:
-                pass
+                return JSONResponse(
+                    {
+                        "colectionId": collection.id,
+                        "itemId": data.id,
+                        **data.properties,
+                    },
+                )
 
             # Default to GeoJSON Response
             return data
