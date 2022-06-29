@@ -6,11 +6,11 @@ Path: `/`
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/json`, `text/html`]): Select response MediaType.
 
 Example:
 
@@ -26,16 +26,10 @@ curl http://127.0.0.1:8081 | jq
       "title": "Landing Page"
     },
     {
-      "href": "http://127.0.0.1:8081/?f=html",
-      "rel": "alternate",
-      "type": "text/html",
-      "title": "HTML Landing Page"
-    },
-    {
       "href": "http://127.0.0.1:8081/api",
       "rel": "service-desc",
       "type": "application/vnd.oai.openapi+json;version=3.0",
-      "title": "the API definition"
+      "title": "the API definition (JSON)"
     },
     {
       "href": "http://127.0.0.1:8081/api.html",
@@ -91,11 +85,11 @@ Path: `/conformance`
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/json`, `text/html`])): Select response MediaType.
 
 Example:
 
@@ -128,11 +122,11 @@ Path: `/collections`
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/json`, `text/html`])): Select response MediaType.
 
 Example:
 
@@ -177,11 +171,6 @@ curl http://127.0.0.1:8081/collections | jq
       "href": "http://127.0.0.1:8081/collections",
       "rel": "self",
       "type": "application/json"
-    },
-    {
-      "href": "http://127.0.0.1:8081/collections?f=html",
-      "rel": "alternate",
-      "type": "text/html"
     }
   ]
 }
@@ -199,11 +188,11 @@ PathParams:
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/json`, `text/html`])): Select response MediaType.
 
 Example:
 
@@ -218,19 +207,28 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
       "type": "application/json"
     },
     {
-      "href": "http://127.0.0.1:8081/collections/public.countries?f=html",
-      "rel": "alternate",
-      "type": "text/html"
-    },
-    {
       "href": "http://127.0.0.1:8081/collections/public.countries/items",
       "rel": "items",
-      "type": "application/geo+json"
+      "type": "application/geo+json",
+      "title": "Items"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/public.countries/items?f=csv",
+      "rel": "alternate",
+      "type": "text/csv",
+      "title": "Items (CSV)"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/public.countries/items?f=geojsonseq",
+      "rel": "alternate",
+      "type": "application/geo+json-seq",
+      "title": "Items (GeoJSONSeq)"
     },
     {
       "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
       "rel": "queryables",
-      "type": "application/schema+json"
+      "type": "application/schema+json",
+      "title": "Queryables"
     }
   ],
   "itemType": "feature",
@@ -253,11 +251,11 @@ PathParams:
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/json`, `text/html`])): Select response MediaType.
 
 Example:
 
@@ -324,11 +322,14 @@ QueryParams:
 - **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
 - **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
 - **datetime-column** * (str): Select datetime column to apply filter on.
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **bbox-only**  * (bool): Only return the bounding box of the feature.
+- **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
+
+- **f** (str, one of [`geojson`, `html`, `json`, `csv`, `geojsonseq`, `ndjson`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/geo+json`, `text/html`, `application/json`, `text/csv`, `application/geo+json-seq`, `application/ndjson`])): Select response MediaType.
 
 \*  **Not in OGC API Features Specification**
 
@@ -343,7 +344,10 @@ Example:
 - `http://127.0.0.1:8081/collections/public.countries/items?bbox=-94.702148,34.488448,-85.429688,41.112469` *limit result to a specific bbox*.
 - `http://127.0.0.1:8081/collections/public.countries/items?ids=1,2,3` *limit result to ids `1`, `2` and `3`*
 - `http://127.0.0.1:8081/collections/public.countries/items?properties=name` *only return `name` property*
-- `http://127.0.0.1:8081/collections/public.countries/items?name=Zimbabwe` *only return features where property `name==Zimbabwe`*
+
+
+  - Property Filter
+    - `http://127.0.0.1:8081/collections/public.countries/items?name=Zimbabwe` *only return features where property `name==Zimbabwe`*
 
   - Datetime
     - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z` *return features with datetime column with value `==2004-10-19T10:23:54Z`*.
@@ -369,11 +373,11 @@ PathParams:
 
 QueryParams:
 
-- **f** (str, one of [`geojson`, `json`, `html`]): Select response MediaType.
+- **f** (str, one of [`geojson`, `html`, `json`]): Select response MediaType.
 
 HeaderParams:
 
-- **accept** (str, one of [`application/geo+json`, `application/json`, `text/html`])): Select response MediaType.
+- **accept** (str, one of [`application/geo+json`, `text/html`, `application/json`])): Select response MediaType.
 
 Example:
 
