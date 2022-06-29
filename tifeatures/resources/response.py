@@ -6,7 +6,7 @@ try:
     from fastapi.responses import ORJSONResponse as JSONResponse
 except ImportError:  # pragma: nocover
     orjson = None  # type: ignore
-    from starlette.reponses import JSONResponse
+    from starlette.responses import JSONResponse
 
 
 class GeoJSONResponse(JSONResponse):
