@@ -612,7 +612,11 @@ class Endpoints:
                         )
                         + "\n"
                     )
-                return StreamingResponse(iter(rows), media_type=MediaType.csv)
+                return StreamingResponse(
+                    iter(rows),
+                    media_type=MediaType.csv,
+                    headers={"Content-Disposition": "attachment;filename=items.csv"},
+                )
 
             # JSON Response
             if output_type == MediaType.json:
