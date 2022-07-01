@@ -27,7 +27,9 @@ async def con_init(conn):
 
 
 async def connect_to_db(
-    app: FastAPI, settings: Optional[PostgresSettings] = None
+    app: FastAPI,
+    settings: Optional[PostgresSettings] = None,
+    **kwargs,
 ) -> None:
     """Connect."""
     if not settings:
@@ -40,6 +42,7 @@ async def connect_to_db(
         max_queries=settings.db_max_queries,
         max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
         init=con_init,
+        **kwargs,
     )
 
 
