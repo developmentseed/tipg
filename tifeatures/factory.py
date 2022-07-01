@@ -56,38 +56,6 @@ templates = Jinja2Templates(
 )
 
 
-def create_html_response(
-    request: Request, data: str, template_name: str
-) -> _TemplateResponse:
-    """Create Template response."""
-    urlpath = request.url.path
-    crumbs = []
-    baseurl = str(request.base_url).rstrip("/")
-    crumbpath = str(baseurl)
-    for crumb in urlpath.split("/"):
-        crumbpath = crumbpath.rstrip("/")
-        part = crumb
-        if part is None or part == "":
-            part = "Home"
-        crumbpath += f"/{crumb}"
-        crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
-
-    return templates.TemplateResponse(
-        f"{template_name}.html",
-        {
-            "request": request,
-            "response": json.loads(data),
-            "template": {
-                "api_root": baseurl,
-                "params": request.query_params,
-                "title": "",
-            },
-            "crumbs": crumbs,
-            "url": str(request.url),
-        },
-    )
-
-
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
     """Creates an iterator that returns lines of csv from an iterable of dicts."""
 
@@ -143,6 +111,44 @@ class Endpoints:
             base_url += self.router_prefix.lstrip("/")
 
         return url_path.make_absolute_url(base_url=base_url)
+
+    def _create_html_response(
+        self,
+        request: Request,
+        data: str,
+        template_name: str,
+    ) -> _TemplateResponse:
+        """Create Template response."""
+        urlpath = request.url.path
+        crumbs = []
+        baseurl = str(request.base_url).rstrip("/")
+
+        crumbpath = str(baseurl)
+        for crumb in urlpath.split("/"):
+            crumbpath = crumbpath.rstrip("/")
+            part = crumb
+            if part is None or part == "":
+                part = "Home"
+            crumbpath += f"/{crumb}"
+            crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
+
+        if self.router_prefix:
+            baseurl += self.router_prefix
+
+        return templates.TemplateResponse(
+            f"{template_name}.html",
+            {
+                "request": request,
+                "response": json.loads(data),
+                "template": {
+                    "api_root": baseurl,
+                    "params": request.query_params,
+                    "title": "",
+                },
+                "crumbs": crumbs,
+                "url": str(request.url),
+            },
+        )
 
     def register_landing(self) -> None:
         """Register landing endpoint."""
@@ -242,7 +248,7 @@ class Endpoints:
             )
 
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="landing",
@@ -291,7 +297,7 @@ class Endpoints:
             )
 
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="conformance",
@@ -387,7 +393,7 @@ class Endpoints:
             )
 
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="collections",
@@ -469,7 +475,7 @@ class Endpoints:
             )
 
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="collection",
@@ -515,7 +521,7 @@ class Endpoints:
             )
 
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="queryables",
@@ -772,7 +778,7 @@ class Endpoints:
 
             # HTML Response
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="items",
@@ -847,7 +853,7 @@ class Endpoints:
 
             # HTML Response
             if output_type == MediaType.html:
-                return create_html_response(
+                return self._create_html_response(
                     request,
                     data.json(exclude_none=True),
                     template_name="item",
