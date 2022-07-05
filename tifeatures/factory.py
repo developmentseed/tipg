@@ -30,7 +30,6 @@ from tifeatures.resources.response import (
     JSONResponse,
     SchemaJSONResponse,
 )
-from tifeatures.settings import APISettings
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -39,20 +38,9 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
-settings = APISettings()
-
-# custom template directory
-templates_location: List[Any] = (
-    [jinja2.FileSystemLoader(settings.template_directory)]
-    if settings.template_directory
-    else []
-)
-# default template directory
-templates_location.append(jinja2.PackageLoader(__package__, "templates"))
-
-templates = Jinja2Templates(
-    directory="",  # we need to set a dummy directory variable, see https://github.com/encode/starlette/issues/1214
-    loader=jinja2.ChoiceLoader(templates_location),
+DEFAULT_TEMPLATES = Jinja2Templates(
+    directory="",
+    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
 )
 
 
@@ -96,6 +84,10 @@ class Endpoints:
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
     router_prefix: str = ""
 
+    title: str = "TiFeatures"
+
+    templates: Jinja2Templates = DEFAULT_TEMPLATES
+
     def __post_init__(self):
         """Post Init: register route and configure specific options."""
         self.register_landing()
@@ -135,7 +127,7 @@ class Endpoints:
         if self.router_prefix:
             baseurl += self.router_prefix
 
-        return templates.TemplateResponse(
+        return self.templates.TemplateResponse(
             f"{template_name}.html",
             {
                 "request": request,
@@ -173,7 +165,7 @@ class Endpoints:
         ):
             """Get conformance."""
             data = model.Landing(
-                title=settings.name,
+                title=self.title,
                 links=[
                     model.Link(
                         title="Landing Page",
