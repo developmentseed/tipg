@@ -134,7 +134,7 @@ class Table(CollectionLayer, DBTable):
         g = pg_funcs.cast(g, "geometry")
 
         if geometry_column.srid == 4326:
-            g = logic.Func("ST_Transform", g, 4326)
+            g = logic.Func("ST_Transform", g, pg_funcs.cast(4326, "int"))
 
         if bbox_only:
             g = logic.Func("ST_Envelope", g)
