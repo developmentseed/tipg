@@ -131,10 +131,13 @@ class Table(CollectionLayer, DBTable):
             return pg_funcs.cast(None, "json")
 
         g = logic.V(geometry_column.name)
+        g = pg_funcs.cast(g, "geometry")
+
+        if geometry_column.srid == 4326:
+            g = logic.Func("ST_Transform", g, 4326)
 
         if bbox_only:
             g = logic.Func("ST_Envelope", g)
-
         elif simplify:
             g = logic.Func(
                 "ST_SnapToGrid",
@@ -142,15 +145,7 @@ class Table(CollectionLayer, DBTable):
                 simplify,
             )
 
-        if geometry_column.srid == 4326:
-            g = logic.Func("ST_AsGeoJson", g)
-
-        else:
-            g = logic.Func(
-                "ST_Transform",
-                logic.Func("ST_AsGeoJson", g),
-                4326,
-            )
+        g = logic.Func("ST_AsGeoJson", g)
 
         return g
 
@@ -341,6 +336,7 @@ class Table(CollectionLayer, DBTable):
         simplify: Optional[float] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
+        print("id", self.id_column)
         if geom and geom.lower() != "none" and not self.geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
@@ -398,7 +394,7 @@ class Table(CollectionLayer, DBTable):
             ),
             geom_columns=[g.name for g in self.geometry_columns],
         )
-
+        print(q, p)
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 

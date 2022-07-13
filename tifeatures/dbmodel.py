@@ -131,24 +131,28 @@ async def get_table_index(
     query = """
         WITH t AS (
             SELECT
-                schemaname,
-                tablename,
-                format('%I.%I', schemaname, tablename) as id,
-                format('%I.%I', schemaname, tablename)::regclass as t_oid,
-                obj_description(format('%I.%I', schemaname, tablename)::regclass, 'pg_class') as description,
+                nspname as schemaname,
+                relname as tablename,
+                format('%I.%I', nspname, relname) as id,
+                c.oid as t_oid,
+                obj_description(c.oid, 'pg_class') as description,
                 (
                     SELECT
                         attname
                     FROM
+                        pg_attribute a
+                        LEFT JOIN
                         pg_index i
-                        JOIN pg_attribute a ON
+                        ON (
                             a.attrelid = i.indrelid
                             AND a.attnum = ANY(i.indkey)
+                            )
                     WHERE
-                        i.indrelid = format('%I.%I', schemaname, tablename)::regclass
-                        AND
-                        (i.indisunique OR i.indisprimary)
-                    ORDER BY i.indisprimary
+                        a.attrelid = c.oid
+                    ORDER BY
+                        i.indisprimary DESC NULLS LAST,
+                        i.indisunique DESC NULLS LAST,
+                        attname ~* E'id$' DESC NULLS LAST
                     LIMIT 1
                 ) as pk,
                 (
@@ -164,7 +168,7 @@ async def get_table_index(
                         pg_attribute
                     WHERE
                         attnum>0
-                        AND attrelid=format('%I.%I', schemaname, tablename)::regclass
+                        AND attrelid=c.oid
                 ) as columns,
                 (
                     SELECT
@@ -210,16 +214,18 @@ async def get_table_index(
                         FROM geography_columns
                         ) as geo
                     WHERE
-                        f_table_schema = schemaname
-                        AND f_table_name = tablename
+                        f_table_schema = n.nspname
+                        AND f_table_name = c.relname
                 ) as geometry_columns
             FROM
-                pg_tables
+                pg_class c
+                JOIN pg_namespace n ON (c.relnamespace=n.oid)
             WHERE
-                schemaname NOT IN ('pg_catalog', 'information_schema')
-                AND tablename NOT IN ('spatial_ref_sys','geometry_columns')
-                AND (:schemas::text[] IS NULL OR schemaname = ANY (:schemas))
-                AND (:tables::text[] IS NULL OR tablename = ANY (:tables))
+                relkind in ('r','v', 'm', 'f', 'p')
+                AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+                AND c.relname NOT IN ('spatial_ref_sys','geometry_columns')
+                AND (:schemas::text[] IS NULL OR n.nspname = ANY (:schemas))
+                AND (:tables::text[] IS NULL OR c.relname = ANY (:tables))
 
         )
         SELECT
