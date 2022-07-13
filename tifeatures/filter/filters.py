@@ -274,9 +274,9 @@ def attribute(name: str, fields: List[str]):
     """
     if name in fields:
         return V(name)
-    elif name.lower() in ("true", "t", "1"):
+    elif name.lower() == "true":
         return True
-    elif name.lower() in ("false", "f", "0"):
+    elif name.lower() == "false":
         return False
     else:
         print(name, fields)
