@@ -265,7 +265,7 @@ def quote_ident(s: str) -> str:
     raise TypeError(f"{s} is not a valid identifier")
 
 
-def attribute(name: str, fields: List[str]) -> V:
+def attribute(name: str, fields: List[str]):
     """Create an attribute lookup expression using a field mapping dictionary.
 
     :param name: the field filter name
@@ -274,6 +274,10 @@ def attribute(name: str, fields: List[str]) -> V:
     """
     if name in fields:
         return V(name)
+    elif name.lower() == "true":
+        return True
+    elif name.lower() == "false":
+        return False
     else:
         raise TypeError(f"Field {name} not in table.")
 
