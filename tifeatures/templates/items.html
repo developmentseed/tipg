@@ -80,7 +80,7 @@ $(function() {
   //
   // mapping
   //
-  var geojson = {{ response|safe }};
+  var geojson = {{ response|tojson }};
   var map = L.map('map').setView([0, 0], 1);
   map.addLayer(new L.TileLayer(
     'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

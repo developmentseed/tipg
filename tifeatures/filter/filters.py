@@ -279,7 +279,6 @@ def attribute(name: str, fields: List[str]):
     elif name.lower() == "false":
         return False
     else:
-        print(name, fields)
         raise TypeError(f"Field {name} not in table.")
 
 
