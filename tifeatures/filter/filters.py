@@ -275,7 +275,6 @@ def attribute(name: str, fields: List[str]) -> V:
     if name in fields:
         return V(name)
     else:
-        print(name, fields)
         raise TypeError(f"Field {name} not in table.")
 
 
