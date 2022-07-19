@@ -94,7 +94,7 @@ class Table(BaseModel):
         """Return table columns optionally filtered to only include columns from properties."""
         cols = [c.name for c in self.properties]
         if properties is not None:
-            if self.id_column is not None and self.id_column not in properties:
+            if self.id_column not in properties:
                 properties.append(self.id_column)
 
             geom_col = self.geometry_column()

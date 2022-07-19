@@ -243,6 +243,11 @@ def filter_query(
     return None
 
 
-def sortby_query(sortby: Optional[str] = Query(None, description="Sort By Column")):
-    """Parse sortby parameter."""
+def sortby_query(
+    sortby: Optional[str] = Query(
+        None,
+        description="Column Sort the items by Column (ascending (default) or descending).",
+    )
+):
+    """Sortby dependency."""
     return sortby

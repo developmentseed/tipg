@@ -265,11 +265,11 @@ class Table(CollectionLayer, DBTable):
     def _sortby(self, sortby: Optional[str]):
         sorts = []
         if sortby:
-            sortby = sortby.strip()
-            for s in sortby.split(","):
+            for s in sortby.strip().split(","):
                 parts = re.match(
                     "^(?P<direction>[+-]?)(?P<column>.*)$", s
                 ).groupdict()  # type:ignore
+
                 direction = parts["direction"]
                 column = parts["column"].strip()
                 if self.get_column(column):
@@ -279,9 +279,10 @@ class Table(CollectionLayer, DBTable):
                         sorts.append(logic.V(column))
                 else:
                     raise InvalidPropertyName(f"Property {column} does not exist.")
+
         else:
             sorts.append(logic.V(self.id_column))
-        print(sorts)
+
         return clauses.OrderBy(*sorts)
 
     def _features_query(
