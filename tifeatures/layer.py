@@ -1,6 +1,7 @@
 """tifeatures.layers."""
 
 import abc
+import re
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
@@ -261,6 +262,29 @@ class Table(CollectionLayer, DBTable):
                     logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
                 )
 
+    def _sortby(self, sortby: Optional[str]):
+        sorts = []
+        if sortby:
+            for s in sortby.strip().split(","):
+                parts = re.match(
+                    "^(?P<direction>[+-]?)(?P<column>.*)$", s
+                ).groupdict()  # type:ignore
+
+                direction = parts["direction"]
+                column = parts["column"].strip()
+                if self.get_column(column):
+                    if direction == "-":
+                        sorts.append(logic.V(column).desc())
+                    else:
+                        sorts.append(logic.V(column))
+                else:
+                    raise InvalidPropertyName(f"Property {column} does not exist.")
+
+        else:
+            sorts.append(logic.V(self.id_column))
+
+        return clauses.OrderBy(*sorts)
+
     def _features_query(
         self,
         *,
@@ -269,6 +293,7 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: str = None,
         dt: str = None,
@@ -288,6 +313,7 @@ class Table(CollectionLayer, DBTable):
                 geom=geom,
                 dt=dt,
             )
+            + self._sortby(sortby)
             + clauses.Limit(limit or 10)
             + clauses.Offset(offset or 0)
         )
@@ -327,6 +353,7 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: str = None,
         dt: str = None,
@@ -370,6 +397,7 @@ class Table(CollectionLayer, DBTable):
                 datetime_filter=datetime_filter,
                 properties_filter=properties_filter,
                 cql_filter=cql_filter,
+                sortby=sortby,
                 properties=properties,
                 geom=geom,
                 dt=dt,

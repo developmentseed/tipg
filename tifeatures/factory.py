@@ -20,6 +20,7 @@ from tifeatures.dependencies import (
     filter_query,
     ids_query,
     properties_query,
+    sortby_query,
 )
 from tifeatures.errors import NotFound
 from tifeatures.layer import CollectionLayer
@@ -547,6 +548,7 @@ class Endpoints:
             datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
+            sortby: Optional[str] = Depends(sortby_query),
             geom_column: Optional[str] = Query(
                 None,
                 description="Select geometry column.",
@@ -594,6 +596,7 @@ class Endpoints:
                 "offset",
                 "bbox-only",
                 "simplify",
+                "sortby",
             ]
             properties_filter = [
                 (key, value)
@@ -608,6 +611,7 @@ class Endpoints:
                 datetime_filter=datetime_filter,
                 properties_filter=properties_filter,
                 cql_filter=cql_filter,
+                sortby=sortby,
                 properties=properties,
                 limit=limit,
                 offset=offset,
