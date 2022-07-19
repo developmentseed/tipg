@@ -64,14 +64,12 @@ def test_items_limit_and_offset(app):
     assert body["numberReturned"] == 1
     assert ["collection", "self", "prev"] == [link["rel"] for link in body["links"]]
 
-    # TODO: Fix
-    # offset > data
-    # response = app.get("/collections/public.landsat_wrs/items?offset=20000")
-    # assert response.status_code == 200
-    # body = response.json()
-    # assert len(body["features"]) == 0
-    # assert body["numberMatched"] == 16269
-    # assert body["numberReturned"] == 0
+    response = app.get("/collections/public.landsat_wrs/items?offset=20000")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 0
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 0
 
 
 def test_items_bbox(app):
