@@ -376,18 +376,25 @@ class Table(CollectionLayer, DBTable):
                 )
             SELECT json_build_object(
                 'type', 'FeatureCollection',
-                'features', json_agg(
-                    json_build_object(
-                        'type', 'Feature',
-                        'id', :id_column,
-                        'geometry', :geometry_q,
-                        'properties', to_jsonb( features.* ) - :geom_columns::text[]
+                'features',
+                    (
+                        SELECT
+                            json_agg(
+                                json_build_object(
+                                    'type', 'Feature',
+                                    'id', :id_column,
+                                    'geometry', :geometry_q,
+                                    'properties', to_jsonb( features.* ) - :geom_columns::text[]
+                                )
+                            )
+                        FROM features
+                    ),
+                'total_count',
+                    (
+                        SELECT count FROM total_count
                     )
-                ),
-                'total_count', total_count.count
-            )
-            FROM features, total_count
-            GROUP BY total_count.count;
+                )
+            ;
         """
         q, p = render(
             sql_query,
@@ -424,13 +431,10 @@ class Table(CollectionLayer, DBTable):
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 
-        if items:
-            return (
-                FeatureCollection(features=items["features"]),
-                items["total_count"],
-            )
-        else:
-            return FeatureCollection(features=[]), 0
+        return (
+            FeatureCollection(features=items.get("features") or []),
+            items["total_count"],
+        )
 
     async def features(
         self,
