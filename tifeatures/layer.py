@@ -1,6 +1,7 @@
 """tifeatures.layers."""
 
 import abc
+import re
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
@@ -262,17 +263,26 @@ class Table(CollectionLayer, DBTable):
                 )
 
     def _sortby(self, sortby: Optional[str]):
-        sortby = sortby.strip()
-        if sortby is None:
-            sortby = self.id_column
-        if sortby.startswith("-"):
-            sortby = sortby.replace("-", "")
-            sort_clause = logic.V(sortby).desc()
+        sorts = []
+        if sortby:
+            sortby = sortby.strip()
+            for s in sortby.split(","):
+                parts = re.match(
+                    "^(?P<direction>[+-]?)(?P<column>.*)$", s
+                ).groupdict()  # type:ignore
+                direction = parts["direction"]
+                column = parts["column"].strip()
+                if self.get_column(column):
+                    if direction == "-":
+                        sorts.append(logic.V(column).desc())
+                    else:
+                        sorts.append(logic.V(column))
+                else:
+                    raise InvalidPropertyName("Property {column} does not exist.")
         else:
-            sortby = sortby.replace("+", "")
-            sort_clause = logic.V(sortby).asc()
-        if self.get_column(sortby) is not None:
-            return clauses.OrderBy(sort_clause)
+            sorts.append(logic.V(self.id_column))
+        print(sorts)
+        return clauses.OrderBy(*sorts)
 
     def _features_query(
         self,

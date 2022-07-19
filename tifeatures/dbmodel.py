@@ -55,7 +55,7 @@ class Table(BaseModel):
     table: str
     dbschema: str = Field(..., alias="schema")
     description: Optional[str]
-    id_column: Optional[str]
+    id_column: str
     geometry_columns: List[GeometryColumn]
     properties: List[Column]
 
