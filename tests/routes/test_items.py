@@ -596,3 +596,52 @@ def test_output_response_type(app):
     assert response.headers["content-type"] == "application/ndjson"
     body = response.text.splitlines()
     assert len(body) == 10
+
+
+def test_items_sortby(app):
+    """Test /items endpoint with sortby options."""
+    response = app.get("/collections/public.landsat_wrs/items?limit=1")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert body["numberMatched"] == 16269
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=ogc_fid")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["features"][0]["properties"]["ogc_fid"] == 1
+    assert body["numberMatched"] == 16269
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=row")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["row"] == 1
+    assert body["numberMatched"] == 16269
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=+row")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["row"] == 1
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["row"] == 248
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row,path")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["row"] == 248
+    assert body["features"][0]["properties"]["path"] == 1
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=path,-row")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["row"] == 248
+    assert body["features"][0]["properties"]["path"] == 1
+
+    # Invalid column name
+    response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=something")
+    assert response.status_code == 404
