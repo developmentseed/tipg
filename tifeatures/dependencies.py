@@ -244,4 +244,5 @@ def filter_query(
 
 
 def sortby_query(sortby: Optional[str] = Query(None, description="Sort By Column")):
+    """Parse sortby parameter."""
     return sortby
