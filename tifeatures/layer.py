@@ -278,7 +278,7 @@ class Table(CollectionLayer, DBTable):
                     else:
                         sorts.append(logic.V(column))
                 else:
-                    raise InvalidPropertyName("Property {column} does not exist.")
+                    raise InvalidPropertyName(f"Property {column} does not exist.")
         else:
             sorts.append(logic.V(self.id_column))
         print(sorts)
