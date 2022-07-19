@@ -64,6 +64,7 @@ def test_items_limit_and_offset(app):
     assert body["numberReturned"] == 1
     assert ["collection", "self", "prev"] == [link["rel"] for link in body["links"]]
 
+    # offset overflow, return empty feature collection
     response = app.get("/collections/public.landsat_wrs/items?offset=20000")
     assert response.status_code == 200
     body = response.json()

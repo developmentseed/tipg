@@ -431,13 +431,10 @@ class Table(CollectionLayer, DBTable):
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
 
-        if items and items["features"]:
-            return (
-                FeatureCollection(features=items["features"]),
-                items["total_count"],
-            )
-        else:
-            return FeatureCollection(features=[]), items["total_count"]
+        return (
+            FeatureCollection(features=items.get("features") or []),
+            items["total_count"],
+        )
 
     async def features(
         self,
