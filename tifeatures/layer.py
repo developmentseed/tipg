@@ -261,6 +261,19 @@ class Table(CollectionLayer, DBTable):
                     logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
                 )
 
+    def _sortby(self, sortby: Optional[str]):
+        sortby = sortby.strip()
+        if sortby is None:
+            sortby = self.id_column
+        if sortby.startswith("-"):
+            sortby = sortby.replace("-", "")
+            sort_clause = logic.V(sortby).desc()
+        else:
+            sortby = sortby.replace("+", "")
+            sort_clause = logic.V(sortby).asc()
+        if self.get_column(sortby) is not None:
+            return clauses.OrderBy(sort_clause)
+
     def _features_query(
         self,
         *,
@@ -269,6 +282,7 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: str = None,
         dt: str = None,
@@ -288,6 +302,7 @@ class Table(CollectionLayer, DBTable):
                 geom=geom,
                 dt=dt,
             )
+            + self._sortby(sortby)
             + clauses.Limit(limit or 10)
             + clauses.Offset(offset or 0)
         )
@@ -327,6 +342,7 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: str = None,
         dt: str = None,
@@ -370,6 +386,7 @@ class Table(CollectionLayer, DBTable):
                 datetime_filter=datetime_filter,
                 properties_filter=properties_filter,
                 cql_filter=cql_filter,
+                sortby=sortby,
                 properties=properties,
                 geom=geom,
                 dt=dt,

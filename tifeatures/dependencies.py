@@ -241,3 +241,7 @@ def filter_query(
         return cql2_text_parser(query)
 
     return None
+
+
+def sortby_query(sortby: Optional[str] = Query(None, description="Sort By Column")):
+    return sortby
