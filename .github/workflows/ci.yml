@@ -87,12 +87,12 @@ jobs:
           python -m pip install .["all,test"]
 
       - name: Run Benchmark
-        run: python -m pytest --benchmark-only --benchmark-autosave --benchmark-columns 'min, max, mean, median' --benchmark-json output.json
+        run: python -m pytest --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json
 
-      - name: Store benchmark result
+      - name: Store and benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: Python Benchmark with pytest-benchmark
+          name: TiFeatures Benchmarks
           tool: 'pytest'
           output-file-path: output.json
           alert-threshold: '130%'
@@ -100,6 +100,9 @@ jobs:
           fail-on-alert: true
           # GitHub API token to make a commit comment
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Make a commit on `gh-pages` only if master
+          auto-push: ${{ github.ref == 'refs/heads/master' }}
+          benchmark-data-dir-path: benchmarks
 
   publish:
     needs: [tests]
