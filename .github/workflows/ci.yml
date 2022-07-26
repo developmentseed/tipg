@@ -98,6 +98,8 @@ jobs:
           alert-threshold: '130%'
           comment-on-alert: true
           fail-on-alert: true
+          # GitHub API token to make a commit comment
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: [tests]
