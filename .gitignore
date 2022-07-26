@@ -105,7 +105,8 @@ cdk.out/
 # pycharm
 .idea/
 
-benchmark/
+.benchmarks/
 
 .pgdata/
 docs/src/api/*
+
