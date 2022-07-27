@@ -13,7 +13,7 @@ $ pip install -e .["test,dev"]
 You can then run the tests with the following command:
 
 ```sh
-python -m pytest --cov tifeatures --cov-report term-missing
+python -m pytest --cov tifeatures --cov-report term-missing --benchmark-skip
 ```
 
 **pre-commit**
