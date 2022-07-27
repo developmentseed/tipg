@@ -105,7 +105,7 @@ jobs:
           benchmark-data-dir-path: benchmarks
 
   publish:
-    needs: [benchmark]
+    needs: [tests]
     runs-on: ubuntu-latest
     if: contains(github.ref, 'tags') && github.event_name == 'push'
     steps:
@@ -139,7 +139,7 @@ jobs:
         run: flit publish
 
   publish-docker:
-    needs: [benchmark]
+    needs: [tests]
     if: github.ref == 'refs/heads/master' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
