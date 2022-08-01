@@ -187,9 +187,12 @@ def test_items_properties_filter(app):
     assert body["numberMatched"] == 0
     assert body["numberReturned"] == 0
 
-    # TODO: fix, Table.query shouldn't return items when filtering on invalid properties (gpath isn't a valid property name)
-    response = app.get("/collections/public.landsat_wrs/items?gpath=10")
-    assert response.status_code == 404
+    # We exclude invalid properties (not matching any collection column.) so they have no effects
+    response = app.get("/collections/public.landsat_wrs/items?token=mysecrettoken")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 10
 
 
 def test_items_filter_cql_ids(app):

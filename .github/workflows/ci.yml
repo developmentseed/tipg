@@ -52,7 +52,7 @@ jobs:
           pre-commit run --all-files
 
       - name: Run tests
-        run: python -m pytest --cov tifeatures --cov-report xml --cov-report term-missing --benchmark-skip
+        run: python -m pytest --cov tifeatures --cov-report xml --cov-report term-missing --asyncio-mode=strict
 
       - name: Upload Results
         if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
@@ -87,7 +87,7 @@ jobs:
           python -m pip install .["all,test"]
 
       - name: Run Benchmark
-        run: python -m pytest --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json
+        run: python -m pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json --asyncio-mode=strict
 
       - name: Store and benchmark result
         uses: benchmark-action/github-action-benchmark@v1

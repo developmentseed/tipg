@@ -13,7 +13,13 @@ $ pip install -e .["test,dev"]
 You can then run the tests with the following command:
 
 ```sh
-python -m pytest --cov tifeatures --cov-report term-missing --benchmark-skip
+python -m pytest --cov tifeatures --cov-report term-missing --asyncio-mode=strict
+```
+
+and run benchmark
+
+```sh
+python -m pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median' --asyncio-mode=strict
 ```
 
 **pre-commit**

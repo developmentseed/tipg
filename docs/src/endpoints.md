@@ -335,6 +335,7 @@ HeaderParams:
 
 !!! Important
     Additional query-parameters (form `PROP=VALUE`) will be considered as a **property filter**.
+    Properties (`PROP`) not matching collection's column will be ignored.
 
 Example:
 
@@ -345,19 +346,18 @@ Example:
 - `http://127.0.0.1:8081/collections/public.countries/items?ids=1,2,3` *limit result to ids `1`, `2` and `3`*
 - `http://127.0.0.1:8081/collections/public.countries/items?properties=name` *only return `name` property*
 
+- **Property Filter**
+  - `http://127.0.0.1:8081/collections/public.countries/items?name=Zimbabwe` *only return features where property `name==Zimbabwe`*
 
-  - Property Filter
-    - `http://127.0.0.1:8081/collections/public.countries/items?name=Zimbabwe` *only return features where property `name==Zimbabwe`*
+- **Datetime**
+  - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z` *return features with datetime column with value `==2004-10-19T10:23:54Z`*.
+  - `http://127.0.0.1:8081/collections/public.countries/items?datetime=../2004-10-19T10:23:54Z` *return features with datetime column with value `<=2004-10-19T10:23:54Z`*.
+  - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/..` *return features with datetime column with value `>=2004-10-19T10:23:54Z`*.
+  - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/2004-10-20T10:23:54Z` *return features with datetime column with value between `2004-10-19T10:23:54Z` and `2004-10-20T10:23:54Z`*.
 
-  - Datetime
-    - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z` *return features with datetime column with value `==2004-10-19T10:23:54Z`*.
-    - `http://127.0.0.1:8081/collections/public.countries/items?datetime=../2004-10-19T10:23:54Z` *return features with datetime column with value `<=2004-10-19T10:23:54Z`*.
-    - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/..` *return features with datetime column with value `>=2004-10-19T10:23:54Z`*.
-    - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/2004-10-20T10:23:54Z` *return features with datetime column with value between `2004-10-19T10:23:54Z` and `2004-10-20T10:23:54Z`*.
-
-  - CQL2
-    - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-json&filter={"op":"=","args":[{"property":"ogc_fid"},1]}`
-    - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-text&filter=ogc_fid=1`
+- **CQL2**
+  - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-json&filter={"op":"=","args":[{"property":"ogc_fid"},1]}`
+  - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-text&filter=ogc_fid=1`
 
 Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_ and https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param
 
