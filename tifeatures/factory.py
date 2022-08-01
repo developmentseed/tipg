@@ -582,6 +582,7 @@ class Endpoints:
             offset = offset or 0
 
             # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
+            # We exclude  application known query-parameter.
             exclude = [
                 "f",
                 "ids",
@@ -598,10 +599,11 @@ class Endpoints:
                 "simplify",
                 "sortby",
             ]
+            table_property = [prop.name for prop in collection.properties]
             properties_filter = [
                 (key, value)
                 for (key, value) in request.query_params.items()
-                if key.lower() not in exclude
+                if key.lower() not in exclude and key.lower() in table_property
             ]
 
             items, matched_items = await collection.features(
