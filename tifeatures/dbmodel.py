@@ -169,6 +169,7 @@ async def get_table_index(
                     WHERE
                         attnum>0
                         AND attrelid=c.oid
+                        AND NOT attisdropped
                 ) as columns,
                 (
                     SELECT
