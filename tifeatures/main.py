@@ -10,7 +10,7 @@ from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tifeatures.factory import Endpoints
 from tifeatures.layer import FunctionRegistry
 from tifeatures.middleware import CacheControlMiddleware
-from tifeatures.settings import APISettings
+from tifeatures.settings import APISettings, PostgresSettings
 
 from fastapi import FastAPI
 
@@ -19,6 +19,7 @@ from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
+postgres_settings = PostgresSettings()
 
 app = FastAPI(
     title=settings.name,
@@ -66,8 +67,12 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 @app.on_event("startup")
 async def startup_event() -> None:
     """Connect to database on startup."""
-    await connect_to_db(app)
-    await register_table_catalog(app)
+    await connect_to_db(app, settings=postgres_settings)
+    await register_table_catalog(
+        app,
+        schemas=postgres_settings.db_schemas,
+        tables=postgres_settings.db_tables,
+    )
 
 
 @app.on_event("shutdown")
