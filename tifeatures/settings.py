@@ -1,7 +1,7 @@
 """tifeatures config."""
 
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pydantic
 
@@ -55,6 +55,9 @@ class PostgresSettings(pydantic.BaseSettings):
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
     db_max_inactive_conn_lifetime: float = 300
+
+    db_schemas: List[str] = ["public"]
+    db_tables: Optional[List[str]]
 
     class Config:
         """model config"""

@@ -89,20 +89,20 @@ jobs:
       - name: Run Benchmark
         run: python -m pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json --asyncio-mode=strict
 
-      - name: Store and benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: TiFeatures Benchmarks
-          tool: 'pytest'
-          output-file-path: output.json
-          alert-threshold: '130%'
-          comment-on-alert: true
-          fail-on-alert: true
-          # GitHub API token to make a commit comment
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Make a commit on `gh-pages` only if master
-          auto-push: ${{ github.ref == 'refs/heads/master' }}
-          benchmark-data-dir-path: benchmarks
+      # - name: Store and benchmark result
+      #   uses: benchmark-action/github-action-benchmark@v1
+      #   with:
+      #     name: TiFeatures Benchmarks
+      #     tool: 'pytest'
+      #     output-file-path: output.json
+      #     alert-threshold: '130%'
+      #     comment-on-alert: true
+      #     fail-on-alert: true
+      #     # GitHub API token to make a commit comment
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     # Make a commit on `gh-pages` only if master
+      #     auto-push: ${{ github.ref == 'refs/heads/master' }}
+      #     benchmark-data-dir-path: benchmarks
 
   publish:
     needs: [tests]
