@@ -2,6 +2,11 @@
 
 {% set show_prev_link = false %}
 {% set show_next_link = false %}
+{%  if 'items?' in url %}
+  {% set urlq = url + '&' %}
+  {% else %}
+  {% set urlq = url + '?' %}
+{% endif %}
 {% for link in response.links %}
   {% if link.rel == "alternate" %}{% set json_link = link %}{% endif %}
   {% if link.rel == "prev" %}{% set prev_link = link %}{% set show_prev_link = true %}{% endif %}
@@ -17,7 +22,7 @@
       {% endif %}
     {% endfor %}
 
-    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=geojson">GeoJSON</a></li>
+    <li class="ml-auto json-link"><a target="_blank" href="{{ urlq }}f=geojson">GeoJSON</a></li>
   </ol>
 </nav>
 
