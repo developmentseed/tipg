@@ -33,6 +33,30 @@ $ cd tifeatures
 $ python -m pip install -e .  # or .["all"] to install optional dependencies
 ```
 
+## PostGIS/Postgres
+
+`TiFeatures` rely a lot of `ST_*` PostGIS functions. You need to make sure your Postgres database has Postgis installed.
+
+```sql
+SELECT name, default_version,installed_version
+FROM pg_available_extensions WHERE name LIKE 'postgis%' or name LIKE 'address%';
+```
+
+```sql
+CREATE EXTENSION postgis;
+```
+
+### Configuration
+
+To be able to work, the application will need access to the database. `tifeatures` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
+
+Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tifeatures/blob/master/.env.example)
+
+```
+# you need define the DATABASE_URL directly
+DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
+```
+
 ## Launch
 
 ```bash
@@ -44,17 +68,6 @@ $ uvicorn tifeatures.main:app
 ```
 
 ![](https://user-images.githubusercontent.com/10407788/152539521-eadb9680-44ea-4647-b65d-d6644169db85.png)
-
-### Configuration
-
-To be able to work, the application will need access to the PostGIS database. `tifeatures` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
-
-Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tifeatures/blob/master/.env.example)
-
-```
-# you need define the DATABASE_URL directly
-DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
-```
 
 ## OGC Specification
 
