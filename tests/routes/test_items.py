@@ -258,7 +258,7 @@ def test_items_properties_filter_cql2(app):
         f"/collections/public.landsat_wrs/items?filter-lang=cql2-json&filter={json.dumps(filter_query)}"
     )
     assert response.status_code == 500
-    assert "integer is required" in response.json()["detail"]
+    assert "integer" in response.json()["detail"]
 
     filter_query = {
         "op": "and",
