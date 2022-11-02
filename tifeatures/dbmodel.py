@@ -32,6 +32,10 @@ class Column(BaseModel):
             "smallserial",
             "serial",
             "bigserial",
+            # Float8 is not a Postgres type name but is the name we give
+            # internally do Double Precision type
+            # ref: https://github.com/developmentseed/tifeatures/pull/60/files#r1011863866
+            "float8",
         ]:
             return "number"
 
@@ -165,7 +169,7 @@ async def get_table_index(
                         jsonb_agg(
                             jsonb_build_object(
                                 'name', attname,
-                                'type', format_type(atttypid, null),
+                                'type', replace(replace(replace(replace(format_type(atttypid, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp'),
                                 'description', col_description(attrelid, attnum)
                             )
                         )
