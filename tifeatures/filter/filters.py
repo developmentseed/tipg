@@ -88,6 +88,11 @@ class Operator:
         self.arity = len(signature(self.function).parameters)
 
 
+def func(name, *args):
+    """Return results of running SQL function with arguments."""
+    return Func(name, *args)
+
+
 def combine(sub_filters, combinator: str = "AND"):
     """Combine filters using a logical combinator
 

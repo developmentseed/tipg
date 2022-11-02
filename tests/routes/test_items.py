@@ -302,6 +302,16 @@ def test_items_geo_filter_cql2(app):
     assert body["numberMatched"] == 78
 
 
+def test_items_function_filter_cql2(app):
+    response = app.get(
+        "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=left(pr,2)='13'"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 10
+    assert body["numberMatched"] == 642
+
+
 def test_items_geom_column(app):
     """Test /items endpoint geom_column."""
     response = app.get("/collections/public.landsat_wrs/items?geom-column=geom")
