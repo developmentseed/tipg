@@ -21,13 +21,18 @@ class Column(BaseModel):
         if pgtype.endswith("[]"):
             return "array"
 
-        if any(
-            [
-                pgtype.startswith("int"),
-                pgtype.startswith("num"),
-                pgtype.startswith("float"),
-            ]
-        ):
+        if pgtype in [
+            "smallint",
+            "integer",
+            "bigint",
+            "decimal",
+            "numeric",
+            "real",
+            "double precision",
+            "smallserial",
+            "serial",
+            "bigserial",
+        ]:
             return "number"
 
         if pgtype.startswith("bool"):
