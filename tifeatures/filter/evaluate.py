@@ -114,10 +114,9 @@ class BuildPGEvaluator(Evaluator):  # noqa: D101
     def arithmetic(self, node, lhs, rhs):  # noqa: D102
         return filters.runop(lhs, rhs, node.op.value)
 
-    # TODO: map functions
-    # @handle(ast.FunctionExpressionNode)
-    # def function(self, node, *arguments):
-    #     return self.function_map[node.name](*arguments)
+    @handle(ast.Function)
+    def function(self, node, *arguments):  # noqa: D102
+        return filters.func(node.name, *arguments)
 
     @handle(*values.LITERALS)
     def literal(self, node):  # noqa: D102
