@@ -32,6 +32,10 @@ class Column(BaseModel):
             "smallserial",
             "serial",
             "bigserial",
+            # Float8 is not a Postgres type name but is the name we give
+            # internally do Double Precision type
+            # ref: https://github.com/developmentseed/tifeatures/pull/60/files#r1011863866
+            "float8",
         ]:
             return "number"
 
