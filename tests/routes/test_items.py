@@ -179,6 +179,16 @@ def test_items_properties_filter(app):
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
 
+    response = app.get("/collections/public.landsat_wrs/items?pr=013001")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["path"] == 13
+    assert body["features"][0]["properties"]["row"] == 1
+
     response = app.get("/collections/public.landsat_wrs/items?path=1000000")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"

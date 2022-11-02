@@ -165,7 +165,7 @@ async def get_table_index(
                         jsonb_agg(
                             jsonb_build_object(
                                 'name', attname,
-                                'type', format_type(atttypid, null),
+                                'type', replace(replace(replace(replace(format_type(atttypid, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp'),
                                 'description', col_description(attrelid, attnum)
                             )
                         )
