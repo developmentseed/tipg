@@ -303,14 +303,13 @@ def test_items_geo_filter_cql2(app):
 
 
 def test_items_function_filter_cql2(app):
-    """Note this uses the postgis function ST_INTERSECTS *directly* as a custom function and is not using the CQL2 "s_intersects"."""
     response = app.get(
-        "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ST_INTERSECTS(geom, POLYGON((-22.2153 79.6888,-22.2153 81.8555,-8.97407 81.8555,-8.97407 79.6888,-22.2153 79.6888)))"
+        "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=left(pr,2)='13'"
     )
     assert response.status_code == 200
     body = response.json()
     assert len(body["features"]) == 10
-    assert body["numberMatched"] == 78
+    assert body["numberMatched"] == 642
 
 
 def test_items_geom_column(app):
