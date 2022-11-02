@@ -129,7 +129,7 @@ class Table(CollectionLayer, DBTable):
         simplify: Optional[float],
     ):
         if geometry_column is None:
-            return pg_funcs.cast(None, "json")
+            return pg_funcs.cast(None, "jsonb")
 
         g = logic.V(geometry_column.name)
         g = pg_funcs.cast(g, "geometry")
@@ -148,7 +148,7 @@ class Table(CollectionLayer, DBTable):
 
         g = logic.Func("ST_AsGeoJson", g)
 
-        return g
+        return pg_funcs.cast(g, "jsonb")
 
     def _where(
         self,
