@@ -26,8 +26,7 @@ def test_collections_landsat(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert body["id"] == "public.landsat_wrs"
-    assert ["id", "links", "extent", "itemType", "crs"] == list(body)
-    assert ["bbox", "crs"] == list(body["extent"]["spatial"])
+    assert ["id", "links", "itemType", "crs"] == list(body)
 
     response = app.get("/collections/public.landsat_wrs?f=html")
     assert response.status_code == 200
