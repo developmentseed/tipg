@@ -29,6 +29,9 @@ def database_url(test_db):
     test_db.run_sql_file(os.path.join(DATA_DIR, "my_data.sql"))
     assert test_db.has_table("my_data")
 
+    test_db.run_sql_file(os.path.join(DATA_DIR, "nongeo_data.sql"))
+    assert test_db.has_table("nongeo_data")
+
     return test_db.connection.engine.url
 
 
@@ -36,10 +39,10 @@ def database_url(test_db):
 def app(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
     monkeypatch.setenv("DATABASE_URL", str(database_url))
+    monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
     monkeypatch.setenv(
         "TIFEATURES_TEMPLATE_DIRECTORY", os.path.join(DATA_DIR, "templates")
     )
-
     from tifeatures.main import app
 
     # Remove middlewares https://github.com/encode/starlette/issues/472

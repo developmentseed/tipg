@@ -72,6 +72,7 @@ async def startup_event() -> None:
         app,
         schemas=postgres_settings.db_schemas,
         tables=postgres_settings.db_tables,
+        spatial=postgres_settings.only_spatial_tables,
     )
 
 
