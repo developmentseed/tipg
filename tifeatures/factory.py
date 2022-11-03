@@ -164,7 +164,7 @@ class Endpoints:
             request: Request,
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
-            """Get conformance."""
+            """Get landing page."""
             data = model.Landing(
                 title=self.title,
                 links=[
@@ -273,7 +273,7 @@ class Endpoints:
             """Get conformance."""
             data = model.Conformance(
                 conformsTo=[
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
@@ -284,7 +284,7 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
                     "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                 ]
             )
@@ -347,6 +347,14 @@ class Endpoints:
                             "title": collection.id,
                             "description": collection.description,
                             # TODO: Add Spatial/Temporal Extent
+                            "extent": model.Extent(
+                                spatial=model.Spatial(
+                                    bbox=[collection.bounds],
+                                    crs=collection.crs,
+                                )
+                                if collection.bounds is not None
+                                else None
+                            ),
                             "links": [
                                 model.Link(
                                     href=self.url_for(
@@ -414,9 +422,20 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
+            # Difference between the collection output Model
+            # and the collection database model
+            collection_data = collection.dict(exclude={"crs", "bounds"})
+            if collection.bounds:
+                collection_data["extent"] = model.Extent(
+                    spatial=model.Spatial(
+                        bbox=[collection.bounds],
+                        crs=collection.crs,
+                    )
+                )
+
             data = model.Collection(
                 **{
-                    **collection.dict(),
+                    **collection_data,
                     "links": [
                         model.Link(
                             href=self.url_for(
@@ -762,7 +781,7 @@ class Endpoints:
                                         request,
                                         "item",
                                         collectionId=collection.id,
-                                        itemId=feature.properties[collection.id_column],
+                                        itemId=feature.id,
                                     ),
                                     rel="item",
                                     type=MediaType.json,

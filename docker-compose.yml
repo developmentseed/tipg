@@ -37,3 +37,28 @@ services:
     command: postgres -N 500
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
+
+  # pg_featureserv:
+  #   image: pramsey/pg_featureserv:latest
+  #   environment:
+  #     - DATABASE_URL=postgresql://username:password@database:5432/postgis
+  #   ports:
+  #     - "9000:9000"
+  #   depends_on:
+  #   - database
+
+  # fast_features:
+  #   image: ghcr.io/microsoft/ogc-api-fast-features:main
+  #   environment:
+  #     - APP_POSTGRESQL_PROFILE=stac_hybrid
+  #     - APP_POSTGRESQL_HOST=database
+  #     - APP_POSTGRESQL_PORT=5432
+  #     - APP_POSTGRESQL_USER=username
+  #     - APP_POSTGRESQL_PASSWORD=password
+  #     - APP_POSTGERSQL_DBNAME=postgis
+  #     - APP_DATA_SOURCE_TYPES=postgresql
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #   - database
+
