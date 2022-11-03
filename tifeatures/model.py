@@ -37,7 +37,7 @@ class Spatial(BaseModel):
 
     # bbox: List[BBox]
     bbox: List[List[float]]
-    crs: str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    crs: str
 
 
 class Temporal(BaseModel):
@@ -76,7 +76,7 @@ class Collection(BaseModel):
     links: List[Link]
     extent: Optional[Extent]
     itemType: str = "feature"
-    crs: List[str] = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+    crs: List[str] = ["http://www.opengis.net/def/crs/EPSG/0/4326"]
 
     class Config:
         """Collection model configuration."""

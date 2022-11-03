@@ -44,13 +44,15 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     Attributes:
         id (str): Layer's name.
         bounds (list): Layer's bounds (left, bottom, right, top).
+        crs (str): Coordinate reference system of the Collection.
         title (str): Layer's title
         description (str): Layer's description
 
     """
 
     id: str
-    bounds: List[float] = [-180, -90, 180, 90]
+    bounds: Optional[List[float]]
+    crs: Optional[str]
     title: Optional[str]
     description: Optional[str]
 
@@ -94,6 +96,7 @@ class Table(CollectionLayer, DBTable):
     Attributes:
         id (str): Layer's name.
         bounds (list): Layer's bounds (left, bottom, right, top).
+        crs (str): Coordinate reference system of the Table.
         type (str): Layer's type.
         schema (str): Table's database schema (e.g public).
         geometry_type (str): Table's geometry type (e.g polygon).
@@ -111,6 +114,8 @@ class Table(CollectionLayer, DBTable):
         geoms = values.get("geometry_columns")
         if geoms:
             values["bounds"] = geoms[0].bounds
+            values["crs"] = f"http://www.opengis.net/def/crs/EPSG/0/{geoms[0].srid}"
+
         return values
 
     def _select(self, properties: Optional[List[str]]):
