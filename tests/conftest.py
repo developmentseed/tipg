@@ -32,6 +32,20 @@ def database_url(test_db):
     test_db.run_sql_file(os.path.join(DATA_DIR, "nongeo_data.sql"))
     assert test_db.has_table("nongeo_data")
 
+    test_db.connection.execute(
+        "CREATE TABLE landsat AS SELECT geom, ST_Centroid(geom) as centroid, ogc_fid, id, pr, path, row from landsat_wrs;"
+    )
+    test_db.connection.execute("ALTER TABLE landsat ADD PRIMARY KEY (ogc_fid);")
+    assert test_db.has_table("landsat")
+
+    count_landsat = test_db.connection.execute(
+        "SELECT COUNT(*) FROM landsat_wrs"
+    ).scalar()
+    count_landsat_centroid = test_db.connection.execute(
+        "SELECT COUNT(*) FROM landsat"
+    ).scalar()
+    assert count_landsat == count_landsat_centroid
+
     return test_db.connection.engine.url
 
 

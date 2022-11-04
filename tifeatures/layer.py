@@ -113,7 +113,9 @@ class Table(CollectionLayer, DBTable):
         """Get default bounds from the first geometry columns."""
         geoms = values.get("geometry_columns")
         if geoms:
-            values["bounds"] = geoms[0].bounds
+            # Get the Extent of all the bounds
+            minx, miny, maxx, maxy = zip(*[geom.bounds for geom in geoms])
+            values["bounds"] = [min(minx), min(miny), max(maxx), max(maxy)]
             values["crs"] = f"http://www.opengis.net/def/crs/EPSG/0/{geoms[0].srid}"
 
         return values

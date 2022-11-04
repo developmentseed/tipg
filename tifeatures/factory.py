@@ -833,11 +833,28 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+            bbox_only: Optional[bool] = Query(
+                None,
+                description="Only return the bounding box of the feature.",
+                alias="bbox-only",
+            ),
+            simplify: Optional[float] = Query(
+                None,
+                description="Simplify the output geometry to given threshold in decimal degrees.",
+            ),
             output_type: Optional[MediaType] = Depends(ItemOutputType),
         ):
             feature = await collection.feature(
                 request.app.state.pool,
                 item_id=itemId,
+                geom=geom_column,
+                bbox_only=bbox_only,
+                simplify=simplify,
             )
 
             if not feature:

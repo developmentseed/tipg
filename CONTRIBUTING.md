@@ -27,5 +27,9 @@ python -m pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, 
 This repo is set to use `pre-commit` to run *isort*, *flake8*, *pydocstring*, *black* ("uncompromising Python code formatter") and mypy when committing new code.
 
 ```bash
+# Install pre-commit command
+$ pip install pre-commit
+
+# Setup pre-commit withing your local environment
 $ pre-commit install
 ```

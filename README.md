@@ -23,7 +23,7 @@
 
 ---
 
-`TiFeatures`, pronounced **tee-Features**, is a python package which helps creating lightweight **Features** server for PostGIS Database. The API has been designed with respect to [OGC Features API specification](https://github.com/opengeospatial/ogcapi-features).
+`TiFeatures`, pronounced *T[ee]Features*, is a **python** package which helps creating lightweight **Features** server for PostGIS Database. The API has been designed with respect to [OGC Features API specification](https://github.com/opengeospatial/ogcapi-features).
 
 ## Install
 
@@ -62,12 +62,18 @@ DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 ```bash
 $ pip install uvicorn
 
-# Set you postgis database instance URL in the environment
+# Set your postgis database instance URL in the environment
 $ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 $ uvicorn tifeatures.main:app
+
+# or using Docker
+
+$ docker-compose up
 ```
 
-![](https://user-images.githubusercontent.com/10407788/152539521-eadb9680-44ea-4647-b65d-d6644169db85.png)
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/10407788/199774870-2e385617-bae8-4513-9349-d97e43670767.png"/>
+</p>
 
 ## OGC Specification
 
