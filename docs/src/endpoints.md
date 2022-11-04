@@ -372,6 +372,9 @@ PathParams:
 - **itemId** (str): Feature Id
 
 QueryParams:
+- **geom-column** * (str): Select geometry column to create geometry from.
+- **bbox-only**  * (bool): Only return the bounding box of the feature.
+- **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
 
 - **f** (str, one of [`geojson`, `html`, `json`]): Select response MediaType.
 

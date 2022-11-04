@@ -342,6 +342,84 @@ def test_items_geom_column(app):
     body = response.json()
     assert body["detail"] == "Invalid Geometry Column: the_geom."
 
+    response = app.get("/collections/public.landsat/items")
+    body = response.json()
+    assert body["type"] == "FeatureCollection"
+    assert body["id"] == "public.landsat"
+    assert body["title"] == "public.landsat"
+    assert body["links"]
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 10
+    assert body["features"][0]["geometry"]["type"] == "Polygon"
+    # Make sure we don't return any geometry in the properties
+    assert "centroid" not in body["features"][0]["properties"]
+    assert "geom" not in body["features"][0]["properties"]
+
+    response = app.get("/collections/public.landsat/items?geom-column=centroid")
+    body = response.json()
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 10
+    assert body["features"][0]["geometry"]["type"] == "Point"
+    assert "centroid" not in body["features"][0]["properties"]
+    assert "geom" not in body["features"][0]["properties"]
+
+    response = app.get("/collections/public.landsat/items/1")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+
+    response = app.get("/collections/public.landsat/items/1?geom-column=geom")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+
+
+def test_geom_operation(app):
+    """Check that bbox-only and simplify give the correct results."""
+    response = app.get("/collections/public.landsat/items/1")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    poly = body["geometry"]
+
+    response = app.get("/collections/public.landsat/items/1?bbox-only=true")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    assert not body["geometry"] == poly
+
+    response = app.get("/collections/public.landsat/items/1?geom-column=centroid")
+    body = response.json()
+    assert body["geometry"]["type"] == "Point"
+    point = body["geometry"]
+
+    # bbox-only (ST_Envelope) has no influence on point
+    response = app.get(
+        "/collections/public.landsat/items/1?geom-column=centroid&bbox-only=true"
+    )
+    body = response.json()
+    assert body["geometry"]["type"] == "Point"
+    assert body["geometry"] == point
+
+    response = app.get("/collections/public.landsat/items/1")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    poly = body["geometry"]
+
+    response = app.get("/collections/public.landsat/items/1?simplify=0.5")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    assert not body["geometry"] == poly
+
+    response = app.get("/collections/public.landsat/items/1?bbox-only=true")
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    poly = body["geometry"]
+
+    # Check that simplify has no influence when bbox only
+    response = app.get(
+        "/collections/public.landsat/items/1?simplify=0.5&bbox-only=true"
+    )
+    body = response.json()
+    assert body["geometry"]["type"] == "Polygon"
+    assert body["geometry"] == poly
+
 
 def test_items_datetime(app):
     """Test /items endpoint datetime."""

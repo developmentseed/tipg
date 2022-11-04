@@ -12,6 +12,7 @@ def test_collections(app):
     assert list(filter(lambda x: x["id"] == "public.landsat_wrs", body["collections"]))
     assert list(filter(lambda x: x["id"] == "public.my_data", body["collections"]))
     assert list(filter(lambda x: x["id"] == "public.nongeo_data", body["collections"]))
+    assert list(filter(lambda x: x["id"] == "public.landsat", body["collections"]))
 
     response = app.get("/?f=html")
     assert response.status_code == 200
@@ -62,3 +63,17 @@ def test_collections_queryables(app):
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "Queryables" in response.text
+
+    response = app.get("/collections/public.landsat/queryables")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/schema+json"
+    body = response.json()
+    assert body["title"] == "public.landsat"
+    # 2 geometry column
+    assert (
+        body["properties"]["geom"]["$ref"] == "https://geojson.org/schema/Geometry.json"
+    )
+    assert (
+        body["properties"]["centroid"]["$ref"]
+        == "https://geojson.org/schema/Geometry.json"
+    )

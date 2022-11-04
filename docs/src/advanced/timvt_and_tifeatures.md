@@ -2,7 +2,7 @@
 
 `TiFeatures` and [`TiMVT`](https://github.com/developmentseed/timvt) share a lot of in common and it's possible to create a unique FastAPI application with both **Features** and **MVT** endpoints:
 
-```python
+``` py
 """Features and MVT app."""
 
 from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog

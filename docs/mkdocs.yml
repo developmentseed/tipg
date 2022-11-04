@@ -18,7 +18,7 @@ extra:
 
 nav:
   - TiFeatures: "index.md"
-  - Tutorial - User Guide:
+  - User Guide:
     - "Endpoints": endpoints.md
   - Advanced User Guide:
     - "Combine MVT and Features": advanced/timvt_and_tifeatures.md
@@ -50,6 +50,8 @@ theme:
     primary: indigo
     scheme: default
   favicon: img/favicon.ico
+  logo: img/logo.png
+
 
 markdown_extensions:
   - admonition
