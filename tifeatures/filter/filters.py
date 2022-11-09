@@ -17,13 +17,13 @@ from geojson_pydantic.geometries import Polygon, parse_geometry_obj
 
 def bbox_to_wkt(bbox: List[float], srid: int = 4326) -> str:
     """Return WKT representation of a BBOX."""
-    poly = Polygon.from_bounds(*bbox)
+    poly = Polygon.from_bounds(*bbox)  # type:ignore
     return f"SRID={srid};{poly.wkt}"
 
 
 def parse_geometry(geom: Dict[str, Any]) -> str:
     """Parse geometry object and return WKT."""
-    wkt = parse_geometry_obj(geom).wkt
+    wkt = parse_geometry_obj(geom).wkt  # type:ignore
     sridtxt = "" if wkt.startswith("SRID=") else "SRID=4326;"
     return f"{sridtxt}{wkt}"
 

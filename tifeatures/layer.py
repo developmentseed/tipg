@@ -9,7 +9,7 @@ from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
-from geojson_pydantic import Feature, FeatureCollection
+from geojson_pydantic import Feature, FeatureCollection  # type:ignore
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
@@ -438,7 +438,9 @@ class Table(CollectionLayer, DBTable):
                 bbox_only=bbox_only,
                 simplify=simplify,
             ),
-            geom_columns=[g.name for g in self.geometry_columns],
+            geom_columns=[g.name for g in self.geometry_columns]
+            if self.geometry_columns
+            else [],
         )
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
