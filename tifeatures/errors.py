@@ -22,6 +22,10 @@ class NotFound(TiFeaturesError):
     """Invalid table name."""
 
 
+class NoPrimaryKey(TiFeaturesError):
+    """Table has no primary key."""
+
+
 class MissingGeometryColumn(TiFeaturesError):
     """Table has no geometry column."""
 
@@ -61,6 +65,7 @@ DEFAULT_STATUS_CODES = {
     InvalidDatetimeColumnName: status.HTTP_404_NOT_FOUND,
     PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_ENTITY,
 }
 
 

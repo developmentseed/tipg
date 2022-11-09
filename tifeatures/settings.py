@@ -6,6 +6,17 @@ from typing import Any, Dict, List, Optional
 import pydantic
 
 
+class TableConfig(pydantic.BaseModel):
+    """Configuration to add table options with env variables."""
+
+    geomcol: Optional[str]
+    datetimecol: Optional[str]
+    extent: Optional[List[float]]
+    temporalextent: Optional[List[str]]
+    pk: Optional[str]
+    properties: Optional[List[str]]
+
+
 class _APISettings(pydantic.BaseSettings):
     """API settings"""
 
@@ -13,6 +24,9 @@ class _APISettings(pydantic.BaseSettings):
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
+    fallback_key_names: Optional[List[str]] = ["ogc_fid", "id", "pkey", "gid"]
+
+    table_config: Optional[Dict[str, TableConfig]]
 
     @pydantic.validator("cors_origins")
     def parse_cors_origin(cls, v):
@@ -24,6 +38,7 @@ class _APISettings(pydantic.BaseSettings):
 
         env_prefix = "TIFEATURES_"
         env_file = ".env"
+        env_nested_delimiter = "__"
 
 
 @lru_cache()

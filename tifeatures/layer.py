@@ -288,7 +288,10 @@ class Table(CollectionLayer, DBTable):
                     raise InvalidPropertyName(f"Property {column} does not exist.")
 
         else:
-            sorts.append(logic.V(self.id_column))
+            if self.id_column is not None:
+                sorts.append(logic.V(self.id_column))
+            else:
+                sorts.append(logic.V(self.properties[0].name))
 
         return clauses.OrderBy(*sorts)
 
@@ -427,7 +430,9 @@ class Table(CollectionLayer, DBTable):
                 geom=geom,
                 dt=dt,
             ),
-            id_column=logic.V(self.id_column),
+            id_column=logic.V(self.id_column)
+            if self.id_column
+            else pg_funcs.cast(None, "text"),
             geometry_q=self._geom(
                 geometry_column=self.geometry_column(geom),
                 bbox_only=bbox_only,
@@ -492,10 +497,13 @@ class Table(CollectionLayer, DBTable):
     @property
     def queryables(self) -> Dict:
         """Return the queryables."""
-        geoms = {
-            col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
-            for col in self.geometry_columns
-        }
+        if self.geometry_columns and len(self.geometry_columns) > 0:
+            geoms = {
+                col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
+                for col in self.geometry_columns
+            }
+        else:
+            geoms = {}
         props = {
             col.name: {"name": col.name, "type": col.json_type}
             for col in self.properties
