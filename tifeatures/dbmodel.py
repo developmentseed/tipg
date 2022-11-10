@@ -110,14 +110,12 @@ class Table(BaseModel):
 
     def datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
-        print(self.datetime_columns, name, self.table_config.datetimecol)
         if not self.datetime_columns:
             return None
         if name is None:
             name = getattr(self.table_config, "datetimecol", None)
         for col in self.datetime_columns:
             if name is None or col.name == name:
-                print(f"COL:{col}")
                 return col
 
         return None
