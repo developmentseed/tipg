@@ -61,7 +61,7 @@ class GeometryColumn(Column):
 
 
 class DatetimeColumn(Column):
-    """Model for PostGIS geometry/geography column."""
+    """Model for PostGIS datetime column."""
 
     min: Optional[str]
     max: Optional[str]
