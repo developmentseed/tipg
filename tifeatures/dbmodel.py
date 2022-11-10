@@ -313,19 +313,19 @@ async def get_table_index(
 
             datetime_column = None
             for col in datetime_columns:
-                if table_conf.datetimecol == col:
+                if table_conf.datetimecol == col["name"]:
                     datetime_column = col
             if not datetime_column and datetime_columns:
                 datetime_column = datetime_columns[0]
 
             geometry_column = None
             for col in geometry_columns:
-                if table_conf.geomcol == col:
+                if table_conf.geomcol == col["name"]:
                     geometry_column = col
             if not geometry_column and geometry_columns:
                 geometry_column = geometry_columns[0]
 
-            catalog[table["id"]] = {
+            catalog[id] = {
                 "id": id,
                 "table": table["table"],
                 "schema": table["dbschema"],
@@ -337,4 +337,5 @@ async def get_table_index(
                 "datetime_column": datetime_column,
                 "geometry_column": geometry_column,
             }
+
         return catalog

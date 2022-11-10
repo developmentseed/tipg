@@ -16,4 +16,5 @@ INSERT INTO "public"."my_data" ("geom" , "id", "datetime") VALUES ('0103000020E6
 ALTER TABLE public.my_data ADD COLUMN otherdt timestamptz;
 ALTER TABLE public.my_data ADD COLUMN othergeom geometry;
 UPDATE my_data SET otherdt=datetime+'1 year'::interval, othergeom=st_pointonsurface(geom);
+CREATE VIEW public.my_data_alt AS SELECT * FROM my_data;
 COMMIT;

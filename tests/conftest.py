@@ -61,6 +61,15 @@ def app(database_url, monkeypatch):
         "TIFEATURES_TABLE_CONFIG__public_my_data__datetimecol", "datetime"
     )
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "geom")
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__pk", "ogc_fid")
+    monkeypatch.setenv(
+        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdatetime"
+    )
+    monkeypatch.setenv(
+        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom"
+    )
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data_alt__pk", "id")
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
     from tifeatures.main import app
 
