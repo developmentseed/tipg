@@ -3,11 +3,9 @@
 from typing import Any, Dict, List, Optional
 
 from buildpg import asyncpg
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field
 
-from tifeatures.settings import APISettings, TableConfig
-
-settings = APISettings()
+from tifeatures.settings import TableConfig, TableSettings
 
 
 class Column(BaseModel):
@@ -70,68 +68,39 @@ class DatetimeColumn(Column):
 class Table(BaseModel):
     """Model for DB Table."""
 
-    properties: List[Column] = []
-    table_config: TableConfig = TableConfig.construct()
     id: str
     table: str
     dbschema: str = Field(..., alias="schema")
     description: Optional[str]
+    properties: List[Column] = []
     id_column: Optional[str]
     geometry_columns: List[GeometryColumn] = []
     datetime_columns: List[DatetimeColumn] = []
+    geometry_column: Optional[GeometryColumn]
+    datetime_column: Optional[DatetimeColumn]
 
-    @root_validator(pre=True)
-    def validate_table_config(cls, values):
-        """Get table configurations from settings."""
-        id = values.get("id").replace(".", "_")
-        if settings.table_config and id in settings.table_config:
-            values["table_config"] = settings.table_config.get(id)
-        return values
-
-    @validator("id_column", always=True)
-    def validate_id_column(cls, v, values):
-        """Get primary key."""
-        table_config = values.get("table_config", None)
-        if table_config.pk is not None:
-            return table_config.pk
-        if v is not None:
-            return v
-        if settings.fallback_key_names:
-            for c in values.get("properties", []):
-                if c.name in settings.fallback_key_names:
-                    return c.name
-
-    @validator("geometry_columns", "datetime_columns", pre=True, always=True)
-    def validate_list_columns(cls, v):
-        """Validate List Columns."""
-        if v is None:
-            return []
-        return v
-
-    def datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
+    def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
         if not self.datetime_columns:
             return None
         if name is None:
-            name = getattr(self.table_config, "datetimecol", None)
+            return self.datetime_column
         for col in self.datetime_columns:
-            if name is None or col.name == name:
+            if col.name == name:
                 return col
-
         return None
 
-    def geometry_column(self, name: Optional[str] = None) -> Optional[GeometryColumn]:
+    def get_geometry_column(
+        self, name: Optional[str] = None
+    ) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if not self.geometry_columns:
-            return None
-        if name and name.lower() == "none":
+        if (not self.geometry_columns) or (name and name.lower() == "none"):
             return None
         if name is None:
-            name = getattr(self.table_config, "geomcol", None)
+            return self.geometry_column
         for col in self.geometry_columns:
-            if name is None or col.name == name:
+            if col.name == name:
                 return col
-
         return None
 
     @property
@@ -148,7 +117,7 @@ class Table(BaseModel):
             if self.id_column and self.id_column not in properties:
                 properties.append(self.id_column)
 
-            geom_col = self.geometry_column()
+            geom_col = self.get_geometry_column()
             if geom_col:
                 properties.append(geom_col.name)
 
@@ -230,7 +199,7 @@ async def get_table_index(
                     i.indisunique DESC NULLS LAST
                 LIMIT 1
             ) as id_column,
-            jsonb_agg(
+            coalesce(jsonb_agg(
                 jsonb_build_object(
                     'name', attname,
                     'type', "type",
@@ -264,21 +233,21 @@ async def get_table_index(
                         ELSE ARRAY[-180,-90,180,90]
                         END
                 )
-            ) FILTER (WHERE "type" IN ('geometry','geography')) as geometry_columns,
-            jsonb_agg(
+            ) FILTER (WHERE "type" IN ('geometry','geography')), '[]'::jsonb) as geometry_columns,
+            coalesce(jsonb_agg(
                 jsonb_build_object(
                     'name', attname,
                     'type', "type",
                     'description', description
                 )
-            ) FILTER (WHERE type LIKE 'timestamp%') as datetime_columns,
-            jsonb_agg(
+            ) FILTER (WHERE type LIKE 'timestamp%'), '[]'::jsonb) as datetime_columns,
+            coalesce(jsonb_agg(
                 jsonb_build_object(
                     'name', attname,
                     'type', "type",
                     'description', description
                 )
-            ) as properties
+            ),'[]'::jsonb) as properties
         FROM
             table_columns
         GROUP BY 1,2,3,4,5,6 ORDER BY 1,2
@@ -306,15 +275,66 @@ async def get_table_index(
             spatial=spatial,
         )
         catalog = {}
+        table_settings = TableSettings()
+        table_confs = table_settings.table_config
+        fallback_key_names = table_settings.fallback_key_names
+
         for table in rows:
+            id = table["id"]
+            confid = id.replace(".", "_")
+            table_conf = table_confs.get(confid, TableConfig.construct())
+
+            # Make sure that any properties set in conf exist in table
+            properties = table.get("properties", [])
+            if table_conf.properties:
+                properties = [
+                    p for p in properties if p["name"] in table_conf.properties
+                ]
+
+            property_names = [p["name"] for p in properties]
+
+            datetime_columns = [
+                c
+                for c in table.get("datetime_columns", [])
+                if c["name"] in property_names
+            ]
+            geometry_columns = [
+                c
+                for c in table.get("geometry_columns", [])
+                if c["name"] in property_names
+            ]
+
+            id_column = table_conf.pk or table["id_column"]
+            if not id_column and fallback_key_names:
+                for p in properties:
+                    if p["name"] in fallback_key_names:
+                        id_column = p["name"]
+                        break
+
+            datetime_column = None
+            for col in datetime_columns:
+                if table_conf.datetimecol == col:
+                    datetime_column = col
+            if not datetime_column and datetime_columns:
+                datetime_column = datetime_columns[0]
+
+            geometry_column = None
+            for col in geometry_columns:
+                if table_conf.geomcol == col:
+                    geometry_column = col
+            if not geometry_column and geometry_columns:
+                geometry_column = geometry_columns[0]
+
             catalog[table["id"]] = {
-                "id": table["id"],
+                "id": id,
                 "table": table["table"],
                 "schema": table["dbschema"],
                 "description": table["description"],
-                "id_column": table["id_column"],
-                "geometry_columns": table["geometry_columns"],
-                "datetime_columns": table["datetime_columns"],
-                "properties": table["properties"],
+                "id_column": id_column,
+                "geometry_columns": geometry_columns,
+                "datetime_columns": datetime_columns,
+                "properties": properties,
+                "datetime_column": datetime_column,
+                "geometry_column": geometry_column,
             }
         return catalog

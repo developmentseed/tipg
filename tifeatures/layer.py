@@ -208,7 +208,7 @@ class Table(CollectionLayer, DBTable):
                 wheres.append(pg_funcs.AND(*w))
 
         # `bbox` filter
-        geometry_column = self.geometry_column(geom)
+        geometry_column = self.get_geometry_column(geom)
         if bbox is not None and geometry_column is not None:
             wheres.append(
                 logic.Func(
@@ -225,7 +225,7 @@ class Table(CollectionLayer, DBTable):
                     "Must have timestamp typed column to filter with datetime."
                 )
 
-            datetime_column = self.datetime_column(dt)
+            datetime_column = self.get_datetime_column(dt)
             if not datetime_column:
                 raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
 
@@ -373,7 +373,7 @@ class Table(CollectionLayer, DBTable):
         simplify: Optional[float] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
-        if geom and geom.lower() != "none" and not self.geometry_column(geom):
+        if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         sql_query = """
@@ -434,7 +434,7 @@ class Table(CollectionLayer, DBTable):
             ),
             id_column=id_column,
             geometry_q=self._geom(
-                geometry_column=self.geometry_column(geom),
+                geometry_column=self.get_geometry_column(geom),
                 bbox_only=bbox_only,
                 simplify=simplify,
             ),

@@ -747,3 +747,41 @@ def test_items_sortby(app):
     # Invalid column name
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=something")
     assert response.status_code == 404
+
+
+def test_items_env_table_config(app, monkeypatch):
+    """Test /items endpoint using table_config environment variables."""
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "othergeom")
+    response = app.get("/collections/public.my_data/items?limit=1")
+    body = response.json()
+    assert body["features"][0]["geometry"]["type"] == "Point"
+
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "geom")
+    response = app.get("/collections/public.my_data/items?limit=1")
+    body = response.json()
+    assert body["features"][0]["geometry"]["type"] == "Polygon"
+
+    monkeypatch.setenv(
+        "TIFEATURES_TABLE_CONFIG__public_my_data__datetimecol", "otherdt"
+    )
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2005-10-19T10:23:54Z"
+    )
+    body = response.json()
+    assert body["features"][0]["id"] == "1"
+
+    monkeypatch.setenv(
+        "TIFEATURES_TABLE_CONFIG__public_my_data__datetimecol", "datetime"
+    )
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"
+    )
+    body = response.json()
+    assert body["features"][0]["id"] == "1"
+
+    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__pk", "id")
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"
+    )
+    body = response.json()
+    assert body["features"][0]["id"] == "0"
