@@ -406,6 +406,8 @@ class Table(CollectionLayer, DBTable):
                 )
             ;
         """
+        id_column = logic.V(self.id_column) or pg_funcs.cast(None, "text")
+        geom_columns = [g.name for g in self.geometry_columns]
         q, p = render(
             sql_query,
             features_q=self._features_query(
@@ -430,17 +432,13 @@ class Table(CollectionLayer, DBTable):
                 geom=geom,
                 dt=dt,
             ),
-            id_column=logic.V(self.id_column)
-            if self.id_column
-            else pg_funcs.cast(None, "text"),
+            id_column=id_column,
             geometry_q=self._geom(
                 geometry_column=self.geometry_column(geom),
                 bbox_only=bbox_only,
                 simplify=simplify,
             ),
-            geom_columns=[g.name for g in self.geometry_columns]
-            if self.geometry_columns
-            else [],
+            geom_columns=geom_columns,
         )
         async with pool.acquire() as conn:
             items = await conn.fetchval(q, *p)
@@ -499,7 +497,7 @@ class Table(CollectionLayer, DBTable):
     @property
     def queryables(self) -> Dict:
         """Return the queryables."""
-        if self.geometry_columns and len(self.geometry_columns) > 0:
+        if self.geometry_columns:
             geoms = {
                 col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
                 for col in self.geometry_columns

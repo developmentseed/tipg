@@ -21,6 +21,7 @@ class _APISettings(pydantic.BaseSettings):
     """API settings"""
 
     name: str = "TiFeatures"
+    DEBUG: bool = False
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None

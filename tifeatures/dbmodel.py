@@ -61,7 +61,7 @@ class GeometryColumn(Column):
 
 
 class DatetimeColumn(Column):
-    """Model for PostGIS datetime column."""
+    """Model for PostGIS geometry/geography column."""
 
     min: Optional[str]
     max: Optional[str]
@@ -71,14 +71,14 @@ class Table(BaseModel):
     """Model for DB Table."""
 
     properties: List[Column] = []
-    table_config: Optional[TableConfig]
+    table_config: TableConfig = TableConfig.construct()
     id: str
     table: str
     dbschema: str = Field(..., alias="schema")
     description: Optional[str]
     id_column: Optional[str]
-    geometry_columns: Optional[List[GeometryColumn]] = []
-    datetime_columns: Optional[List[DatetimeColumn]] = []
+    geometry_columns: List[GeometryColumn] = []
+    datetime_columns: List[DatetimeColumn] = []
 
     @root_validator(pre=True)
     def validate_table_config(cls, values):
@@ -92,7 +92,7 @@ class Table(BaseModel):
     def validate_id_column(cls, v, values):
         """Get primary key."""
         table_config = values.get("table_config", None)
-        if table_config is not None:
+        if table_config.pk is not None:
             return table_config.pk
         if v is not None:
             return v
@@ -101,7 +101,7 @@ class Table(BaseModel):
                 if c.name in settings.fallback_key_names:
                     return c.name
 
-    @validator("geometry_columns", "datetime_columns", always=True)
+    @validator("geometry_columns", "datetime_columns", pre=True, always=True)
     def validate_list_columns(cls, v):
         """Validate List Columns."""
         if v is None:
@@ -110,29 +110,26 @@ class Table(BaseModel):
 
     def datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
-        if self.datetime_columns is None or len(self.datetime_columns) == 0:
+        print(self.datetime_columns, name, self.table_config.datetimecol)
+        if not self.datetime_columns:
             return None
-
         if name is None:
             name = getattr(self.table_config, "datetimecol", None)
         for col in self.datetime_columns:
             if name is None or col.name == name:
+                print(f"COL:{col}")
                 return col
 
         return None
 
     def geometry_column(self, name: Optional[str] = None) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if self.geometry_columns is None or len(self.geometry_columns) == 0:
+        if not self.geometry_columns:
             return None
         if name and name.lower() == "none":
             return None
         if name is None:
-            name = (
-                getattr(self.table_config, "geomcol", None)
-                if self.table_config
-                else None
-            )
+            name = getattr(self.table_config, "geomcol", None)
         for col in self.geometry_columns:
             if name is None or col.name == name:
                 return col
