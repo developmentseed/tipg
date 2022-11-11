@@ -12,7 +12,22 @@ def test_benchmark_items(benchmark, format, limit, app):
     def f(p):
         return app.get("/collections/public.landsat_wrs/items", params=p)
 
-    benchmark.group = format
+    benchmark.group = f"Items: {format}"
+
+    response = benchmark(f, params)
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("name", ["NewfoundlandandLabrador", "Saskatchewan"])
+def test_benchmark_item(benchmark, name, app):
+    """Benchmark big item."""
+
+    params = {"f": "geojson", "name": name}
+
+    def f(p):
+        return app.get("/collections/public.landsat_wrs/items", params=p)
+
+    benchmark.group = "Big Feature"
 
     response = benchmark(f, params)
     assert response.status_code == 200

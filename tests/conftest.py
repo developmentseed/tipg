@@ -46,6 +46,9 @@ def database_url(test_db):
     ).scalar()
     assert count_landsat == count_landsat_centroid
 
+    test_db.run_sql_file(os.path.join(DATA_DIR, "canada.sql"))
+    assert test_db.has_table("canada")
+
     return test_db.connection.engine.url
 
 
