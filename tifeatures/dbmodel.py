@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 from buildpg import asyncpg
 from pydantic import BaseModel, Field
 
-from tifeatures.settings import TableConfig, TableSettings
+from tifeatures.model import TableConfig
+from tifeatures.settings import TableSettings
 
 
 class Column(BaseModel):
@@ -18,12 +19,10 @@ class Column(BaseModel):
     @property
     def json_type(self) -> str:
         """Return JSON field type."""
-        pgtype = self.type
-
-        if pgtype.endswith("[]"):
+        if self.type.endswith("[]"):
             return "array"
 
-        if pgtype in [
+        if self.type in [
             "smallint",
             "integer",
             "bigint",
@@ -41,10 +40,10 @@ class Column(BaseModel):
         ]:
             return "number"
 
-        if pgtype.startswith("bool"):
+        if self.type.startswith("bool"):
             return "boolean"
 
-        if any([pgtype.startswith("json"), pgtype.startswith("geo")]):
+        if any([self.type.startswith("json"), self.type.startswith("geo")]):
             return "object"
 
         return "string"
@@ -83,11 +82,14 @@ class Table(BaseModel):
         """Return the Column for either the passed in tstz column or the first tstz column."""
         if not self.datetime_columns:
             return None
+
         if name is None:
             return self.datetime_column
+
         for col in self.datetime_columns:
             if col.name == name:
                 return col
+
         return None
 
     def get_geometry_column(
@@ -96,11 +98,14 @@ class Table(BaseModel):
         """Return the name of the first geometry column."""
         if (not self.geometry_columns) or (name and name.lower() == "none"):
             return None
+
         if name is None:
             return self.geometry_column
+
         for col in self.geometry_columns:
             if col.name == name:
                 return col
+
         return None
 
     @property
@@ -274,6 +279,7 @@ async def get_table_index(
             tables=tables,
             spatial=spatial,
         )
+
         catalog = {}
         table_settings = TableSettings()
         table_confs = table_settings.table_config
@@ -293,17 +299,7 @@ async def get_table_index(
 
             property_names = [p["name"] for p in properties]
 
-            datetime_columns = [
-                c
-                for c in table.get("datetime_columns", [])
-                if c["name"] in property_names
-            ]
-            geometry_columns = [
-                c
-                for c in table.get("geometry_columns", [])
-                if c["name"] in property_names
-            ]
-
+            # ID Column
             id_column = table_conf.pk or table["id_column"]
             if not id_column and fallback_key_names:
                 for p in properties:
@@ -311,13 +307,27 @@ async def get_table_index(
                         id_column = p["name"]
                         break
 
+            # Datetime Column
+            datetime_columns = [
+                c
+                for c in table.get("datetime_columns", [])
+                if c["name"] in property_names
+            ]
+
             datetime_column = None
             for col in datetime_columns:
                 if table_conf.datetimecol == col["name"]:
                     datetime_column = col
+
             if not datetime_column and datetime_columns:
                 datetime_column = datetime_columns[0]
 
+            # Geometry Column
+            geometry_columns = [
+                c
+                for c in table.get("geometry_columns", [])
+                if c["name"] in property_names
+            ]
             geometry_column = None
             for col in geometry_columns:
                 if table_conf.geomcol == col["name"]:

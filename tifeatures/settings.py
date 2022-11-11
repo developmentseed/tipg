@@ -5,14 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import pydantic
 
-
-class TableConfig(pydantic.BaseModel):
-    """Configuration to add table options with env variables."""
-
-    geomcol: Optional[str]
-    datetimecol: Optional[str]
-    pk: Optional[str]
-    properties: Optional[List[str]]
+from tifeatures.model import TableConfig
 
 
 class TableSettings(pydantic.BaseSettings):
