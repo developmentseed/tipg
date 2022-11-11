@@ -8,6 +8,15 @@ from pydantic import BaseModel, Field
 from tifeatures.resources.enums import MediaType
 
 
+class TableConfig(BaseModel):
+    """Configuration to add table options with env variables."""
+
+    geomcol: Optional[str]
+    datetimecol: Optional[str]
+    pk: Optional[str]
+    properties: Optional[List[str]]
+
+
 class Link(BaseModel):
     """Link model.
 

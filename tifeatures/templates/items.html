@@ -54,6 +54,7 @@
   {% endfor %}
 </div>
 <div class="table-responsive">
+{% if response.features is defined and response.features|length > 0 %}
 <table class="table">
   <thead class="thead-light">
     <th>ID</th>
@@ -72,6 +73,7 @@
 {% endfor %}
   </tbody>
 </table>
+{% endif %}
 </div>
 
 <script>

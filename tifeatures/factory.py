@@ -22,7 +22,7 @@ from tifeatures.dependencies import (
     properties_query,
     sortby_query,
 )
-from tifeatures.errors import NotFound
+from tifeatures.errors import NoPrimaryKey, NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType
@@ -849,6 +849,9 @@ class Endpoints:
             ),
             output_type: Optional[MediaType] = Depends(ItemOutputType),
         ):
+            if collection.id_column is None:
+                raise NoPrimaryKey("No primary key is set on this table")
+
             feature = await collection.feature(
                 request.app.state.pool,
                 item_id=itemId,

@@ -6,13 +6,14 @@ import jinja2
 
 from tifeatures import __version__ as tifeatures_version
 from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog
+from tifeatures.dbmodel import Table
 from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tifeatures.factory import Endpoints
 from tifeatures.layer import FunctionRegistry
 from tifeatures.middleware import CacheControlMiddleware
 from tifeatures.settings import APISettings, PostgresSettings
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from starlette.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
@@ -86,3 +87,15 @@ async def shutdown_event() -> None:
 def ping():
     """Health check."""
     return {"ping": "pong!"}
+
+
+if settings.DEBUG:
+
+    @app.get("/rawcatalog")
+    def raw_catalog(request: Request):
+        """Return parsed catalog data for testing."""
+        ret = {}
+        cat = request.app.state.table_catalog
+        for k, v in cat.items():
+            ret[k] = Table(**v)
+        return ret

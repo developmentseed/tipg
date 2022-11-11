@@ -5,6 +5,9 @@ from typing import Any, Dict, List, Optional
 from buildpg import asyncpg
 from pydantic import BaseModel, Field
 
+from tifeatures.model import TableConfig
+from tifeatures.settings import TableSettings
+
 
 class Column(BaseModel):
     """Model for database Column."""
@@ -16,12 +19,10 @@ class Column(BaseModel):
     @property
     def json_type(self) -> str:
         """Return JSON field type."""
-        pgtype = self.type
-
-        if pgtype.endswith("[]"):
+        if self.type.endswith("[]"):
             return "array"
 
-        if pgtype in [
+        if self.type in [
             "smallint",
             "integer",
             "bigint",
@@ -39,22 +40,28 @@ class Column(BaseModel):
         ]:
             return "number"
 
-        if pgtype.startswith("bool"):
+        if self.type.startswith("bool"):
             return "boolean"
 
-        if any([pgtype.startswith("json"), pgtype.startswith("geo")]):
+        if any([self.type.startswith("json"), self.type.startswith("geo")]):
             return "object"
 
         return "string"
 
 
-class GeometryColumn(BaseModel):
+class GeometryColumn(Column):
     """Model for PostGIS geometry/geography column."""
 
-    name: str
-    bounds: List[float]
-    srid: int
+    bounds: List[float] = [-180, -90, 180, 90]
+    srid: int = 4326
     geometry_type: str
+
+
+class DatetimeColumn(Column):
+    """Model for PostGIS geometry/geography column."""
+
+    min: Optional[str]
+    max: Optional[str]
 
 
 class Table(BaseModel):
@@ -64,30 +71,39 @@ class Table(BaseModel):
     table: str
     dbschema: str = Field(..., alias="schema")
     description: Optional[str]
-    id_column: str
-    geometry_columns: List[GeometryColumn]
-    properties: List[Column]
+    properties: List[Column] = []
+    id_column: Optional[str]
+    geometry_columns: List[GeometryColumn] = []
+    datetime_columns: List[DatetimeColumn] = []
+    geometry_column: Optional[GeometryColumn]
+    datetime_column: Optional[DatetimeColumn]
 
-    @property
-    def datetime_columns(self) -> List[Column]:
-        """Return the name of all timestamptz columns."""
-        return [p for p in self.properties if p.type.startswith("timestamp")]
-
-    def datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
+    def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
+        if not self.datetime_columns:
+            return None
+
+        if name is None:
+            return self.datetime_column
+
         for col in self.datetime_columns:
-            if name is None or col.name == name:
+            if col.name == name:
                 return col
 
         return None
 
-    def geometry_column(self, name: Optional[str] = None) -> Optional[GeometryColumn]:
+    def get_geometry_column(
+        self, name: Optional[str] = None
+    ) -> Optional[GeometryColumn]:
         """Return the name of the first geometry column."""
-        if name and name.lower() == "none":
+        if (not self.geometry_columns) or (name and name.lower() == "none"):
             return None
 
+        if name is None:
+            return self.geometry_column
+
         for col in self.geometry_columns:
-            if name is None or col.name == name:
+            if col.name == name:
                 return col
 
         return None
@@ -103,10 +119,10 @@ class Table(BaseModel):
         """Return table columns optionally filtered to only include columns from properties."""
         cols = [c.name for c in self.properties]
         if properties is not None:
-            if self.id_column not in properties:
+            if self.id_column and self.id_column not in properties:
                 properties.append(self.id_column)
 
-            geom_col = self.geometry_column()
+            geom_col = self.get_geometry_column()
             if geom_col:
                 properties.append(geom_col.name)
 
@@ -138,130 +154,198 @@ async def get_table_index(
     """Fetch Table index."""
 
     query = """
-        WITH t AS (
+        WITH table_columns AS (
             SELECT
-                nspname as schemaname,
-                relname as tablename,
+                nspname,
+                relname,
                 format('%I.%I', nspname, relname) as id,
                 c.oid as t_oid,
                 obj_description(c.oid, 'pg_class') as description,
-                (
-                    SELECT
-                        attname
-                    FROM
-                        pg_attribute a
-                        LEFT JOIN
-                        pg_index i
+                attname,
+                atttypmod,
+                replace(replace(replace(replace(format_type(atttypid, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp') as "type",
+                col_description(attrelid, attnum)
+            FROM
+                pg_class c
+                JOIN pg_namespace n on (c.relnamespace=n.oid)
+                JOIN pg_attribute a on (attnum>0 and attrelid=c.oid and not attisdropped)
+            WHERE
+                relkind IN ('r','v', 'm', 'f', 'p')
+                AND has_table_privilege(c.oid, 'SELECT')
+                AND has_column_privilege(c.oid,a.attnum, 'SELECT')
+                AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+                AND c.relname NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
+                AND (:schemas::text[] IS NULL  OR n.nspname = ANY (:schemas))
+                AND (:tables::text[] IS NULL OR c.relname = ANY (:tables))
+        ),
+        grouped as
+        (SELECT
+            nspname,
+            relname,
+            id,
+            t_oid,
+            description,
+            (
+                SELECT attname
+                FROM
+                    pg_attribute a
+                    LEFT JOIN
+                    pg_index i
                         ON (
                             a.attrelid = i.indrelid
                             AND a.attnum = ANY(i.indkey)
                             )
-                    WHERE
-                        a.attrelid = c.oid
-                    ORDER BY
-                        i.indisprimary DESC NULLS LAST,
-                        i.indisunique DESC NULLS LAST,
-                        attname ~* E'id$' DESC NULLS LAST
-                    LIMIT 1
-                ) as pk,
-                (
-                    SELECT
-                        jsonb_agg(
-                            jsonb_build_object(
-                                'name', attname,
-                                'type', replace(replace(replace(replace(format_type(atttypid, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp'),
-                                'description', col_description(attrelid, attnum)
+                WHERE
+                    a.attrelid = t_oid
+                    AND
+                    i.indnatts = 1
+                ORDER BY
+                    i.indisprimary DESC NULLS LAST,
+                    i.indisunique DESC NULLS LAST
+                LIMIT 1
+            ) as id_column,
+            coalesce(jsonb_agg(
+                jsonb_build_object(
+                    'name', attname,
+                    'type', "type",
+                    'geometry_type', postgis_typmod_type(atttypmod),
+                    'srid', postgis_typmod_srid(atttypmod),
+                    'description', description,
+                    'bounds',
+                        CASE WHEN postgis_typmod_srid(atttypmod) IS NOT NULL AND postgis_typmod_srid(atttypmod) != 0 THEN
+                            (
+                                SELECT
+                                    ARRAY[
+                                        ST_XMin(extent.geom),
+                                        ST_YMin(extent.geom),
+                                        ST_XMax(extent.geom),
+                                        ST_YMax(extent.geom)
+                                    ]
+                                FROM (
+                                    SELECT
+                                        coalesce(
+                                            ST_Transform(
+                                                ST_SetSRID(
+                                                    ST_EstimatedExtent(nspname, relname, attname),
+                                                    postgis_typmod_srid(atttypmod)
+                                                ),
+                                                4326
+                                            ),
+                                            ST_MakeEnvelope(-180, -90, 180, 90, 4326)
+                                        ) as geom
+                                    ) AS extent
                             )
-                        )
-                    FROM
-                        pg_attribute
-                    WHERE
-                        attnum>0
-                        AND attrelid=c.oid
-                        AND NOT attisdropped
-                ) as columns,
-                (
-                    SELECT
-                        coalesce(jsonb_agg(
-                            jsonb_build_object(
-                                'name', f_geometry_column,
-                                'srid', srid,
-                                'geometry_type', type,
-                                'bounds',
-                                    CASE WHEN srid IS NOT NULL AND srid != 0 THEN
-                                        (
-                                            SELECT
-                                                ARRAY[
-                                                    ST_XMin(extent.geom),
-                                                    ST_YMin(extent.geom),
-                                                    ST_XMax(extent.geom),
-                                                    ST_YMax(extent.geom)
-                                                ]
-                                            FROM (
-                                                SELECT
-                                                    coalesce(
-                                                        ST_Transform(
-                                                            ST_SetSRID(
-                                                                ST_EstimatedExtent(f_table_schema, f_table_name, f_geometry_column),
-                                                                srid
-                                                            ),
-                                                            4326
-                                                        ),
-                                                        ST_MakeEnvelope(-180, -90, 180, 90, 4326)
-                                                    ) as geom
-                                                ) AS extent
-                                        )
-                                    ELSE ARRAY[-180,-90,180,90]
-                                    END
-                            )
-                        ),'[]'::jsonb)
-                    FROM
-                        (
-                        SELECT f_table_schema, f_table_name, f_geometry_column, srid, type
-                        FROM geometry_columns
-                        UNION ALL
-                        SELECT f_table_schema, f_table_name, f_geography_column, 4326, type
-                        FROM geography_columns
-                        ) as geo
-                    WHERE
-                        f_table_schema = n.nspname
-                        AND f_table_name = c.relname
-                ) as geometry_columns
-            FROM
-                pg_class c
-                JOIN pg_namespace n ON (c.relnamespace=n.oid)
-            WHERE
-                relkind in ('r','v', 'm', 'f', 'p')
-                AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-                AND c.relname NOT IN ('spatial_ref_sys','geometry_columns')
-                AND (:schemas::text[] IS NULL OR n.nspname = ANY (:schemas))
-                AND (:tables::text[] IS NULL OR c.relname = ANY (:tables))
-
+                        ELSE ARRAY[-180,-90,180,90]
+                        END
+                )
+            ) FILTER (WHERE "type" IN ('geometry','geography')), '[]'::jsonb) as geometry_columns,
+            coalesce(jsonb_agg(
+                jsonb_build_object(
+                    'name', attname,
+                    'type', "type",
+                    'description', description
+                )
+            ) FILTER (WHERE type LIKE 'timestamp%'), '[]'::jsonb) as datetime_columns,
+            coalesce(jsonb_agg(
+                jsonb_build_object(
+                    'name', attname,
+                    'type', "type",
+                    'description', description
+                )
+            ),'[]'::jsonb) as properties
+        FROM
+            table_columns
+        GROUP BY 1,2,3,4,5,6 ORDER BY 1,2
         )
         SELECT
-                id,
-                schemaname as dbschema,
-                tablename as tablename,
-                geometry_columns,
-                pk as id_col,
-                columns as properties,
-                description
-        FROM t
+            id,
+            relname as table,
+            nspname as dbschema,
+            description,
+            id_column,
+            geometry_columns,
+            datetime_columns,
+            properties
+        FROM grouped
         WHERE :spatial = FALSE OR jsonb_array_length(geometry_columns)>=1
         ;
+
     """
 
     async with db_pool.acquire() as conn:
         rows = await conn.fetch_b(
-            query, schemas=schemas, tables=tables, spatial=spatial
+            query,
+            schemas=schemas,
+            tables=tables,
+            spatial=spatial,
         )
-        keys = [
-            "id",
-            "schema",
-            "table",
-            "geometry_columns",
-            "id_column",
-            "properties",
-            "description",
-        ]
-        return {row["id"]: dict(zip(keys, tuple(row))) for row in rows}
+
+        catalog = {}
+        table_settings = TableSettings()
+        table_confs = table_settings.table_config
+        fallback_key_names = table_settings.fallback_key_names
+
+        for table in rows:
+            id = table["id"]
+            confid = id.replace(".", "_")
+            table_conf = table_confs.get(confid, TableConfig.construct())
+
+            # Make sure that any properties set in conf exist in table
+            properties = table.get("properties", [])
+            if table_conf.properties:
+                properties = [
+                    p for p in properties if p["name"] in table_conf.properties
+                ]
+
+            property_names = [p["name"] for p in properties]
+
+            # ID Column
+            id_column = table_conf.pk or table["id_column"]
+            if not id_column and fallback_key_names:
+                for p in properties:
+                    if p["name"] in fallback_key_names:
+                        id_column = p["name"]
+                        break
+
+            # Datetime Column
+            datetime_columns = [
+                c
+                for c in table.get("datetime_columns", [])
+                if c["name"] in property_names
+            ]
+
+            datetime_column = None
+            for col in datetime_columns:
+                if table_conf.datetimecol == col["name"]:
+                    datetime_column = col
+
+            if not datetime_column and datetime_columns:
+                datetime_column = datetime_columns[0]
+
+            # Geometry Column
+            geometry_columns = [
+                c
+                for c in table.get("geometry_columns", [])
+                if c["name"] in property_names
+            ]
+            geometry_column = None
+            for col in geometry_columns:
+                if table_conf.geomcol == col["name"]:
+                    geometry_column = col
+            if not geometry_column and geometry_columns:
+                geometry_column = geometry_columns[0]
+
+            catalog[id] = {
+                "id": id,
+                "table": table["table"],
+                "schema": table["dbschema"],
+                "description": table["description"],
+                "id_column": id_column,
+                "geometry_columns": geometry_columns,
+                "datetime_columns": datetime_columns,
+                "properties": properties,
+                "datetime_column": datetime_column,
+                "geometry_column": geometry_column,
+            }
+
+        return catalog

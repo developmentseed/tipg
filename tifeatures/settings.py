@@ -5,11 +5,28 @@ from typing import Any, Dict, List, Optional
 
 import pydantic
 
+from tifeatures.model import TableConfig
+
+
+class TableSettings(pydantic.BaseSettings):
+    """Table configuration settings"""
+
+    fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
+    table_config: Dict[str, TableConfig] = {}
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIFEATURES_"
+        env_file = ".env"
+        env_nested_delimiter = "__"
+
 
 class _APISettings(pydantic.BaseSettings):
     """API settings"""
 
     name: str = "TiFeatures"
+    DEBUG: bool = False
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
@@ -24,6 +41,7 @@ class _APISettings(pydantic.BaseSettings):
 
         env_prefix = "TIFEATURES_"
         env_file = ".env"
+        env_nested_delimiter = "__"
 
 
 @lru_cache()
