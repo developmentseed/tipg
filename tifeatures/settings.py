@@ -1,11 +1,26 @@
 """tifeatures config."""
 
+import sys
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 import pydantic
 
-from tifeatures.model import TableConfig
+# Pydantic does not support older versions of typing.TypedDict
+# https://github.com/pydantic/pydantic/pull/3374
+if sys.version_info < (3, 9, 2):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
+
+
+class TableConfig(TypedDict, total=False):
+    """Configuration to add table options with env variables."""
+
+    geomcol: Optional[str]
+    datetimecol: Optional[str]
+    pk: Optional[str]
+    properties: Optional[List[str]]
 
 
 class TableSettings(pydantic.BaseSettings):
