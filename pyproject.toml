@@ -29,6 +29,7 @@ dependencies = [
     "ciso8601~=2.2.0",
     "starlette-cramjam>=0.3,<0.4",
     "importlib_resources>=1.1.0; python_version < '3.9'",
+    "typing_extensions; python_version < '3.9.2'",
 ]
 
 [project.optional-dependencies]

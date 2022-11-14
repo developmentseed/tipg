@@ -1,9 +1,15 @@
 """tifeatures config."""
 
+import sys
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 
 import pydantic
+
+if sys.version_info < (3, 9, 2):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
 
 
 class TableConfig(TypedDict, total=False):
