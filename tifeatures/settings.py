@@ -1,11 +1,18 @@
 """tifeatures config."""
 
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 import pydantic
 
-from tifeatures.model import TableConfig
+
+class TableConfig(TypedDict, total=False):
+    """Configuration to add table options with env variables."""
+
+    geomcol: Optional[str]
+    datetimecol: Optional[str]
+    pk: Optional[str]
+    properties: Optional[List[str]]
 
 
 class TableSettings(pydantic.BaseSettings):

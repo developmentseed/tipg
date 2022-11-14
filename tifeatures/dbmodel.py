@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 from buildpg import asyncpg
 from pydantic import BaseModel, Field
 
-from tifeatures.model import TableConfig
 from tifeatures.settings import TableSettings
 
 
@@ -288,19 +287,18 @@ async def get_table_index(
         for table in rows:
             id = table["id"]
             confid = id.replace(".", "_")
-            table_conf = table_confs.get(confid, TableConfig.construct())
+            table_conf = table_confs.get(confid, {})
 
             # Make sure that any properties set in conf exist in table
             properties = table.get("properties", [])
-            if table_conf.properties:
-                properties = [
-                    p for p in properties if p["name"] in table_conf.properties
-                ]
+            properties_setting = table_conf.get("properties", [])
+            if properties_setting:
+                properties = [p for p in properties if p["name"] in properties_setting]
 
             property_names = [p["name"] for p in properties]
 
             # ID Column
-            id_column = table_conf.pk or table["id_column"]
+            id_column = table_conf.get("pk") or table["id_column"]
             if not id_column and fallback_key_names:
                 for p in properties:
                     if p["name"] in fallback_key_names:
@@ -316,7 +314,7 @@ async def get_table_index(
 
             datetime_column = None
             for col in datetime_columns:
-                if table_conf.datetimecol == col["name"]:
+                if table_conf.get("datetimecol") == col["name"]:
                     datetime_column = col
 
             if not datetime_column and datetime_columns:
@@ -330,7 +328,7 @@ async def get_table_index(
             ]
             geometry_column = None
             for col in geometry_columns:
-                if table_conf.geomcol == col["name"]:
+                if table_conf.get("geomcol") == col["name"]:
                     geometry_column = col
             if not geometry_column and geometry_columns:
                 geometry_column = geometry_columns[0]
