@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import pydantic
 
+# Pydantic does not support older versions of typing.TypedDict
+# https://github.com/pydantic/pydantic/pull/3374
 if sys.version_info < (3, 9, 2):
     from typing_extensions import TypedDict
 else:
