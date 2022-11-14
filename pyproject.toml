@@ -22,7 +22,7 @@ dynamic = ["version"]
 dependencies = [
     "asyncpg>=0.23.0",
     "buildpg>=0.3",
-    "fastapi>=0.77",
+    "fastapi>=0.87",
     "jinja2>=2.11.2,<4.0.0",
     "geojson-pydantic>=0.4.3",
     "pygeofilter>=0.2.0,<0.3.0",
@@ -40,7 +40,7 @@ test = [
     "pytest-cov",
     "pytest-asyncio",
     "pytest-benchmark",
-    "requests",
+    "httpx",
     "psycopg2",
     "pytest-pgsql",
 ]
