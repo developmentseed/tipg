@@ -46,6 +46,9 @@ def database_url(test_db):
     ).scalar()
     assert count_landsat == count_landsat_centroid
 
+    test_db.run_sql_file(os.path.join(DATA_DIR, "canada.sql"))
+    assert test_db.has_table("canada")
+
     return test_db.connection.engine.url
 
 
@@ -63,7 +66,7 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "geom")
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__pk", "ogc_fid")
     monkeypatch.setenv(
-        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdatetime"
+        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdt"
     )
     monkeypatch.setenv(
         "TIFEATURES_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom"
