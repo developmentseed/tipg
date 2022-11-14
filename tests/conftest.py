@@ -66,7 +66,7 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "geom")
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__pk", "ogc_fid")
     monkeypatch.setenv(
-        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdatetime"
+        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdt"
     )
     monkeypatch.setenv(
         "TIFEATURES_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom"
