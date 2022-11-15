@@ -116,7 +116,6 @@ class Table(BaseModel):
 
     def columns(self, properties: Optional[List[str]] = None) -> List[str]:
         """Return table columns optionally filtered to only include columns from properties."""
-        print(f"properties: {properties}")
         if properties in [[], [""]]:
             return []
         nongeo = [
