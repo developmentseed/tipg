@@ -3,13 +3,12 @@
 import abc
 import re
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, TypedDict
 
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
-from geojson_pydantic import Feature, FeatureCollection  # type:ignore
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
@@ -36,6 +35,24 @@ geojson_schema = {
     "MULTIPOLYGON": "https://geojson.org/schema/MultiPolygon.json",
     "GEOMETRYCOLLECTION": "https://geojson.org/schema/GeometryCollection.json",
 }
+
+
+class Feature(TypedDict, total=False):
+    """Simple Feature model."""
+
+    type: str
+    geometry: Optional[Dict]
+    properties: Optional[Dict]
+    id: Optional[Any]
+    bbox: Optional[List[float]]
+
+
+class FeatureCollection(TypedDict, total=False):
+    """Simple FeatureCollection model."""
+
+    type: str
+    features: List[Feature]
+    bbox: Optional[List[float]]
 
 
 class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
@@ -80,7 +97,7 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         item_id: str,
         properties: Optional[List[str]] = None,
         **kwargs: Any,
-    ) -> Feature:
+    ) -> Optional[Feature]:
         """Return a Feature."""
         ...
 
@@ -444,7 +461,7 @@ class Table(CollectionLayer, DBTable):
             items = await conn.fetchval(q, *p)
 
         return (
-            FeatureCollection(features=items.get("features") or []),
+            {"type": "FeatureCollection", "features": items.get("features") or []},
             items["total_count"],
         )
 
@@ -489,8 +506,8 @@ class Table(CollectionLayer, DBTable):
             properties=properties,
             **kwargs,
         )
-        if len(feature_collection):
-            return feature_collection.features[0]
+        if len(feature_collection["features"]):
+            return feature_collection["features"][0]
 
         return None
 
@@ -569,7 +586,7 @@ class Function(CollectionLayer):
         item_id: str,
         properties: Optional[List[str]] = None,
         **kwargs: Any,
-    ) -> Feature:
+    ) -> Optional[Feature]:
         """Return a Feature."""
         # TODO
         pass

@@ -23,6 +23,7 @@ from tifeatures.dependencies import (
     sortby_query,
 )
 from tifeatures.errors import NoPrimaryKey, NotFound
+from tifeatures.geojson import geojson_to_wkt
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType
@@ -543,8 +544,6 @@ class Endpoints:
 
         @self.router.get(
             "/collections/{collectionId}/items",
-            response_model=model.Items,
-            response_model_exclude_none=True,
             response_class=GeoJSONResponse,
             responses={
                 200: {
@@ -555,7 +554,8 @@ class Endpoints:
                         MediaType.json.value: {},
                         MediaType.geojsonseq.value: {},
                         MediaType.ndjson.value: {},
-                    }
+                    },
+                    "model": model.Items,
                 },
             },
         )
@@ -647,25 +647,28 @@ class Endpoints:
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if items and items[0].geometry is not None:
+                if (
+                    items["features"]
+                    and items["features"][0].get("geometry") is not None
+                ):
                     rows = (
                         {
                             "collectionId": collection.id,
-                            "itemId": f.id,
-                            **f.properties,
-                            "geometry": f.geometry.wkt,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
+                            "geometry": geojson_to_wkt(f["geometry"]),
                         }
-                        for f in items
+                        for f in items["features"]
                     )
 
                 else:
                     rows = (
                         {
                             "collectionId": collection.id,
-                            "itemId": f.id,
-                            **f.properties,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
                         }
-                        for f in items
+                        for f in items["features"]
                     )
 
                 # CSV Response
@@ -693,7 +696,7 @@ class Endpoints:
                     )
 
             qs = "?" + str(request.query_params) if request.query_params else ""
-            links = [
+            links: List[Dict] = [
                 model.Link(
                     title="Collection",
                     href=self.url_for(
@@ -701,17 +704,17 @@ class Endpoints:
                     ),
                     rel="collection",
                     type=MediaType.json,
-                ),
+                ).dict(exclude_none=True),
                 model.Link(
                     title="Items",
                     href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
                     type=MediaType.geojson,
-                ),
+                ).dict(exclude_none=True),
             ]
 
-            items_returned = len(items)
+            items_returned = len(items["features"])
 
             if (matched_items - items_returned) > offset:
                 next_offset = offset + items_returned
@@ -728,7 +731,7 @@ class Endpoints:
                         rel="next",
                         type=MediaType.geojson,
                         title="Next page",
-                    ),
+                    ).dict(exclude_none=True),
                 )
 
             if offset:
@@ -750,61 +753,60 @@ class Endpoints:
                         rel="prev",
                         type=MediaType.geojson,
                         title="Previous page",
-                    ),
+                    ).dict(exclude_none=True),
                 )
 
-            data = model.Items(
-                id=collection.id,
-                title=collection.title or collection.id,
-                description=collection.description or collection.title or collection.id,
-                numberMatched=matched_items,
-                numberReturned=items_returned,
-                links=links,
-                features=[
-                    model.Item(
-                        **{
-                            **feature.dict(),
-                            "links": [
-                                model.Link(
-                                    title="Collection",
-                                    href=self.url_for(
-                                        request,
-                                        "collection",
-                                        collectionId=collection.id,
-                                    ),
-                                    rel="collection",
-                                    type=MediaType.json,
+            data = {
+                "type": "FeatureCollection",
+                "id": collection.id,
+                "title": collection.title or collection.id,
+                "description": collection.description
+                or collection.title
+                or collection.id,
+                "numberMatched": matched_items,
+                "numberReturned": items_returned,
+                "links": links,
+                "features": [
+                    {
+                        **feature,
+                        "links": [
+                            model.Link(
+                                title="Collection",
+                                href=self.url_for(
+                                    request,
+                                    "collection",
+                                    collectionId=collection.id,
                                 ),
-                                model.Link(
-                                    title="Item",
-                                    href=self.url_for(
-                                        request,
-                                        "item",
-                                        collectionId=collection.id,
-                                        itemId=feature.id,
-                                    ),
-                                    rel="item",
-                                    type=MediaType.json,
+                                rel="collection",
+                                type=MediaType.json,
+                            ).dict(exclude_none=True),
+                            model.Link(
+                                title="Item",
+                                href=self.url_for(
+                                    request,
+                                    "item",
+                                    collectionId=collection.id,
+                                    itemId=feature.get("id"),
                                 ),
-                            ],
-                        }
-                    )
-                    for feature in items
+                                rel="item",
+                                type=MediaType.json,
+                            ).dict(exclude_none=True),
+                        ],
+                    }
+                    for feature in items["features"]
                 ],
-            )
+            }
 
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request,
-                    data.json(exclude_none=True),
-                    template_name="items",
+                    request, json.dumps(data), template_name="items"
                 )
 
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    data.json_seq(exclude_none=True),
+                    (json.dumps(f) + "\n" for f in data["features"]),
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -816,8 +818,6 @@ class Endpoints:
 
         @self.router.get(
             "/collections/{collectionId}/items/{itemId}",
-            response_model=model.Item,
-            response_model_exclude_none=True,
             response_class=GeoJSONResponse,
             responses={
                 200: {
@@ -825,7 +825,8 @@ class Endpoints:
                         MediaType.geojson.value: {},
                         MediaType.html.value: {},
                         MediaType.json.value: {},
-                    }
+                    },
+                    "model": model.Item,
                 },
             },
         )
@@ -865,16 +866,16 @@ class Endpoints:
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
 
-            data = model.Item(
-                **feature.dict(),
-                links=[
+            data = {
+                **feature,
+                "links": [
                     model.Link(
                         href=self.url_for(
                             request, "collection", collectionId=collection.id
                         ),
                         rel="collection",
                         type=MediaType.json,
-                    ),
+                    ).dict(exclude_none=True),
                     model.Link(
                         href=self.url_for(
                             request,
@@ -884,15 +885,15 @@ class Endpoints:
                         ),
                         rel="self",
                         type=MediaType.geojson,
-                    ),
+                    ).dict(exclude_none=True),
                 ],
-            )
+            }
 
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    json.dumps(data),
                     template_name="item",
                 )
 
@@ -901,8 +902,8 @@ class Endpoints:
                 return JSONResponse(
                     {
                         "collectionId": collection.id,
-                        "itemId": data.id,
-                        **data.properties,
+                        "itemId": data.get("id"),
+                        **data.get("properties", {}),
                     },
                 )
 

@@ -8,7 +8,7 @@ def test_item(app):
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
     assert body["type"] == "Feature"
-    assert body["id"] == "1"
+    assert body["id"] == 1
     assert body["links"]
 
     response = app.get("/collections/public.landsat_wrs/items/1?f=html")
