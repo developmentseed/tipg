@@ -116,21 +116,15 @@ class Table(BaseModel):
 
     def columns(self, properties: Optional[List[str]] = None) -> List[str]:
         """Return table columns optionally filtered to only include columns from properties."""
-        cols = [c.name for c in self.properties]
-        if properties is not None:
-            if self.id_column and self.id_column not in properties:
-                properties.append(self.id_column)
-
-            geom_col = self.get_geometry_column()
-            if geom_col:
-                properties.append(geom_col.name)
-
-            cols = [col for col in cols if col in properties]
-
-        if len(cols) < 1:
-            raise TypeError("No columns selected")
-
-        return cols
+        print(f"properties: {properties}")
+        if properties in [[], [""]]:
+            return []
+        nongeo = [
+            c.name for c in self.properties if c.type not in ["geometry", "geography"]
+        ]
+        if properties is None:
+            return nongeo
+        return [c for c in nongeo if c in properties]
 
     def get_column(self, property_name: str) -> Optional[Column]:
         """Return column info."""

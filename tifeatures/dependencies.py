@@ -7,12 +7,12 @@ from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
-from tifeatures.errors import InvalidBBox
-from tifeatures.layer import CollectionLayer
+from tifeatures.dbmodel import GeometryColumn
+from tifeatures.errors import InvalidBBox, InvalidGeometryColumnName
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources import enums
 
-from fastapi import HTTPException, Path, Query
+from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
@@ -20,7 +20,7 @@ from starlette.requests import Request
 def CollectionParams(
     request: Request,
     collectionId: str = Path(..., description="Collection identifier"),
-) -> CollectionLayer:
+) -> TableLayer:
     """Return Layer Object."""
     # Check function_catalog
     function_catalog = getattr(request.app.state, "tifeatures_function_catalog", {})
@@ -251,3 +251,19 @@ def sortby_query(
 ):
     """Sortby dependency."""
     return sortby
+
+
+def geom_col(
+    collection: TableLayer = Depends(CollectionParams),
+    geom_column: Optional[str] = Query(
+        None,
+        description="Select geometry column.",
+        alias="geom-column",
+    ),
+) -> Optional[GeometryColumn]:
+    """Geometry Column Dependency."""
+    geom_col = collection.get_geometry_column(geom_column)
+
+    if geom_column and geom_column.lower() != "none" and not geom_col:
+        raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom_column}.")
+    return geom_col
