@@ -2,7 +2,7 @@
 
 import abc
 import re
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
 from buildpg import asyncpg, clauses
@@ -18,12 +18,12 @@ from tifeatures.dbmodel import Table as DBTable
 from tifeatures.errors import (
     InvalidDatetime,
     InvalidDatetimeColumnName,
+    InvalidGeometryColumnName,
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
 from tifeatures.filter.evaluate import to_filter
 from tifeatures.filter.filters import bbox_to_wkt
-from tifeatures.resources.enums import MediaType
 
 
 class RawComponent(VarLiteral):
@@ -63,7 +63,8 @@ class Feature(TypedDict, total=False):
     """Simple Feature model."""
 
     type: str
-    geometry: Optional[Dict]
+    # Geometry is either a dict or a str (wkt)
+    geometry: Optional[Union[Dict, str]]
     properties: Optional[Dict]
     id: Optional[Any]
     bbox: Optional[List[float]]
@@ -99,6 +100,7 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
+        *,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
@@ -106,13 +108,13 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
+        geom: Optional[str] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
-        geometry_column: Optional[GeometryColumn] = None,
         offset: Optional[int] = None,
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
-        media_type: Optional[MediaType] = None,
+        geom_as_wkt: bool = False,
     ) -> Tuple[FeatureCollection, int]:
         """Return a FeatureCollection and the number of matched items."""
         ...
@@ -159,7 +161,7 @@ class Table(CollectionLayer, DBTable):
         geometry_column: Optional[GeometryColumn],
         bbox_only: Optional[bool],
         simplify: Optional[float],
-        media_type: MediaType = MediaType.geojson,
+        geom_as_wkt: bool = False,
     ):
         columns = self.columns(properties)
         if columns:
@@ -173,19 +175,7 @@ class Table(CollectionLayer, DBTable):
             sel = sel + raw(" ROW_NUMBER () OVER () AS tifeatures_id, ")
 
         geom = self._geom(geometry_column, bbox_only, simplify)
-        if (
-            media_type in [MediaType.geojson, MediaType.geojsonseq, MediaType.html]
-            or media_type is None
-        ):
-            if geom:
-                sel = (
-                    sel
-                    + raw(pg_funcs.cast(logic.Func("st_asgeojson", geom), "json"))
-                    + raw(" AS tifeatures_geom ")
-                )
-            else:
-                sel = sel + raw(" NULL::json AS tifeatures_geom ")
-        else:
+        if geom_as_wkt:
             if geom:
                 sel = (
                     sel
@@ -194,6 +184,17 @@ class Table(CollectionLayer, DBTable):
                 )
             else:
                 sel = sel + raw(" NULL::text AS tifeatures_geom ")
+
+        else:
+            if geom:
+                sel = (
+                    sel
+                    + raw(pg_funcs.cast(logic.Func("st_asgeojson", geom), "json"))
+                    + raw(" AS tifeatures_geom ")
+                )
+            else:
+                sel = sel + raw(" NULL::json AS tifeatures_geom ")
+
         return RawComponent(sel)
 
     def _select_count(self):
@@ -368,6 +369,7 @@ class Table(CollectionLayer, DBTable):
 
     async def _features_query(
         self,
+        *,
         pool: asyncpg.BuildPgPool,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
@@ -376,27 +378,22 @@ class Table(CollectionLayer, DBTable):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
-        geometry_column: Optional[GeometryColumn] = None,
+        geom: Optional[str] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
-        media_type: Optional[MediaType] = MediaType.geojson,
+        geom_as_wkt: bool = False,
     ):
         """Build Features query."""
-
-        if geometry_column:
-            geom_column_name: Optional[str] = geometry_column.name
-        else:
-            geom_column_name = None
         c = (
             self._select(
                 properties=properties,
-                geometry_column=geometry_column,
+                geometry_column=self.get_geometry_column(geom),
                 bbox_only=bbox_only,
                 simplify=simplify,
-                media_type=media_type,
+                geom_as_wkt=geom_as_wkt,
             )
             + self._from()
             + self._where(
@@ -405,15 +402,15 @@ class Table(CollectionLayer, DBTable):
                 bbox=bbox_filter,
                 properties=properties_filter,
                 cql=cql_filter,
-                geom=geom_column_name,
+                geom=geom,
                 dt=dt,
             )
             + self._sortby(sortby)
             + clauses.Limit(limit or 10)
             + clauses.Offset(offset or 0)
         )
-        q, p = render(":c", c=c)
 
+        q, p = render(":c", c=c)
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
                 props = dict(r)
@@ -431,15 +428,10 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
-        geometry_column: Optional[GeometryColumn] = None,
-        dt: str = None,
+        geom: Optional[str] = None,
+        dt: Optional[str] = None,
     ) -> int:
         """Build features COUNT query."""
-
-        if geometry_column:
-            geom_column_name: Optional[str] = geometry_column.name
-        else:
-            geom_column_name = None
         c = (
             self._select_count()
             + self._from()
@@ -449,12 +441,12 @@ class Table(CollectionLayer, DBTable):
                 bbox=bbox_filter,
                 properties=properties_filter,
                 cql=cql_filter,
-                geom=geom_column_name,
+                geom=geom,
                 dt=dt,
             )
         )
-        q, p = render(":c", c=c)
 
+        q, p = render(":c", c=c)
         async with pool.acquire() as conn:
             count = await conn.fetchval(q, *p)
             return count
@@ -462,6 +454,7 @@ class Table(CollectionLayer, DBTable):
     async def features(
         self,
         pool: asyncpg.BuildPgPool,
+        *,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
@@ -469,15 +462,18 @@ class Table(CollectionLayer, DBTable):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
+        geom: Optional[str] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
-        geometry_column: Optional[GeometryColumn] = None,
         offset: Optional[int] = None,
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
-        media_type: Optional[MediaType] = None,
+        geom_as_wkt: bool = False,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
+        if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
+
         count = await self._features_count_query(
             pool=pool,
             ids_filter=ids_filter,
@@ -485,9 +481,10 @@ class Table(CollectionLayer, DBTable):
             bbox_filter=bbox_filter,
             properties_filter=properties_filter,
             cql_filter=cql_filter,
-            geometry_column=geometry_column,
+            geom=geom,
             dt=dt,
         )
+
         features = [
             f
             async for f in self._features_query(
@@ -499,21 +496,20 @@ class Table(CollectionLayer, DBTable):
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
-                geometry_column=geometry_column,
+                geom=geom,
                 dt=dt,
                 limit=limit,
                 offset=offset,
                 bbox_only=bbox_only,
                 simplify=simplify,
-                media_type=media_type,
+                geom_as_wkt=geom_as_wkt,
             )
         ]
 
-        collection = (
-            FeatureCollection(type="FeatureCollection", features=features or []),
+        return (
+            FeatureCollection(type="FeatureCollection", features=features),
             count,
         )
-        return collection
 
     @property
     def queryables(self) -> Dict:

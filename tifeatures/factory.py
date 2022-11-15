@@ -9,7 +9,6 @@ import orjson
 from pygeofilter.ast import AstType
 
 from tifeatures import model
-from tifeatures.dbmodel import GeometryColumn
 from tifeatures.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -18,7 +17,6 @@ from tifeatures.dependencies import (
     bbox_query,
     datetime_query,
     filter_query,
-    geom_col,
     ids_query,
     properties_query,
     sortby_query,
@@ -565,7 +563,11 @@ class Endpoints:
             properties: Optional[List[str]] = Depends(properties_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             sortby: Optional[str] = Depends(sortby_query),
-            geom_column: Optional[GeometryColumn] = Depends(geom_col),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
             datetime_column: Optional[str] = Query(
                 None,
                 description="Select datetime column.",
@@ -618,6 +620,13 @@ class Endpoints:
                 if key.lower() not in exclude and key.lower() in table_property
             ]
 
+            output_type = output_type or MediaType.geojson
+            geom_as_wkt = output_type not in [
+                MediaType.geojson,
+                MediaType.geojsonseq,
+                MediaType.html,
+            ]
+
             items, matched_items = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
@@ -629,11 +638,11 @@ class Endpoints:
                 properties=properties,
                 limit=limit,
                 offset=offset,
-                geometry_column=geom_column,
+                geom=geom_column,
                 dt=datetime_column,
                 bbox_only=bbox_only,
                 simplify=simplify,
-                media_type=output_type,
+                geom_as_wkt=geom_as_wkt,
             )
 
             if output_type in (
@@ -837,7 +846,11 @@ class Endpoints:
                 None,
                 description="Simplify the output geometry to given threshold in decimal degrees.",
             ),
-            geom_column: Optional[GeometryColumn] = Depends(geom_col),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
             datetime_column: Optional[str] = Query(
                 None,
                 description="Select datetime column.",
@@ -849,15 +862,22 @@ class Endpoints:
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
 
+            output_type = output_type or MediaType.geojson
+            geom_as_wkt = output_type not in [
+                MediaType.geojson,
+                MediaType.geojsonseq,
+                MediaType.html,
+            ]
+
             items, _ = await collection.features(
                 pool=request.app.state.pool,
                 bbox_only=bbox_only,
                 simplify=simplify,
                 ids_filter=[itemId],
                 properties=properties,
-                geometry_column=geom_column,
+                geom=geom_column,
                 dt=datetime_column,
-                media_type=output_type,
+                geom_as_wkt=geom_as_wkt,
             )
 
             features = items.get("features", None)

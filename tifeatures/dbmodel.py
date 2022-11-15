@@ -118,12 +118,14 @@ class Table(BaseModel):
         """Return table columns optionally filtered to only include columns from properties."""
         if properties in [[], [""]]:
             return []
-        nongeo = [
+
+        cols = [
             c.name for c in self.properties if c.type not in ["geometry", "geography"]
         ]
         if properties is None:
-            return nongeo
-        return [c for c in nongeo if c in properties]
+            return cols
+
+        return [c for c in cols if c in properties]
 
     def get_column(self, property_name: str) -> Optional[Column]:
         """Return column info."""

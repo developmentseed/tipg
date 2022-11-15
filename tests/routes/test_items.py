@@ -348,7 +348,6 @@ def test_items_geom_column(app):
     assert body["links"]
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 10
-    print(body["features"][0])
     assert body["features"][0]["geometry"]["type"] == "Polygon"
     # Make sure we don't return any geometry in the properties
     assert "centroid" not in body["features"][0]["properties"]
