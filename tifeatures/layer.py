@@ -169,7 +169,6 @@ class Table(CollectionLayer, DBTable):
             sel = sel + raw(" ROW_NUMBER () OVER () AS tifeatures_id, ")
 
         geom = self._geom(geometry_column, bbox_only, simplify)
-        print(geometry_column, geom, media_type)
         if (
             media_type in [MediaType.geojson, MediaType.geojsonseq, MediaType.html]
             or media_type is None
@@ -407,7 +406,6 @@ class Table(CollectionLayer, DBTable):
             + clauses.Offset(offset or 0)
         )
         q, p = render(":c", c=c)
-        print(q, p)
 
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
