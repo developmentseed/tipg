@@ -21,9 +21,18 @@ def test_item(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     feat = response.json()
-    assert ["collectionId", "itemId", "id", "pr", "row", "path", "ogc_fid"] == list(
-        feat.keys()
-    )
+    assert set(
+        [
+            "collectionId",
+            "itemId",
+            "id",
+            "pr",
+            "row",
+            "path",
+            "ogc_fid",
+            "geometry",
+        ]
+    ) == set(feat.keys())
 
     # not found
     response = app.get("/collections/public.landsat_wrs/items/50000")

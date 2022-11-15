@@ -8,7 +8,6 @@ from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tifeatures.errors import InvalidBBox
-from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources import enums
 
@@ -20,30 +19,22 @@ from starlette.requests import Request
 def CollectionParams(
     request: Request,
     collectionId: str = Path(..., description="Collection identifier"),
-) -> CollectionLayer:
+) -> TableLayer:
     """Return Layer Object."""
-    # Check function_catalog
-    function_catalog = getattr(request.app.state, "tifeatures_function_catalog", {})
-    func = function_catalog.get(collectionId)
-    if func:
-        return func
-
-    # Check table_catalog
-    else:
-        table_pattern = re.match(  # type: ignore
-            r"^(?P<schema>.+)\.(?P<table>.+)$", collectionId
+    table_pattern = re.match(  # type: ignore
+        r"^(?P<schema>.+)\.(?P<table>.+)$", collectionId
+    )
+    if not table_pattern:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid Table format '{collectionId}'."
         )
-        if not table_pattern:
-            raise HTTPException(
-                status_code=422, detail=f"Invalid Table format '{collectionId}'."
-            )
 
-        assert table_pattern.groupdict()["schema"]
-        assert table_pattern.groupdict()["table"]
+    assert table_pattern.groupdict()["schema"]
+    assert table_pattern.groupdict()["table"]
 
-        table_catalog = getattr(request.app.state, "table_catalog", {})
-        if collectionId in table_catalog:
-            return TableLayer(**table_catalog[collectionId])
+    table_catalog = getattr(request.app.state, "table_catalog", {})
+    if collectionId in table_catalog:
+        return TableLayer(**table_catalog[collectionId])
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."

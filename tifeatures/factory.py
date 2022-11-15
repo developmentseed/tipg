@@ -1,17 +1,16 @@
 """tifeatures.factory: router factories."""
 
 import csv
-import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generator, Iterable, List, Optional
 
 import jinja2
+import orjson
 from pygeofilter.ast import AstType
 
 from tifeatures import model
 from tifeatures.dependencies import (
     CollectionParams,
-    ItemOutputType,
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
@@ -23,17 +22,13 @@ from tifeatures.dependencies import (
     sortby_query,
 )
 from tifeatures.errors import NoPrimaryKey, NotFound
-from tifeatures.geojson import geojson_to_wkt
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType
-from tifeatures.resources.response import (
-    GeoJSONResponse,
-    JSONResponse,
-    SchemaJSONResponse,
-)
+from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
@@ -43,7 +38,7 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 DEFAULT_TEMPLATES = Jinja2Templates(
     directory="",
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
-)
+)  # type:ignore
 
 
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
@@ -133,7 +128,7 @@ class Endpoints:
             f"{template_name}.html",
             {
                 "request": request,
-                "response": json.loads(data),
+                "response": orjson.loads(data),
                 "template": {
                     "api_root": baseurl,
                     "params": request.query_params,
@@ -151,7 +146,7 @@ class Endpoints:
             "/",
             response_model=model.Landing,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -257,7 +252,7 @@ class Endpoints:
             "/conformance",
             response_model=model.Conformance,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -306,7 +301,7 @@ class Endpoints:
             "/collections",
             response_model=model.Collections,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -407,7 +402,7 @@ class Endpoints:
             "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -625,6 +620,13 @@ class Endpoints:
                 if key.lower() not in exclude and key.lower() in table_property
             ]
 
+            output_type = output_type or MediaType.geojson
+            geom_as_wkt = output_type not in [
+                MediaType.geojson,
+                MediaType.geojsonseq,
+                MediaType.html,
+            ]
+
             items, matched_items = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
@@ -640,6 +642,7 @@ class Endpoints:
                 dt=datetime_column,
                 bbox_only=bbox_only,
                 simplify=simplify,
+                geom_as_wkt=geom_as_wkt,
             )
 
             if output_type in (
@@ -656,7 +659,7 @@ class Endpoints:
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": geojson_to_wkt(f["geometry"]),
+                            "geometry": f["geometry"],
                         }
                         for f in items["features"]
                     )
@@ -683,12 +686,12 @@ class Endpoints:
 
                 # JSON Response
                 if output_type == MediaType.json:
-                    return JSONResponse([row for row in rows])
+                    return ORJSONResponse([row for row in rows])
 
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (json.dumps(row) + "\n" for row in rows),
+                        (orjson.dumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -735,16 +738,16 @@ class Endpoints:
                 )
 
             if offset:
-                query_params = dict(request.query_params)
-                query_params.pop("offset")
+                qp = dict(request.query_params)
+                qp.pop("offset")
                 prev_offset = max(offset - items_returned, 0)
                 if prev_offset:
-                    query_params = QueryParams({**query_params, "offset": prev_offset})
+                    query_params = QueryParams({**qp, "offset": prev_offset})
                 else:
-                    query_params = QueryParams({**query_params})
+                    query_params = QueryParams({**qp})
 
                 url = self.url_for(request, "items", collectionId=collection.id)
-                if query_params:
+                if qp:
                     url += f"?{query_params}"
 
                 links.append(
@@ -800,13 +803,13 @@ class Endpoints:
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request, json.dumps(data), template_name="items"
+                    request, orjson.dumps(data).decode(), template_name="items"
                 )
 
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    (json.dumps(f) + "\n" for f in data["features"]),
+                    (orjson.dumps(f) + b"\n" for f in data["features"]),
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -814,7 +817,7 @@ class Endpoints:
                 )
 
             # Default to GeoJSON Response
-            return data
+            return GeoJSONResponse(data)
 
         @self.router.get(
             "/collections/{collectionId}/items/{itemId}",
@@ -834,11 +837,6 @@ class Endpoints:
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
             bbox_only: Optional[bool] = Query(
                 None,
                 description="Only return the bounding box of the feature.",
@@ -848,23 +846,101 @@ class Endpoints:
                 None,
                 description="Simplify the output geometry to given threshold in decimal degrees.",
             ),
-            output_type: Optional[MediaType] = Depends(ItemOutputType),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+            datetime_column: Optional[str] = Query(
+                None,
+                description="Select datetime column.",
+                alias="datetime-column",
+            ),
+            output_type: Optional[MediaType] = Depends(ItemsOutputType),
+            properties: Optional[List[str]] = Depends(properties_query),
         ):
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
 
-            feature = await collection.feature(
-                request.app.state.pool,
-                item_id=itemId,
-                geom=geom_column,
+            output_type = output_type or MediaType.geojson
+            geom_as_wkt = output_type not in [
+                MediaType.geojson,
+                MediaType.geojsonseq,
+                MediaType.html,
+            ]
+
+            items, _ = await collection.features(
+                pool=request.app.state.pool,
                 bbox_only=bbox_only,
                 simplify=simplify,
+                ids_filter=[itemId],
+                properties=properties,
+                geom=geom_column,
+                dt=datetime_column,
+                geom_as_wkt=geom_as_wkt,
             )
 
-            if not feature:
+            features = items.get("features", None)
+
+            if not features or len(features) < 1:
                 raise NotFound(
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
+            else:
+                feature = features[0]
+
+            if output_type in (
+                MediaType.csv,
+                MediaType.json,
+                MediaType.ndjson,
+            ):
+                if (
+                    items["features"]
+                    and items["features"][0].get("geometry") is not None
+                ):
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
+                            "geometry": f["geometry"],
+                        }
+                        for f in items["features"]
+                    )
+
+                else:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
+                        }
+                        for f in items["features"]
+                    )
+
+                # CSV Response
+                if output_type == MediaType.csv:
+                    return StreamingResponse(
+                        create_csv_rows(rows),
+                        media_type=MediaType.csv,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.csv"
+                        },
+                    )
+
+                # JSON Response
+                if output_type == MediaType.json:
+                    return ORJSONResponse(rows.__next__())
+
+                # NDJSON Response
+                if output_type == MediaType.ndjson:
+                    return StreamingResponse(
+                        (orjson.dumps(row) + b"\n" for row in rows),
+                        media_type=MediaType.ndjson,
+                        headers={
+                            "Content-Disposition": "attachment;filename=items.ndjson"
+                        },
+                    )
 
             data = {
                 **feature,
@@ -893,19 +969,9 @@ class Endpoints:
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    json.dumps(data),
+                    orjson.dumps(data).decode(),
                     template_name="item",
                 )
 
-            # JSON Response
-            if output_type == MediaType.json:
-                return JSONResponse(
-                    {
-                        "collectionId": collection.id,
-                        "itemId": data.get("id"),
-                        **data.get("properties", {}),
-                    },
-                )
-
             # Default to GeoJSON Response
-            return data
+            return GeoJSONResponse(data)

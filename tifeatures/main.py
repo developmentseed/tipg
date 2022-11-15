@@ -9,7 +9,6 @@ from tifeatures.db import close_db_connection, connect_to_db, register_table_cat
 from tifeatures.dbmodel import Table
 from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tifeatures.factory import Endpoints
-from tifeatures.layer import FunctionRegistry
 from tifeatures.middleware import CacheControlMiddleware
 from tifeatures.settings import APISettings, PostgresSettings
 
@@ -41,14 +40,11 @@ templates_location.append(jinja2.PackageLoader(__package__, "templates"))
 templates = Jinja2Templates(
     directory="",  # we need to set a dummy directory variable, see https://github.com/encode/starlette/issues/1214
     loader=jinja2.ChoiceLoader(templates_location),
-)
+)  # type: ignore
 
 # Register endpoints.
 endpoints = Endpoints(title=settings.name, templates=templates)
 app.include_router(endpoints.router)
-
-# We add the function registry to the application state
-app.state.tifeatures_function_catalog = FunctionRegistry()
 
 # Set all CORS enabled origins
 if settings.cors_origins:
