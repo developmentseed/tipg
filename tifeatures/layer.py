@@ -2,8 +2,7 @@
 
 import abc
 import re
-from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 from buildpg import RawDangerous as raw
 from buildpg import asyncpg, clauses
@@ -103,12 +102,17 @@ class CollectionLayer(BaseModel, metaclass=abc.ABCMeta):
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, Any]]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
+        dt: Optional[str] = None,
         limit: Optional[int] = None,
+        geometry_column: Optional[GeometryColumn] = None,
         offset: Optional[int] = None,
-        **kwargs: Any,
+        bbox_only: Optional[bool] = None,
+        simplify: Optional[float] = None,
+        media_type: Optional[MediaType] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Return a FeatureCollection and the number of matched items."""
         ...
@@ -231,8 +235,8 @@ class Table(CollectionLayer, DBTable):
         bbox: Optional[List[float]] = None,
         properties: Optional[List[Tuple[str, Any]]] = None,
         cql: Optional[AstType] = None,
-        geom: str = None,
-        dt: str = None,
+        geom: Optional[str] = None,
+        dt: Optional[str] = None,
     ):
         """Construct WHERE query."""
         wheres = [logic.S(True)]
@@ -364,7 +368,6 @@ class Table(CollectionLayer, DBTable):
 
     async def _features_query(
         self,
-        *,
         pool: asyncpg.BuildPgPool,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
@@ -373,16 +376,20 @@ class Table(CollectionLayer, DBTable):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
-        geom: Optional[str] = None,
         geometry_column: Optional[GeometryColumn] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        bbox_only: Optional[bool],
-        simplify: Optional[float],
-        media_type: MediaType = MediaType.geojson,
+        bbox_only: Optional[bool] = None,
+        simplify: Optional[float] = None,
+        media_type: Optional[MediaType] = MediaType.geojson,
     ):
         """Build Features query."""
+
+        if geometry_column:
+            geom_column_name: Optional[str] = geometry_column.name
+        else:
+            geom_column_name = None
         c = (
             self._select(
                 properties=properties,
@@ -398,7 +405,7 @@ class Table(CollectionLayer, DBTable):
                 bbox=bbox_filter,
                 properties=properties_filter,
                 cql=cql_filter,
-                geom=geom,
+                geom=geom_column_name,
                 dt=dt,
             )
             + self._sortby(sortby)
@@ -424,10 +431,15 @@ class Table(CollectionLayer, DBTable):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
-        geom: str = None,
+        geometry_column: Optional[GeometryColumn] = None,
         dt: str = None,
     ) -> int:
         """Build features COUNT query."""
+
+        if geometry_column:
+            geom_column_name: Optional[str] = geometry_column.name
+        else:
+            geom_column_name = None
         c = (
             self._select_count()
             + self._from()
@@ -437,7 +449,7 @@ class Table(CollectionLayer, DBTable):
                 bbox=bbox_filter,
                 properties=properties_filter,
                 cql=cql_filter,
-                geom=geom,
+                geom=geom_column_name,
                 dt=dt,
             )
         )
@@ -447,10 +459,9 @@ class Table(CollectionLayer, DBTable):
             count = await conn.fetchval(q, *p)
             return count
 
-    async def query(
+    async def features(
         self,
         pool: asyncpg.BuildPgPool,
-        *,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
@@ -458,8 +469,7 @@ class Table(CollectionLayer, DBTable):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
-        geom: str = None,
-        dt: str = None,
+        dt: Optional[str] = None,
         limit: Optional[int] = None,
         geometry_column: Optional[GeometryColumn] = None,
         offset: Optional[int] = None,
@@ -475,7 +485,7 @@ class Table(CollectionLayer, DBTable):
             bbox_filter=bbox_filter,
             properties_filter=properties_filter,
             cql_filter=cql_filter,
-            geom=geom,
+            geometry_column=geometry_column,
             dt=dt,
         )
         features = [
@@ -489,7 +499,6 @@ class Table(CollectionLayer, DBTable):
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
-                geom=geom,
                 geometry_column=geometry_column,
                 dt=dt,
                 limit=limit,
@@ -505,34 +514,6 @@ class Table(CollectionLayer, DBTable):
             count,
         )
         return collection
-
-    async def features(
-        self,
-        pool: asyncpg.BuildPgPool,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
-        properties: Optional[List[str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        **kwargs: Any,
-    ) -> Tuple[FeatureCollection, int]:
-        """Return a FeatureCollection and the number of matched items."""
-
-        return await self.query(
-            pool=pool,
-            ids_filter=ids_filter,
-            bbox_filter=bbox_filter,
-            datetime_filter=datetime_filter,
-            properties_filter=properties_filter,
-            cql_filter=cql_filter,
-            properties=properties,
-            limit=limit,
-            offset=offset,
-            **kwargs,
-        )
 
     @property
     def queryables(self) -> Dict:
@@ -550,95 +531,3 @@ class Table(CollectionLayer, DBTable):
             if col.name not in geoms
         }
         return {**geoms, **props}
-
-
-class Function(CollectionLayer):
-    """Function Reader.
-
-    Attributes:
-        id (str): Layer's name.
-        bounds (list): Layer's bounds (left, bottom, right, top).
-        type (str): Layer's type.
-        function_name (str): Name of the SQL function to call. Defaults to `id`.
-        sql (str): Valid SQL function which returns Tile data.
-        options (list, optional): options available for the SQL function.
-
-    """
-
-    type: str = "Function"
-    sql: str
-    function_name: Optional[str]
-    options: Optional[List[Dict[str, Any]]]
-
-    @root_validator
-    def function_name_default(cls, values):
-        """Define default function's name to be same as id."""
-        function_name = values.get("function_name")
-        if function_name is None:
-            values["function_name"] = values.get("id")
-        return values
-
-    @classmethod
-    def from_file(cls, id: str, infile: str, **kwargs: Any):
-        """load sql from file"""
-        with open(infile) as f:
-            sql = f.read()
-
-        return cls(id=id, sql=sql, **kwargs)
-
-    async def features(
-        self,
-        pool: asyncpg.BuildPgPool,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
-        properties: Optional[List[str]] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        **kwargs: Any,
-    ) -> Tuple[FeatureCollection, int]:
-        """Return a FeatureCollection and the number of matched items."""
-        # TODO
-        pass
-
-    async def feature(
-        self,
-        pool: asyncpg.BuildPgPool,
-        item_id: str,
-        properties: Optional[List[str]] = None,
-        **kwargs: Any,
-    ) -> Optional[Feature]:
-        """Return a Feature."""
-        # TODO
-        pass
-
-    @property
-    def queryables(self) -> Dict:
-        """Return the queryables."""
-        # TODO
-        pass
-
-
-@dataclass
-class FunctionRegistry:
-    """function registry"""
-
-    funcs: ClassVar[Dict[str, Function]] = {}
-
-    @classmethod
-    def get(cls, key: str):
-        """lookup function by name."""
-        return cls.funcs.get(key)
-
-    @classmethod
-    def register(cls, *args: Function):
-        """register function(s)."""
-        for func in args:
-            cls.funcs[func.id] = func
-
-    @classmethod
-    def values(cls):
-        """get all values."""
-        return cls.funcs.values()

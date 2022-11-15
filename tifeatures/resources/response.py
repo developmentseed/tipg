@@ -1,21 +1,15 @@
 """tifeatures custom responses."""
 
-try:
-    import orjson
-
-    from fastapi.responses import ORJSONResponse as JSONResponse
-except ImportError:  # pragma: nocover
-    orjson = None  # type: ignore
-    from starlette.responses import JSONResponse
+from fastapi.responses import ORJSONResponse
 
 
-class GeoJSONResponse(JSONResponse):
+class GeoJSONResponse(ORJSONResponse):
     """GeoJSON Response"""
 
     media_type = "application/geo+json"
 
 
-class SchemaJSONResponse(JSONResponse):
+class SchemaJSONResponse(ORJSONResponse):
     """Schema Response"""
 
     media_type = "application/schema+json"

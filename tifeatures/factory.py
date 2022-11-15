@@ -27,13 +27,10 @@ from tifeatures.errors import NoPrimaryKey, NotFound
 from tifeatures.layer import CollectionLayer
 from tifeatures.layer import Table as TableLayer
 from tifeatures.resources.enums import MediaType
-from tifeatures.resources.response import (
-    GeoJSONResponse,
-    JSONResponse,
-    SchemaJSONResponse,
-)
+from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
@@ -151,7 +148,7 @@ class Endpoints:
             "/",
             response_model=model.Landing,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -257,7 +254,7 @@ class Endpoints:
             "/conformance",
             response_model=model.Conformance,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -306,7 +303,7 @@ class Endpoints:
             "/collections",
             response_model=model.Collections,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -407,7 +404,7 @@ class Endpoints:
             "/collections/{collectionId}",
             response_model=model.Collection,
             response_model_exclude_none=True,
-            response_class=JSONResponse,
+            response_class=ORJSONResponse,
             responses={
                 200: {
                     "content": {
@@ -621,11 +618,6 @@ class Endpoints:
                 if key.lower() not in exclude and key.lower() in table_property
             ]
 
-            if geom_column:
-                geom_column_name: Optional[str] = geom_column.name
-            else:
-                geom_column_name = None
-
             items, matched_items = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
@@ -637,7 +629,6 @@ class Endpoints:
                 properties=properties,
                 limit=limit,
                 offset=offset,
-                geom=geom_column_name,
                 geometry_column=geom_column,
                 dt=datetime_column,
                 bbox_only=bbox_only,
@@ -686,7 +677,7 @@ class Endpoints:
 
                 # JSON Response
                 if output_type == MediaType.json:
-                    return JSONResponse([row for row in rows])
+                    return ORJSONResponse([row for row in rows])
 
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
@@ -817,7 +808,7 @@ class Endpoints:
                 )
 
             # Default to GeoJSON Response
-            return data
+            return GeoJSONResponse(data)
 
         @self.router.get(
             "/collections/{collectionId}/items/{itemId}",
@@ -858,18 +849,12 @@ class Endpoints:
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
 
-            if geom_column:
-                geom_column_name: Optional[str] = geom_column.name
-            else:
-                geom_column_name = None
-
             items, _ = await collection.features(
                 pool=request.app.state.pool,
                 bbox_only=bbox_only,
                 simplify=simplify,
                 ids_filter=[itemId],
                 properties=properties,
-                geom=geom_column_name,
                 geometry_column=geom_column,
                 dt=datetime_column,
                 media_type=output_type,
@@ -925,7 +910,7 @@ class Endpoints:
 
                 # JSON Response
                 if output_type == MediaType.json:
-                    return JSONResponse(rows.__next__())
+                    return ORJSONResponse(rows.__next__())
 
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
@@ -969,4 +954,4 @@ class Endpoints:
                 )
 
             # Default to GeoJSON Response
-            return data
+            return GeoJSONResponse(data)
