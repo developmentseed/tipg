@@ -2,6 +2,7 @@
 
 from typing import Any, Optional
 
+import orjson
 from buildpg import asyncpg
 
 from tifeatures.dbmodel import get_table_index
@@ -9,20 +10,14 @@ from tifeatures.settings import PostgresSettings
 
 from fastapi import FastAPI
 
-try:
-    import orjson as json
-
-except ModuleNotFoundError:
-    import json  # type: ignore
-
 
 async def con_init(conn):
     """Use json for json returns."""
     await conn.set_type_codec(
-        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+        "json", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
-        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
+        "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
 
 
