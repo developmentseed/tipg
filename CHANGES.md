@@ -1,6 +1,10 @@
 # Release Notes
 
-## 0.1.0a0
+## 0.1.0a1 (2022-11-16)
+
+* fix package metadata
+
+## 0.1.0a0 (2022-11-16)
 
 * OGC Feature API Part 1: Core  (https://docs.ogc.org/is/17-069r4/17-069r4.html)
 * OGC Feature API Part 3: Filtering / CQL2 (https://docs.ogc.org/DRAFTS/19-079r1.html)
