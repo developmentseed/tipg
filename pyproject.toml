@@ -5,7 +5,8 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Vincent Sarago", email = "vincent@developmentseed.com"},
+    {name = "Vincent Sarago", email = "vincent@developmentseed.org"},
+    {name = "David Bitner", email = "david@developmentseed.org"},
 ]
 keywords = ["FastAPI", "POSTGIS", "OGC Features"]
 classifiers = [
@@ -42,7 +43,6 @@ test = [
     "httpx",
     "psycopg2",
     "pytest-pgsql",
-    "shapely",
 ]
 dev = [
     "pre-commit",

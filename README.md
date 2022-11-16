@@ -28,10 +28,28 @@
 ## Install
 
 ```bash
+$ python -m pip install pip -U
+$ python -m pip install tifeatures
+
+# or from source
 $ git clone https://github.com/developmentseed/tifeatures.git
 $ cd tifeatures
-$ python -m pip install -e .  # or .["all"] to install optional dependencies
+$ python -m pip install -e .
 ```
+
+## OGC Specification
+
+Specification | Status | link |
+|          -- |     -- |   -- |
+Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
+Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
+Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
+
+Notes:
+
+The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
+
+While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capacities (e.g geometry column selection).
 
 ## PostGIS/Postgres
 
@@ -74,20 +92,6 @@ $ docker-compose up
 <p align="center">
   <img src="https://user-images.githubusercontent.com/10407788/199774870-2e385617-bae8-4513-9349-d97e43670767.png"/>
 </p>
-
-## OGC Specification
-
-Specification | Status | link |
-|          -- |     -- |   -- |
-Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
-Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
-Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
-
-Notes:
-
-The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
-
-While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capacities (e.g geometry column selection).
 
 ## Contribution & Development
 
