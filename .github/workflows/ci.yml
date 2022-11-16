@@ -134,8 +134,8 @@ jobs:
       - name: Build and publish
         if: ${{ steps.tag.outputs.version }} == ${{ steps.module.outputs.version}}
         env:
-          FLIT_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          FLIT_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          HATCH_INDEX_USER: ${{ secrets.PYPI_USERNAME }}
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python -m hatch publish
 
