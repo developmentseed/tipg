@@ -1,7 +1,6 @@
 [project]
 name = "tifeatures"
 description = "Simple and Fast Geospatial Features API for PostGIS."
-readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
@@ -19,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: GIS",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 dependencies = [
     "orjson",
     "asyncpg>=0.23.0",
@@ -58,34 +57,33 @@ docs = [
 ]
 
 [project.urls]
+Homepage = "https://developmentseed.org/tifeatures"
 Source = "https://github.com/developmentseed/tifeatures"
 Documentation = "https://developmentseed.org/tifeatures/"
 
-[build-system]
-requires = ["flit>=3.2,<4"]
-build-backend = "flit_core.buildapi"
+[tool.hatch.version]
+path = "tifeatures/__init__.py"
 
-[tool.flit.module]
-name = "tifeatures"
-
-[tool.flit.sdist]
+[tool.hatch.build.targets.sdist]
 exclude = [
-    "tests/",
-    "docs/",
-    ".github/",
-    "CHANGES.md",
-    "CONTRIBUTING.md",
-    "dockerfiles",
-    "demo",
-    ".env*",
-    "data/",
-    "docker-compose.yml",
+  "/tests",
+  "/dockerfiles",
+  "/docs",
+  "/data",
+  "docker-compose.yml",
+  "CONTRIBUTING.md",
+  "CHANGES.md",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 
 [tool.isort]
 profile = "black"
 known_first_party = ["tifeatures"]
-known_third_party = ["geojson_pydantic"]
+known_third_party = ["geojson_pydantic", "buildpg", "pydantic"]
 forced_separate = [
     "fastapi",
     "starlette",
