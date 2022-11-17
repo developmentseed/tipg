@@ -9,6 +9,9 @@
   <a href="https://codecov.io/gh/developmentseed/tifeatures" target="_blank">
       <img src="https://codecov.io/gh/developmentseed/tifeatures/branch/master/graph/badge.svg" alt="Coverage">
   </a>
+  <a href="https://pypi.org/project/tifeatures" target="_blank">
+      <img src="https://img.shields.io/pypi/v/tifeatures?color=%2334D058&label=pypi%20package" alt="Package version">
+  </a>
   <a href="https://github.com/developmentseed/tifeatures/blob/master/LICENSE" target="_blank">
       <img src="https://img.shields.io/github/license/developmentseed/tifeatures.svg" alt="License">
 
