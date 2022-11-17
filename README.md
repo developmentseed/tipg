@@ -52,11 +52,11 @@ Notes:
 
 The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
 
-While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capacities (e.g geometry column selection).
+While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capabilities (e.g geometry column selection).
 
-## PostGIS/Postgres
+## PostGIS/PostgreSQL
 
-`TiFeatures` rely a lot of `ST_*` PostGIS functions. You need to make sure your Postgres database has Postgis installed.
+`TiFeatures` rely a lot of `ST_*` PostGIS functions. You need to make sure your PostgreSQL database has PostGIS installed.
 
 ```sql
 SELECT name, default_version,installed_version
