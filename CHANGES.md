@@ -1,6 +1,6 @@
 # Release Notes
 
-## 0.1.0a1 (2022-11-16)
+## 0.1.0a2 (2022-11-21)
 
 * fix package metadata
 
