@@ -1,4 +1,4 @@
-"""tifeatures enums."""
+"""tipg enums."""
 
 from enum import Enum
 

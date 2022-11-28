@@ -1,4 +1,4 @@
-"""tifeatures.filter.filters"""
+"""tipg.filter.filters"""
 
 import re
 from datetime import timedelta

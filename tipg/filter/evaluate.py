@@ -1,11 +1,11 @@
-"""tifeatures.filter.evaluate."""
+"""tipg.filter.evaluate."""
 
 from datetime import date, datetime, time, timedelta
 
 from pygeofilter import ast, values
 from pygeofilter.backends.evaluator import Evaluator, handle
 
-from tifeatures.filter import filters
+from tipg.filter import filters
 
 LITERALS = (str, float, int, bool, datetime, date, time, timedelta)
 

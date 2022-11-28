@@ -1,4 +1,4 @@
-"""tifeatures dependencies."""
+"""tipg dependencies."""
 
 import re
 from typing import List, Optional
@@ -7,9 +7,9 @@ from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
-from tifeatures.errors import InvalidBBox
-from tifeatures.layer import Table as TableLayer
-from tifeatures.resources import enums
+from tipg.errors import InvalidBBox
+from tipg.layer import Table as TableLayer
+from tipg.resources import enums
 
 from fastapi import HTTPException, Path, Query
 

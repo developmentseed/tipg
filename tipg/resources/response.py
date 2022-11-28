@@ -1,4 +1,4 @@
-"""tifeatures custom responses."""
+"""tipg custom responses."""
 
 from fastapi.responses import ORJSONResponse
 

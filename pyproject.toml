@@ -1,5 +1,5 @@
 [project]
-name = "tifeatures"
+name = "tipg"
 description = "Simple and Fast Geospatial Features API for PostGIS."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -58,12 +58,12 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://developmentseed.org/tifeatures"
-Source = "https://github.com/developmentseed/tifeatures"
-Documentation = "https://developmentseed.org/tifeatures/"
+Homepage = "https://developmentseed.org/tipg"
+Source = "https://github.com/developmentseed/tipg"
+Documentation = "https://developmentseed.org/tipg/"
 
 [tool.hatch.version]
-path = "tifeatures/__init__.py"
+path = "tipg/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -90,7 +90,7 @@ build-backend = "hatchling.build"
 
 [tool.isort]
 profile = "black"
-known_first_party = ["tifeatures"]
+known_first_party = ["tipg"]
 known_third_party = ["geojson_pydantic", "buildpg", "pydantic"]
 forced_separate = [
     "fastapi",

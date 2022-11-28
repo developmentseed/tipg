@@ -1,16 +1,16 @@
-"""tifeatures app."""
+"""tipg app."""
 
 from typing import Any, List
 
 import jinja2
 
-from tifeatures import __version__ as tifeatures_version
-from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog
-from tifeatures.dbmodel import Table
-from tifeatures.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from tifeatures.factory import Endpoints
-from tifeatures.middleware import CacheControlMiddleware
-from tifeatures.settings import APISettings, PostgresSettings
+from tipg import __version__ as tipg_version
+from tipg.db import close_db_connection, connect_to_db, register_table_catalog
+from tipg.dbmodel import Table
+from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from tipg.factory import Endpoints
+from tipg.middleware import CacheControlMiddleware
+from tipg.settings import APISettings, PostgresSettings
 
 from fastapi import FastAPI, Request
 
@@ -23,7 +23,7 @@ postgres_settings = PostgresSettings()
 
 app = FastAPI(
     title=settings.name,
-    version=tifeatures_version,
+    version=tipg_version,
     openapi_url="/api",
     docs_url="/api.html",
 )

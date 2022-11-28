@@ -74,7 +74,7 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data_alt__pk", "id")
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
-    from tifeatures.main import app
+    from tipg.main import app
 
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []

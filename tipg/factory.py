@@ -1,4 +1,4 @@
-"""tifeatures.factory: router factories."""
+"""tipg.factory: router factories."""
 
 import csv
 from dataclasses import dataclass, field
@@ -8,8 +8,8 @@ import jinja2
 import orjson
 from pygeofilter.ast import AstType
 
-from tifeatures import model
-from tifeatures.dependencies import (
+from tipg import model
+from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
     OutputType,
@@ -21,11 +21,11 @@ from tifeatures.dependencies import (
     properties_query,
     sortby_query,
 )
-from tifeatures.errors import NoPrimaryKey, NotFound
-from tifeatures.layer import CollectionLayer
-from tifeatures.layer import Table as TableLayer
-from tifeatures.resources.enums import MediaType
-from tifeatures.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tipg.errors import NoPrimaryKey, NotFound
+from tipg.layer import CollectionLayer
+from tipg.layer import Table as TableLayer
+from tipg.resources.enums import MediaType
+from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -316,9 +316,7 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """List of collections."""
-            function_catalog = getattr(
-                request.app.state, "tifeatures_function_catalog", {}
-            )
+            function_catalog = getattr(request.app.state, "tipg_function_catalog", {})
             table_catalog = getattr(request.app.state, "table_catalog", {})
             # convert all table to Table object
             tables = [TableLayer(**t) for t in table_catalog.values()]

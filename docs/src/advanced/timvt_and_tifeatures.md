@@ -5,8 +5,8 @@
 ``` py
 """Features and MVT app."""
 
-from tifeatures.db import close_db_connection, connect_to_db, register_table_catalog
-from tifeatures.factory import Endpoints
+from tipg.db import close_db_connection, connect_to_db, register_table_catalog
+from tipg.factory import Endpoints
 from timvt.factory import VectorTilerFactory
 from fastapi import FastAPI
 from starlette_cramjam.middleware import CompressionMiddleware

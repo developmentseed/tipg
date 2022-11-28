@@ -1,4 +1,4 @@
-"""Fake tifeatures setup.py for github."""
+"""Fake tipg setup.py for github."""
 import sys
 
 from setuptools import setup
@@ -22,7 +22,7 @@ sys.exit(1)
 # To be removed once GitHub catches up.
 
 setup(
-    name="tifeatures",
+    name="tipg",
     install_requires=[
         "orjson",
         "asyncpg>=0.23.0",

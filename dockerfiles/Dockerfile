@@ -6,11 +6,11 @@ WORKDIR /tmp
 
 COPY README.md README.md
 COPY LICENSE LICENSE
-COPY tifeatures/ tifeatures/
+COPY tipg/ tipg/
 COPY pyproject.toml pyproject.toml
 
 RUN pip install . --no-cache-dir
-RUN rm -rf tifeatures/ README.md pyproject.toml LICENSE
+RUN rm -rf tipg/ README.md pyproject.toml LICENSE
 
-ENV MODULE_NAME tifeatures.main
+ENV MODULE_NAME tipg.main
 ENV VARIABLE_NAME app

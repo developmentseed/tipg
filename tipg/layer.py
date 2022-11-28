@@ -1,4 +1,4 @@
-"""tifeatures.layers."""
+"""tipg.layers."""
 
 import abc
 import re
@@ -13,17 +13,17 @@ from ciso8601 import parse_rfc3339
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
-from tifeatures.dbmodel import GeometryColumn
-from tifeatures.dbmodel import Table as DBTable
-from tifeatures.errors import (
+from tipg.dbmodel import GeometryColumn
+from tipg.dbmodel import Table as DBTable
+from tipg.errors import (
     InvalidDatetime,
     InvalidDatetimeColumnName,
     InvalidGeometryColumnName,
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
-from tifeatures.filter.evaluate import to_filter
-from tifeatures.filter.filters import bbox_to_wkt
+from tipg.filter.evaluate import to_filter
+from tipg.filter.filters import bbox_to_wkt
 
 
 class RawComponent(VarLiteral):
@@ -170,30 +170,26 @@ class Table(CollectionLayer, DBTable):
             sel = raw("SELECT ")
 
         if self.id_column:
-            sel = sel + raw(logic.V(self.id_column)) + raw(" AS tifeatures_id, ")
+            sel = sel + raw(logic.V(self.id_column)) + raw(" AS tipg_id, ")
         else:
-            sel = sel + raw(" ROW_NUMBER () OVER () AS tifeatures_id, ")
+            sel = sel + raw(" ROW_NUMBER () OVER () AS tipg_id, ")
 
         geom = self._geom(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
             if geom:
-                sel = (
-                    sel
-                    + raw(logic.Func("st_asewkt", geom))
-                    + raw(" AS tifeatures_geom ")
-                )
+                sel = sel + raw(logic.Func("st_asewkt", geom)) + raw(" AS tipg_geom ")
             else:
-                sel = sel + raw(" NULL::text AS tifeatures_geom ")
+                sel = sel + raw(" NULL::text AS tipg_geom ")
 
         else:
             if geom:
                 sel = (
                     sel
                     + raw(pg_funcs.cast(logic.Func("st_asgeojson", geom), "json"))
-                    + raw(" AS tifeatures_geom ")
+                    + raw(" AS tipg_geom ")
                 )
             else:
-                sel = sel + raw(" NULL::json AS tifeatures_geom ")
+                sel = sel + raw(" NULL::json AS tipg_geom ")
 
         return RawComponent(sel)
 
@@ -414,8 +410,8 @@ class Table(CollectionLayer, DBTable):
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
                 props = dict(r)
-                g = props.pop("tifeatures_geom")
-                id = props.pop("tifeatures_id")
+                g = props.pop("tipg_geom")
+                id = props.pop("tipg_id")
                 feature = Feature(type="Feature", geometry=g, id=id, properties=props)
                 yield feature
 

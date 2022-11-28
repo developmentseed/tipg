@@ -1,11 +1,11 @@
-"""tifeatures.dbmodel: database events."""
+"""tipg.dbmodel: database events."""
 
 from typing import Any, Dict, List, Optional
 
 from buildpg import asyncpg
 from pydantic import BaseModel, Field
 
-from tifeatures.settings import TableSettings
+from tipg.settings import TableSettings
 
 
 class Column(BaseModel):
@@ -34,7 +34,7 @@ class Column(BaseModel):
             "bigserial",
             # Float8 is not a Postgres type name but is the name we give
             # internally do Double Precision type
-            # ref: https://github.com/developmentseed/tifeatures/pull/60/files#r1011863866
+            # ref: https://github.com/developmentseed/tipg/pull/60/files#r1011863866
             "float8",
         ]:
             return "number"

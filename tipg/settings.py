@@ -1,4 +1,4 @@
-"""tifeatures config."""
+"""tipg config."""
 
 import sys
 from functools import lru_cache

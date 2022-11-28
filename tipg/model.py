@@ -1,11 +1,11 @@
-"""tifeatures models."""
+"""tipg models."""
 
 from typing import Dict, List, Optional
 
 from geojson_pydantic.features import Feature, FeatureCollection
 from pydantic import BaseModel, Field
 
-from tifeatures.resources.enums import MediaType
+from tipg.resources.enums import MediaType
 
 
 class Link(BaseModel):

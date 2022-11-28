@@ -1,4 +1,4 @@
-"""tifeatures middlewares."""
+"""tipg middlewares."""
 
 import re
 from typing import Optional, Set

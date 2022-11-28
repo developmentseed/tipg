@@ -1,12 +1,12 @@
-"""tifeatures.db: database events."""
+"""tipg.db: database events."""
 
 from typing import Any, Optional
 
 import orjson
 from buildpg import asyncpg
 
-from tifeatures.dbmodel import get_table_index
-from tifeatures.settings import PostgresSettings
+from tipg.dbmodel import get_table_index
+from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
 

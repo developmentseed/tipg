@@ -1,4 +1,4 @@
-"""tifeatures.errors: Error classes."""
+"""tipg.errors: Error classes."""
 
 import logging
 from typing import Callable, Dict, Type

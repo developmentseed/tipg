@@ -10,7 +10,7 @@ on:
     paths:
       # Only run test and docker publish if somde code have changed
       - 'pyproject.toml'
-      - 'tifeatures/**'
+      - 'tipg/**'
       - 'tests/**'
       - '.pre-commit-config.yaml'
       - 'dockerfiles/**'
@@ -52,7 +52,7 @@ jobs:
           pre-commit run --all-files
 
       - name: Run tests
-        run: python -m pytest --cov tifeatures --cov-report xml --cov-report term-missing --asyncio-mode=strict
+        run: python -m pytest --cov tipg --cov-report xml --cov-report term-missing --asyncio-mode=strict
 
       - name: Upload Results
         if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
