@@ -65,6 +65,29 @@ def APISettings() -> _APISettings:
     return _APISettings()
 
 
+class _TileSettings(pydantic.BaseSettings):
+    """MVT settings"""
+
+    tile_resolution: int = 4096
+    tile_buffer: int = 256
+    max_features_per_tile: int = 10000
+    default_tms: str = "WebMercatorQuad"
+    default_minzoom: int = 0
+    default_maxzoom: int = 22
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIMVT_"
+        env_file = ".env"
+
+
+@lru_cache()
+def TileSettings() -> _TileSettings:
+    """Cache settings."""
+    return _TileSettings()
+
+
 class PostgresSettings(pydantic.BaseSettings):
     """Postgres-specific API settings.
 

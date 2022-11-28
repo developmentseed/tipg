@@ -1,8 +1,10 @@
 """tipg dependencies."""
 
 import re
+from enum import Enum
 from typing import List, Optional
 
+from morecantile import Tile, TileMatrixSet, tms
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
@@ -10,10 +12,19 @@ from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 from tipg.errors import InvalidBBox
 from tipg.layer import Table as TableLayer
 from tipg.resources import enums
+from tipg.settings import TileSettings
 
 from fastapi import HTTPException, Path, Query
 
 from starlette.requests import Request
+
+tile_settings = TileSettings()
+
+TileMatrixSetNames = Enum(  # type: ignore
+    "TileMatrixSetNames", [(a, a) for a in sorted(tms.list())]
+)
+
+default_tms = TileMatrixSetNames[tile_settings.default_tms]
 
 
 def CollectionParams(
@@ -242,3 +253,22 @@ def sortby_query(
 ):
     """Sortby dependency."""
     return sortby
+
+
+def TileMatrixSetParams(
+    TileMatrixSetId: TileMatrixSetNames = Query(
+        default_tms,
+        description=f"TileMatrixSet Name (default: '{tile_settings.default_tms}')",
+    ),
+) -> TileMatrixSet:
+    """TileMatrixSet parameters."""
+    return tms.get(TileMatrixSetId.name)
+
+
+def TileParams(
+    tileMatrix: int = Path(..., ge=0, le=30, description="Tiles's zoom level"),
+    tileCol: int = Path(..., description="Tiles's column"),
+    tileRow: int = Path(..., description="Tiles's row"),
+) -> Tile:
+    """Tile parameters."""
+    return Tile(tileCol, tileRow, tileMatrix)

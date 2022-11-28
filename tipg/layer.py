@@ -10,6 +10,7 @@ from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from buildpg.components import VarLiteral
 from ciso8601 import parse_rfc3339
+from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, root_validator
 from pygeofilter.ast import AstType
 
@@ -24,6 +25,9 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
+from tipg.settings import TileSettings
+
+tilesettings = TileSettings()
 
 
 class RawComponent(VarLiteral):
@@ -155,14 +159,7 @@ class Table(CollectionLayer, DBTable):
 
         return values
 
-    def _select(
-        self,
-        properties: Optional[List[str]],
-        geometry_column: Optional[GeometryColumn],
-        bbox_only: Optional[bool],
-        simplify: Optional[float],
-        geom_as_wkt: bool = False,
-    ):
+    def _select_no_geo(self, properties: Optional[List[str]]):
         columns = self.columns(properties)
         if columns:
             sel = clauses.Select(columns) + raw(",")
@@ -173,6 +170,18 @@ class Table(CollectionLayer, DBTable):
             sel = sel + raw(logic.V(self.id_column)) + raw(" AS tipg_id, ")
         else:
             sel = sel + raw(" ROW_NUMBER () OVER () AS tipg_id, ")
+
+        return RawComponent(sel)
+
+    def _select(
+        self,
+        properties: Optional[List[str]],
+        geometry_column: Optional[GeometryColumn],
+        bbox_only: Optional[bool],
+        simplify: Optional[float],
+        geom_as_wkt: bool = False,
+    ):
+        sel = self._select_no_geo(properties)
 
         geom = self._geom(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
@@ -190,6 +199,44 @@ class Table(CollectionLayer, DBTable):
                 )
             else:
                 sel = sel + raw(" NULL::json AS tipg_geom ")
+
+        return RawComponent(sel)
+
+    def _select_mvt(
+        self,
+        properties: Optional[List[str]],
+        geometry_column: GeometryColumn,
+        tms: TileMatrixSet,
+        tile: Tile,
+    ):
+        bbox = tms.xy_bounds(tile)
+        proj = tms.crs.to_epsg()  # or tms.crs.to_proj4()
+
+        sel = self._select_no_geo(properties)
+        sel = (
+            sel
+            + raw(
+                logic.Func(
+                    "st_asmvtgeom",
+                    logic.Func("st_transform", geometry_column.name, proj),
+                    logic.Func(
+                        "ST_Segmentize",
+                        logic.Func(
+                            "ST_MakeEnvelope",
+                            bbox.left,
+                            bbox.bottom,
+                            bbox.right,
+                            bbox.top,
+                            proj,
+                        ),
+                        bbox.right - bbox.left,
+                    ),
+                    tilesettings.tile_resolution,
+                    tilesettings.tile_buffer,
+                )
+            )
+            + raw(" AS geom ")
+        )
 
         return RawComponent(sel)
 
@@ -234,6 +281,8 @@ class Table(CollectionLayer, DBTable):
         cql: Optional[AstType] = None,
         geom: Optional[str] = None,
         dt: Optional[str] = None,
+        tile: Optional[Tile] = None,
+        tms: Optional[TileMatrixSet] = None,
     ):
         """Construct WHERE query."""
         wheres = [logic.S(True)]
@@ -302,6 +351,33 @@ class Table(CollectionLayer, DBTable):
         # `CQL` filter
         if cql is not None:
             wheres.append(to_filter(cql, [p.name for p in self.properties]))
+
+        if tile and tms and geometry_column:
+            tilebox = tms.xy_bounds(tile)
+            proj = tms.crs.to_epsg()  # or tms.crs.to_proj4()
+
+            wheres.append(
+                logic.Func(
+                    "ST_Intersects",
+                    logic.Func(
+                        "st_transform",
+                        logic.Func(
+                            "ST_Segmentize",
+                            logic.Func(
+                                "ST_MakeEnvelope",
+                                tilebox.left,
+                                tilebox.bottom,
+                                tilebox.right,
+                                tilebox.top,
+                                pg_funcs.cast(proj, "int"),
+                            ),
+                            tilebox.right - tilebox.left,
+                        ),
+                        pg_funcs.cast(geometry_column.srid, "int"),
+                    ),
+                    logic.V(geometry_column.name),
+                )
+            )
 
         return clauses.Where(pg_funcs.AND(*wheres))
 
@@ -506,6 +582,63 @@ class Table(CollectionLayer, DBTable):
             FeatureCollection(type="FeatureCollection", features=features),
             count,
         )
+
+    async def get_tile(
+        self,
+        *,
+        pool: asyncpg.BuildPgPool,
+        tms: TileMatrixSet,
+        tile: Tile,
+        ids_filter: Optional[List[str]] = None,
+        bbox_filter: Optional[List[float]] = None,
+        datetime_filter: Optional[List[str]] = None,
+        properties_filter: Optional[List[Tuple[str, str]]] = None,
+        cql_filter: Optional[AstType] = None,
+        sortby: Optional[str] = None,
+        properties: Optional[List[str]] = None,
+        geom: Optional[str] = None,
+        dt: Optional[str] = None,
+        limit: Optional[int] = None,
+    ):
+        """Build query to get Vector Tile."""
+        geometry_column = self.get_geometry_column(geom)
+        if not geometry_column:
+            raise InvalidGeometryColumnName
+
+        c = (
+            self._select_mvt(
+                properties=properties,
+                geometry_column=geometry_column,
+                tms=tms,
+                tile=tile,
+            )
+            + self._from()
+            + self._where(
+                ids=ids_filter,
+                datetime=datetime_filter,
+                bbox=bbox_filter,
+                properties=properties_filter,
+                cql=cql_filter,
+                geom=geom,
+                dt=dt,
+                tms=tms,
+                tile=tile,
+            )
+            + clauses.Limit(limit or 10)
+        )
+
+        q, p = render(
+            """
+            WITH
+            t AS (:c)
+            SELECT ST_AsMVT(t.*) FROM t
+            """,
+            c=c,
+        )
+        print(q, p)
+
+        async with pool.acquire() as conn:
+            return await conn.fetchval(q, *p)
 
     @property
     def queryables(self) -> Dict:

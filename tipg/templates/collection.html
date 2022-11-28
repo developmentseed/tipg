@@ -57,7 +57,39 @@
       [bbox[3], bbox[0]]
     ]);
 
-    map.addLayer(bbox_polygon);
+    // map.addLayer(bbox_polygon);
+    map.addLayer(L.vectorGrid.protobuf(
+      '{{ url }}/tiles/WebMercatorQuad/{z}/{y}/{x}?limit=1000',{
+        vectorTileLayerStyles:{
+          default: function(properties, zoom, geometryDimension) {
+            if (geometryDimension === 1) {   // point
+                return ({
+                          radius: 5,
+                          color: '#cf52d3',
+                      });
+            }
+
+            if (geometryDimension === 2) {   // line
+                      return ({
+                          weight: 1,
+                          color: '#cf52d3',
+                          dashArray: '2, 6',
+                          fillOpacity: 0
+                      });
+            }
+
+            if (geometryDimension === 3) {   // polygon
+                return ({
+                          weight: 1,
+                          fillColor: '#9bc2c4',
+                          fillOpacity: 1,
+                          fill: true
+                      });
+            }
+      }
+    }
+  }
+    ));
     map.fitBounds(bbox_polygon.getBounds());
   });
 </script>

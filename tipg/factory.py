@@ -14,6 +14,8 @@ from tipg.dependencies import (
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
+    TileMatrixSetParams,
+    TileParams,
     bbox_query,
     datetime_query,
     filter_query,
@@ -32,13 +34,18 @@ from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
-from starlette.responses import StreamingResponse
+from starlette.responses import Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 DEFAULT_TEMPLATES = Jinja2Templates(
     directory="",
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
 )  # type:ignore
+
+TILE_RESPONSE_PARAMS: Dict[str, Any] = {
+    "responses": {200: {"content": {"application/x-protobuf": {}}}},
+    "response_class": Response,
+}
 
 
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
@@ -973,3 +980,78 @@ class Endpoints:
 
             # Default to GeoJSON Response
             return GeoJSONResponse(data)
+
+        @self.router.get(
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}",
+            **TILE_RESPONSE_PARAMS,
+        )
+        async def tiles(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tms=Depends(TileMatrixSetParams),
+            tile=Depends(TileParams),
+            ids_filter: Optional[List[str]] = Depends(ids_query),
+            bbox_filter: Optional[List[float]] = Depends(bbox_query),
+            datetime_filter: Optional[List[str]] = Depends(datetime_query),
+            properties: Optional[List[str]] = Depends(properties_query),
+            cql_filter: Optional[AstType] = Depends(filter_query),
+            sortby: Optional[str] = Depends(sortby_query),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+            datetime_column: Optional[str] = Query(
+                None,
+                description="Select datetime column.",
+                alias="datetime-column",
+            ),
+            limit: int = Query(
+                10,
+                description="Limits the number of features in the response.",
+            ),
+        ):
+            """Return Vector Tile."""
+
+            # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
+            # We exclude  application known query-parameter.
+            exclude = [
+                "f",
+                "ids",
+                "datetime",
+                "bbox",
+                "properties",
+                "filter",
+                "filter-lang",
+                "geom-column",
+                "datetime-column",
+                "limit",
+                "offset",
+                "bbox-only",
+                "simplify",
+                "sortby",
+            ]
+            table_property = [prop.name for prop in collection.properties]
+            properties_filter = [
+                (key, value)
+                for (key, value) in request.query_params.items()
+                if key.lower() not in exclude and key.lower() in table_property
+            ]
+
+            tile = await collection.get_tile(
+                pool=request.app.state.pool,
+                tms=tms,
+                tile=tile,
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter,
+                cql_filter=cql_filter,
+                sortby=sortby,
+                properties=properties,
+                limit=limit,
+                geom=geom_column,
+                dt=datetime_column,
+            )
+
+            return Response(bytes(tile), media_type="application/x-protobuf")
