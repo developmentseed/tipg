@@ -54,10 +54,15 @@ class InvalidDatetime(TiFeaturesError):
     """Invalid datetime."""
 
 
+class InvalidLimit(TiFeaturesError):
+    """Invalid Limit."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
     InvalidDatetime: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    InvalidLimit: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     MissingDatetimeColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     InvalidPropertyName: status.HTTP_404_NOT_FOUND,

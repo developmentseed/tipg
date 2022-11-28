@@ -59,7 +59,7 @@
 
     // map.addLayer(bbox_polygon);
     map.addLayer(L.vectorGrid.protobuf(
-      '{{ url }}/tiles/WebMercatorQuad/{z}/{y}/{x}?limit=1000',{
+      '{{ baseurl }}{{ urlpath }}/tiles/{z}/{y}/{x}?{{ urlparams | safe}}',{
         vectorTileLayerStyles:{
           default: function(properties, zoom, geometryDimension) {
             if (geometryDimension === 1) {   // point

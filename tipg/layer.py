@@ -20,6 +20,7 @@ from tipg.errors import (
     InvalidDatetime,
     InvalidDatetimeColumnName,
     InvalidGeometryColumnName,
+    InvalidLimit,
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
@@ -546,6 +547,9 @@ class Table(CollectionLayer, DBTable):
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
+        if limit and limit > tilesettings.max_features_per_tile:
+            raise
+
         count = await self._features_count_query(
             pool=pool,
             ids_filter=ids_filter,
@@ -605,6 +609,9 @@ class Table(CollectionLayer, DBTable):
         if not geometry_column:
             raise InvalidGeometryColumnName
 
+        if limit and limit > tilesettings.max_features_per_tile:
+            raise InvalidLimit
+
         c = (
             self._select_mvt(
                 properties=properties,
@@ -635,7 +642,6 @@ class Table(CollectionLayer, DBTable):
             """,
             c=c,
         )
-        print(q, p)
 
         async with pool.acquire() as conn:
             return await conn.fetchval(q, *p)

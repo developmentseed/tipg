@@ -143,6 +143,9 @@ class Endpoints:
                 },
                 "crumbs": crumbs,
                 "url": str(request.url),
+                "baseurl": baseurl,
+                "urlpath": str(request.url.path),
+                "urlparams": str(request.url.query),
             },
         )
 
@@ -985,6 +988,10 @@ class Endpoints:
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}",
             **TILE_RESPONSE_PARAMS,
         )
+        @self.router.get(
+            "/collections/{collectionId}/tiles/{tileMatrix}/{tileRow}/{tileCol}",
+            **TILE_RESPONSE_PARAMS,
+        )
         async def tiles(
             request: Request,
             collection=Depends(self.collection_dependency),
@@ -1007,7 +1014,7 @@ class Endpoints:
                 alias="datetime-column",
             ),
             limit: int = Query(
-                10,
+                10000,
                 description="Limits the number of features in the response.",
             ),
         ):
