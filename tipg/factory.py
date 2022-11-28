@@ -2,10 +2,12 @@
 
 import csv
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
+from urllib.parse import urlencode
 
 import jinja2
 import orjson
+from morecantile import TileMatrixSet
 from pygeofilter.ast import AstType
 
 from tipg import model
@@ -14,16 +16,18 @@ from tipg.dependencies import (
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
+    TileMatrixSetNames,
     TileMatrixSetParams,
     TileParams,
     bbox_query,
     datetime_query,
     filter_query,
     ids_query,
+    properties_filter_query,
     properties_query,
     sortby_query,
 )
-from tipg.errors import NoPrimaryKey, NotFound
+from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.layer import CollectionLayer
 from tipg.layer import Table as TableLayer
 from tipg.resources.enums import MediaType
@@ -88,7 +92,7 @@ class Endpoints:
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
     router_prefix: str = ""
 
-    title: str = "TiFeatures"
+    title: str = "TiPG API"
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
@@ -97,6 +101,8 @@ class Endpoints:
         self.register_landing()
         self.register_conformance()
         self.register_collections()
+        self.register_tiles()
+        self.register_tms()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -569,6 +575,7 @@ class Endpoints:
             bbox_filter: Optional[List[float]] = Depends(bbox_query),
             datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
+            properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             sortby: Optional[str] = Depends(sortby_query),
             geom_column: Optional[str] = Query(
@@ -602,31 +609,6 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(ItemsOutputType),
         ):
             offset = offset or 0
-
-            # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
-            # We exclude  application known query-parameter.
-            exclude = [
-                "f",
-                "ids",
-                "datetime",
-                "bbox",
-                "properties",
-                "filter",
-                "filter-lang",
-                "geom-column",
-                "datetime-column",
-                "limit",
-                "offset",
-                "bbox-only",
-                "simplify",
-                "sortby",
-            ]
-            table_property = [prop.name for prop in collection.properties]
-            properties_filter = [
-                (key, value)
-                for (key, value) in request.query_params.items()
-                if key.lower() not in exclude and key.lower() in table_property
-            ]
 
             output_type = output_type or MediaType.geojson
             geom_as_wkt = output_type not in [
@@ -984,6 +966,9 @@ class Endpoints:
             # Default to GeoJSON Response
             return GeoJSONResponse(data)
 
+    def register_tiles(self):  # noqa
+        """Register Tile endpoints."""
+
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}",
             **TILE_RESPONSE_PARAMS,
@@ -992,7 +977,7 @@ class Endpoints:
             "/collections/{collectionId}/tiles/{tileMatrix}/{tileRow}/{tileCol}",
             **TILE_RESPONSE_PARAMS,
         )
-        async def tiles(
+        async def tile(
             request: Request,
             collection=Depends(self.collection_dependency),
             tms=Depends(TileMatrixSetParams),
@@ -1001,6 +986,7 @@ class Endpoints:
             bbox_filter: Optional[List[float]] = Depends(bbox_query),
             datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
+            properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             sortby: Optional[str] = Depends(sortby_query),
             geom_column: Optional[str] = Query(
@@ -1020,31 +1006,6 @@ class Endpoints:
         ):
             """Return Vector Tile."""
 
-            # <p_NAME>=VALUE - filter features for a property having a value. Multiple property filters are ANDed together.
-            # We exclude  application known query-parameter.
-            exclude = [
-                "f",
-                "ids",
-                "datetime",
-                "bbox",
-                "properties",
-                "filter",
-                "filter-lang",
-                "geom-column",
-                "datetime-column",
-                "limit",
-                "offset",
-                "bbox-only",
-                "simplify",
-                "sortby",
-            ]
-            table_property = [prop.name for prop in collection.properties]
-            properties_filter = [
-                (key, value)
-                for (key, value) in request.query_params.items()
-                if key.lower() not in exclude and key.lower() in table_property
-            ]
-
             tile = await collection.get_tile(
                 pool=request.app.state.pool,
                 tms=tms,
@@ -1062,3 +1023,116 @@ class Endpoints:
             )
 
             return Response(bytes(tile), media_type="application/x-protobuf")
+
+        @self.router.get(
+            "/collections/{collectionId}/{TileMatrixSetId}/tilejson.json",
+            response_model=model.TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+        )
+        @self.router.get(
+            "/collections/{collectionId}/tilejson.json",
+            response_model=model.TileJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+        )
+        async def tilejson(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tms=Depends(TileMatrixSetParams),
+            minzoom: Optional[int] = Query(
+                None, description="Overwrite default minzoom."
+            ),
+            maxzoom: Optional[int] = Query(
+                None, description="Overwrite default maxzoom."
+            ),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+        ):
+            """Return TileJSON document."""
+            geom = collection.get_geometry_column(geom_column)
+            if not geom:
+                raise MissingGeometryColumn
+
+            path_params: Dict[str, Any] = {
+                "tileMatrixSetId": tms.identifier,
+                "collectionId": collection.id,
+                "tileMatrix": "{z}",
+                "tileCol": "{x}",
+                "tileRow": "{y}",
+            }
+            tile_endpoint = self.url_for(request, "tile", **path_params)
+
+            qs_key_to_remove = ["tilematrixsetid", "minzoom", "maxzoom"]
+            query_params = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+
+            if query_params:
+                tile_endpoint += f"?{urlencode(query_params)}"
+
+            # Get Min/Max zoom from layer settings if tms is the default tms
+            # if tms.identifier == layer.default_tms:
+            #     minzoom = _first_value([minzoom, layer.minzoom])
+            #     maxzoom = _first_value([maxzoom, layer.maxzoom])
+
+            # minzoom = minzoom if minzoom is not None else tms.minzoom
+            # maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+            minzoom = tms.minzoom
+            maxzoom = tms.maxzoom
+
+            return ORJSONResponse(
+                {
+                    "minzoom": minzoom,
+                    "maxzoom": maxzoom,
+                    "name": collection.id,
+                    "bounds": geom.bounds,
+                    "tiles": [tile_endpoint],
+                }
+            )
+
+    def register_tms(self):  # noqa
+        @self.router.get(
+            r"/tileMatrixSets",
+            response_model=model.TileMatrixSetList,
+            response_model_exclude_none=True,
+        )
+        async def TileMatrixSet_list(request: Request):
+            """
+            Return list of supported TileMatrixSets.
+            Specs: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
+            """
+            return {
+                "tileMatrixSets": [
+                    {
+                        "id": tms.name,
+                        "title": tms.name,
+                        "links": [
+                            {
+                                "href": self.url_for(
+                                    request,
+                                    "TileMatrixSet_info",
+                                    TileMatrixSetId=tms.name,
+                                ),
+                                "rel": "item",
+                                "type": "application/json",
+                            }
+                        ],
+                    }
+                    for tms in TileMatrixSetNames
+                ]
+            }
+
+        @self.router.get(
+            r"/tileMatrixSets/{TileMatrixSetId}",
+            response_model=TileMatrixSet,
+            response_model_exclude_none=True,
+        )
+        async def TileMatrixSet_info(tms: TileMatrixSet = Depends(TileMatrixSetParams)):
+            """Return TileMatrixSet JSON document."""
+            return tms

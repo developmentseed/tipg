@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from morecantile import Tile, TileMatrixSet, tms
 from pygeofilter.ast import AstType
@@ -14,7 +14,7 @@ from tipg.layer import Table as TableLayer
 from tipg.resources import enums
 from tipg.settings import TileSettings
 
-from fastapi import HTTPException, Path, Query
+from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
@@ -224,6 +224,35 @@ def properties_query(
         return [p.strip() for p in properties.split(",")]
 
     return None
+
+
+def properties_filter_query(
+    request: Request = Depends(),
+    collection: TableLayer = Depends(CollectionParams),
+) -> List[Tuple[str, str]]:
+    """Get properties to filter on excluding reserved keys."""
+    exclude = [
+        "f",
+        "ids",
+        "datetime",
+        "bbox",
+        "properties",
+        "filter",
+        "filter-lang",
+        "geom-column",
+        "datetime-column",
+        "limit",
+        "offset",
+        "bbox-only",
+        "simplify",
+        "sortby",
+    ]
+    table_property = [prop.name for prop in collection.properties]
+    return [
+        (key, value)
+        for (key, value) in request.query_params.items()
+        if key.lower() not in exclude and key.lower() in table_property
+    ]
 
 
 def filter_query(

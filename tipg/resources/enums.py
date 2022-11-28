@@ -36,6 +36,13 @@ class ItemResponseType(str, Enum):
     json = "json"
 
 
+class VectorType(str, Enum):
+    """Vector Type Enums."""
+
+    pbf = "pbf"
+    mvt = "mvt"
+
+
 class MediaType(str, Enum):
     """Responses Media types formerly known as MIME types."""
 
@@ -50,6 +57,8 @@ class MediaType(str, Enum):
     csv = "text/csv"
     openapi30_json = "application/vnd.oai.openapi+json;version=3.0"
     openapi30_yaml = "application/vnd.oai.openapi;version=3.0"
+    pbf = "application/x-protobuf"
+    mvt = "application/x-protobuf"
 
 
 class FilterLang(str, Enum):
