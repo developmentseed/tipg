@@ -58,6 +58,10 @@ class InvalidLimit(TiFeaturesError):
     """Invalid Limit."""
 
 
+class MissingFunctionParameter(TiFeaturesError):
+    """Missing Function Parameter."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -71,6 +75,7 @@ DEFAULT_STATUS_CODES = {
     PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
     NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_ENTITY,
 }
 
 

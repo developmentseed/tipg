@@ -2,14 +2,14 @@
 
 import re
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from morecantile import Tile, TileMatrixSet, tms
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
-from tipg.errors import InvalidBBox
+from tipg.errors import InvalidBBox, MissingFunctionParameter
 from tipg.layer import Table as TableLayer
 from tipg.resources import enums
 from tipg.settings import TileSettings
@@ -227,7 +227,7 @@ def properties_query(
 
 
 def properties_filter_query(
-    request: Request = Depends(),
+    request: Request,
     collection: TableLayer = Depends(CollectionParams),
 ) -> List[Tuple[str, str]]:
     """Get properties to filter on excluding reserved keys."""
@@ -253,6 +253,24 @@ def properties_filter_query(
         for (key, value) in request.query_params.items()
         if key.lower() not in exclude and key.lower() in table_property
     ]
+
+
+def function_parameters_query(
+    request: Request,
+    collection: TableLayer = Depends(CollectionParams),
+) -> Dict[str, str]:
+    """Get parameters for function layers."""
+    function_parameters = {}
+    if collection.type == "Function" and collection.parameters:
+        for param in collection.parameters:
+            v = request.query_params.get(param.name, None)
+            if v:
+                function_parameters[param.name] = v
+            else:
+                raise MissingFunctionParameter(
+                    f"Missing function parameter {param.name}"
+                )
+    return function_parameters
 
 
 def filter_query(

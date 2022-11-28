@@ -22,6 +22,7 @@ from tipg.dependencies import (
     bbox_query,
     datetime_query,
     filter_query,
+    function_parameters_query,
     ids_query,
     properties_filter_query,
     properties_query,
@@ -576,6 +577,7 @@ class Endpoints:
             datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
             properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
+            function_parameters: Dict[str, str] = Depends(function_parameters_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             sortby: Optional[str] = Depends(sortby_query),
             geom_column: Optional[str] = Query(
@@ -623,6 +625,7 @@ class Endpoints:
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
                 properties_filter=properties_filter,
+                function_parameters=function_parameters,
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
@@ -848,6 +851,7 @@ class Endpoints:
             ),
             output_type: Optional[MediaType] = Depends(ItemsOutputType),
             properties: Optional[List[str]] = Depends(properties_query),
+            function_parameters: Dict[str, str] = Depends(function_parameters_query),
         ):
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
@@ -865,6 +869,7 @@ class Endpoints:
                 simplify=simplify,
                 ids_filter=[itemId],
                 properties=properties,
+                function_parameters=function_parameters,
                 geom=geom_column,
                 dt=datetime_column,
                 geom_as_wkt=geom_as_wkt,
@@ -987,6 +992,7 @@ class Endpoints:
             datetime_filter: Optional[List[str]] = Depends(datetime_query),
             properties: Optional[List[str]] = Depends(properties_query),
             properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
+            function_parameters: Dict[str, str] = Depends(function_parameters_query),
             cql_filter: Optional[AstType] = Depends(filter_query),
             sortby: Optional[str] = Depends(sortby_query),
             geom_column: Optional[str] = Query(
@@ -1014,6 +1020,7 @@ class Endpoints:
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
                 properties_filter=properties_filter,
+                function_parameters=function_parameters,
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,

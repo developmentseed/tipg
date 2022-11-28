@@ -244,7 +244,20 @@ class Table(CollectionLayer, DBTable):
     def _select_count(self):
         return clauses.Select(pg_funcs.count("*"))
 
-    def _from(self):
+    def _from(self, function_parameters: Optional[Dict[str, str]]):
+        print(self.type, function_parameters)
+        if self.type == "Function":
+            if not function_parameters:
+                return clauses.From(self.id) + raw("()")
+            params = []
+            for p in self.parameters:
+                if p.name in function_parameters:
+                    params.append(
+                        pg_funcs.cast(
+                            pg_funcs.cast(function_parameters[p.name], "text"), p.type
+                        )
+                    )
+            return clauses.From(logic.Func(self.id, *params))
         return clauses.From(self.id)
 
     def _geom(
@@ -458,6 +471,7 @@ class Table(CollectionLayer, DBTable):
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
         geom_as_wkt: bool = False,
+        function_parameters: Optional[Dict[str, str]],
     ):
         """Build Features query."""
         c = (
@@ -468,7 +482,7 @@ class Table(CollectionLayer, DBTable):
                 simplify=simplify,
                 geom_as_wkt=geom_as_wkt,
             )
-            + self._from()
+            + self._from(function_parameters)
             + self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
@@ -484,6 +498,7 @@ class Table(CollectionLayer, DBTable):
         )
 
         q, p = render(":c", c=c)
+        print(q, p)
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
                 props = dict(r)
@@ -503,11 +518,12 @@ class Table(CollectionLayer, DBTable):
         cql_filter: Optional[AstType] = None,
         geom: Optional[str] = None,
         dt: Optional[str] = None,
+        function_parameters: Optional[Dict[str, str]],
     ) -> int:
         """Build features COUNT query."""
         c = (
             self._select_count()
-            + self._from()
+            + self._from(function_parameters)
             + self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
@@ -520,6 +536,7 @@ class Table(CollectionLayer, DBTable):
         )
 
         q, p = render(":c", c=c)
+        print(q, p)
         async with pool.acquire() as conn:
             count = await conn.fetchval(q, *p)
             return count
@@ -542,6 +559,7 @@ class Table(CollectionLayer, DBTable):
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
         geom_as_wkt: bool = False,
+        function_parameters: Dict[str, str] = {},
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
@@ -556,6 +574,7 @@ class Table(CollectionLayer, DBTable):
             datetime_filter=datetime_filter,
             bbox_filter=bbox_filter,
             properties_filter=properties_filter,
+            function_parameters=function_parameters,
             cql_filter=cql_filter,
             geom=geom,
             dt=dt,
@@ -579,6 +598,7 @@ class Table(CollectionLayer, DBTable):
                 bbox_only=bbox_only,
                 simplify=simplify,
                 geom_as_wkt=geom_as_wkt,
+                function_parameters=function_parameters,
             )
         ]
 
@@ -597,6 +617,7 @@ class Table(CollectionLayer, DBTable):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
+        function_parameters: Optional[Dict[str, str]] = None,
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
@@ -619,7 +640,7 @@ class Table(CollectionLayer, DBTable):
                 tms=tms,
                 tile=tile,
             )
-            + self._from()
+            + self._from(function_parameters)
             + self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
