@@ -160,17 +160,18 @@ class Table(CollectionLayer, DBTable):
 
         return values
 
-    def _select_no_geo(self, properties: Optional[List[str]]):
+    def _select_no_geo(self, properties: Optional[List[str]], addid: bool = True):
         columns = self.columns(properties)
         if columns:
             sel = clauses.Select(columns) + raw(",")
         else:
             sel = raw("SELECT ")
 
-        if self.id_column:
-            sel = sel + raw(logic.V(self.id_column)) + raw(" AS tipg_id, ")
-        else:
-            sel = sel + raw(" ROW_NUMBER () OVER () AS tipg_id, ")
+        if addid:
+            if self.id_column:
+                sel = sel + raw(logic.V(self.id_column)) + raw(" AS tipg_id, ")
+            else:
+                sel = sel + raw(" ROW_NUMBER () OVER () AS tipg_id, ")
 
         return RawComponent(sel)
 
@@ -213,7 +214,7 @@ class Table(CollectionLayer, DBTable):
         bbox = tms.xy_bounds(tile)
         proj = tms.crs.to_epsg()  # or tms.crs.to_proj4()
 
-        sel = self._select_no_geo(properties)
+        sel = self._select_no_geo(properties, addid=False)
         sel = (
             sel
             + raw(

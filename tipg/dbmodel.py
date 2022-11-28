@@ -5,7 +5,9 @@ from typing import Any, Dict, List, Optional
 from buildpg import asyncpg
 from pydantic import BaseModel, Field
 
-from tipg.settings import TableSettings
+from tipg.settings import TableSettings, TileSettings
+
+tile_settings = TileSettings()
 
 
 class Column(BaseModel):
@@ -84,6 +86,9 @@ class Table(BaseModel):
     geometry_column: Optional[GeometryColumn]
     datetime_column: Optional[DatetimeColumn]
     parameters: List[Parameter] = []
+    minzoom: int = tile_settings.default_minzoom
+    maxzoom: int = tile_settings.default_maxzoom
+    default_tms: str = tile_settings.default_tms
 
     def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""

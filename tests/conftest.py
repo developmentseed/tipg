@@ -74,6 +74,9 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data_alt__pk", "id")
     monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
+    monkeypatch.setenv("TIMVT_DEFAULT_MINZOOM", str(5))
+    monkeypatch.setenv("TIMVT_DEFAULT_MAXZOOM", str(12))
+
     from tipg.main import app
 
     # Remove middlewares https://github.com/encode/starlette/issues/472

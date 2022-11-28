@@ -255,24 +255,6 @@ def properties_filter_query(
     ]
 
 
-def function_parameters_query(
-    request: Request,
-    collection: TableLayer = Depends(CollectionParams),
-) -> Dict[str, str]:
-    """Get parameters for function layers."""
-    function_parameters = {}
-    if collection.type == "Function" and collection.parameters:
-        for param in collection.parameters:
-            v = request.query_params.get(param.name, None)
-            if v:
-                function_parameters[param.name] = v
-            else:
-                raise MissingFunctionParameter(
-                    f"Missing function parameter {param.name}"
-                )
-    return function_parameters
-
-
 def filter_query(
     query: Optional[str] = Query(None, description="CQL2 Filter", alias="filter"),
     filter_lang: Optional[enums.FilterLang] = Query(
@@ -319,3 +301,27 @@ def TileParams(
 ) -> Tile:
     """Tile parameters."""
     return Tile(tileCol, tileRow, tileMatrix)
+
+
+def function_parameters_query(
+    request: Request,
+    collection: TableLayer = Depends(CollectionParams),
+) -> Dict[str, str]:
+    """Get parameters for function layers."""
+    function_parameters = {}
+    errors = []
+    params = request.query_params
+
+    if collection.type == "Function" and collection.parameters:
+        for param in collection.parameters:
+            v = params.get(param.name, None)
+            if v:
+                function_parameters[param.name] = v
+            else:
+                errors.append(f"{param.name} (expected type:{param.type}).")
+    if errors:
+        raise MissingFunctionParameter(
+            f"Missing Required parameters for function: {collection.id}. {errors}"
+        )
+
+    return function_parameters

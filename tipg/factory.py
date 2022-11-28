@@ -1084,14 +1084,12 @@ class Endpoints:
                 tile_endpoint += f"?{urlencode(query_params)}"
 
             # Get Min/Max zoom from layer settings if tms is the default tms
-            # if tms.identifier == layer.default_tms:
-            #     minzoom = _first_value([minzoom, layer.minzoom])
-            #     maxzoom = _first_value([maxzoom, layer.maxzoom])
+            if tms.identifier == collection.default_tms:
+                minzoom = minzoom or collection.minzoom
+                maxzoom = maxzoom or collection.maxzoom
 
-            # minzoom = minzoom if minzoom is not None else tms.minzoom
-            # maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
-            minzoom = tms.minzoom
-            maxzoom = tms.maxzoom
+            minzoom = minzoom if minzoom is not None else tms.minzoom
+            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
 
             return ORJSONResponse(
                 {
