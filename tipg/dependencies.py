@@ -285,13 +285,14 @@ def sortby_query(
 
 
 def TileMatrixSetParams(
-    TileMatrixSetId: TileMatrixSetNames = Query(
+    tileMatrixSetId: TileMatrixSetNames = Query(
         default_tms,
         description=f"TileMatrixSet Name (default: '{tile_settings.default_tms}')",
     ),
 ) -> TileMatrixSet:
     """TileMatrixSet parameters."""
-    return tms.get(TileMatrixSetId.name)
+    print(tileMatrixSetId.name)
+    return tms.get(tileMatrixSetId.name)
 
 
 def TileParams(
