@@ -37,7 +37,7 @@ class TableSettings(pydantic.BaseSettings):
         env_nested_delimiter = "__"
 
 
-class TileSettings(pydantic.BaseSettings):
+class _TileSettings(pydantic.BaseSettings):
     """TiPG MVT settings"""
 
     tile_resolution: int = 4096
@@ -52,6 +52,12 @@ class TileSettings(pydantic.BaseSettings):
 
         env_prefix = "TIPG_"
         env_file = ".env"
+
+
+@lru_cache()
+def TileSettings() -> _TileSettings:
+    """This function returns a cached instance of the Settings object."""
+    return _TileSettings()
 
 
 class _APISettings(pydantic.BaseSettings):
@@ -109,6 +115,8 @@ class PostgresSettings(pydantic.BaseSettings):
 
     db_schemas: List[str] = ["public"]
     db_tables: Optional[List[str]]
+    db_function_schemas: List[str] = ["public"]
+    db_functions: Optional[List[str]]
 
     only_spatial_tables: bool = True
 

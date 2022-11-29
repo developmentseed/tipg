@@ -44,7 +44,7 @@ templates = Jinja2Templates(
 
 # Register endpoints.
 endpoints = Endpoints(title=settings.name, templates=templates)
-app.include_router(endpoints.router)
+app.include_router(endpoints.router, tags=["OGC API"])
 
 # Set all CORS enabled origins
 if settings.cors_origins:
@@ -69,6 +69,8 @@ async def startup_event() -> None:
         app,
         schemas=postgres_settings.db_schemas,
         tables=postgres_settings.db_tables,
+        function_schemas=postgres_settings.db_function_schemas,
+        functions=postgres_settings.db_functions,
         spatial=postgres_settings.only_spatial_tables,
     )
 
@@ -88,8 +90,9 @@ def ping():
 if settings.DEBUG:
 
     @app.get("/rawcatalog")
-    def raw_catalog(request: Request):
+    async def raw_catalog(request: Request):
         """Return parsed catalog data for testing."""
+        await startup_event()
         ret = {}
         cat = request.app.state.table_catalog
         for k, v in cat.items():

@@ -8,7 +8,6 @@ from buildpg import RawDangerous as raw
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
-from buildpg.components import VarLiteral
 from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, root_validator
@@ -31,24 +30,24 @@ from tipg.settings import TileSettings
 tilesettings = TileSettings()
 
 
-class RawComponent(VarLiteral):
-    """Enable building statements with more complicated logic."""
+def debug_query(q, *p):
+    """Utility to print raw statement to use for debugging."""
 
-    __slots__ = "val"
+    qsub = re.sub(r"\$([0-9]+)", r"{\1}", q)
 
-    def __init__(self, val):
-        """Initialize"""
-        self.val = val
+    def quote_str(s):
+        """Quote strings."""
 
-    def render(self):
-        """Render"""
-        yield raw(" ")
-        yield self.val
-        yield raw(" ")
+        if s is None:
+            return "null"
+        elif isinstance(s, str):
+            return f"'{s}'"
+        else:
+            return s
 
-    def __add__(self, other):
-        """Append"""
-        return clauses.Clauses(self, other)
+    p = [quote_str(s) for s in p]
+    print("DEBUG QUERY")
+    print(qsub.format(None, *p))
 
 
 # Links to geojson schema
@@ -161,19 +160,25 @@ class Table(CollectionLayer, DBTable):
         return values
 
     def _select_no_geo(self, properties: Optional[List[str]], addid: bool = True):
+        nocomma = False
         columns = self.columns(properties)
         if columns:
-            sel = clauses.Select(columns) + raw(",")
+            sel = logic.as_sql_block(clauses.Select(columns))
         else:
-            sel = raw("SELECT ")
+            sel = logic.as_sql_block(raw("SELECT "))
+            nocomma = True
 
         if addid:
             if self.id_column:
-                sel = sel + raw(logic.V(self.id_column)) + raw(" AS tipg_id, ")
+                id_clause = logic.V(self.id_column).as_("tipg_id")
             else:
-                sel = sel + raw(" ROW_NUMBER () OVER () AS tipg_id, ")
+                id_clause = raw(" ROW_NUMBER () OVER () AS tipg_id ")
+            if nocomma:
+                sel = clauses.Clauses(sel, id_clause)
+            else:
+                sel = sel.comma(id_clause)
 
-        return RawComponent(sel)
+        return logic.as_sql_block(sel)
 
     def _select(
         self,
@@ -188,21 +193,21 @@ class Table(CollectionLayer, DBTable):
         geom = self._geom(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
             if geom:
-                sel = sel + raw(logic.Func("st_asewkt", geom)) + raw(" AS tipg_geom ")
+                sel = sel.comma(logic.Func("st_asewkt", geom).as_("tipg_geom"))
             else:
-                sel = sel + raw(" NULL::text AS tipg_geom ")
+                sel = sel.comma(pg_funcs.cast(None, "text").as_("tipg_geom"))
 
         else:
             if geom:
-                sel = (
-                    sel
-                    + raw(pg_funcs.cast(logic.Func("st_asgeojson", geom), "json"))
-                    + raw(" AS tipg_geom ")
+                sel = sel.comma(
+                    pg_funcs.cast(logic.Func("st_asgeojson", geom), "json").as_(
+                        "tipg_geom"
+                    )
                 )
             else:
-                sel = sel + raw(" NULL::json AS tipg_geom ")
+                sel = sel.comma(pg_funcs.cast(None, "json").as_("tipg_geom"))
 
-        return RawComponent(sel)
+        return sel
 
     def _select_mvt(
         self,
@@ -212,35 +217,42 @@ class Table(CollectionLayer, DBTable):
         tile: Tile,
     ):
         bbox = tms.xy_bounds(tile)
-        proj = tms.crs.to_epsg()  # or tms.crs.to_proj4()
-
-        sel = self._select_no_geo(properties, addid=False)
-        sel = (
-            sel
-            + raw(
-                logic.Func(
-                    "st_asmvtgeom",
-                    logic.Func("st_transform", geometry_column.name, proj),
-                    logic.Func(
-                        "ST_Segmentize",
-                        logic.Func(
-                            "ST_MakeEnvelope",
-                            bbox.left,
-                            bbox.bottom,
-                            bbox.right,
-                            bbox.top,
-                            proj,
-                        ),
-                        bbox.right - bbox.left,
-                    ),
-                    tilesettings.tile_resolution,
-                    tilesettings.tile_buffer,
-                )
+        tms_srid = tms.crs.to_epsg()
+        if tms_srid:
+            transform_logic = logic.Func(
+                "st_transform",
+                logic.V(geometry_column.name),
+                pg_funcs.cast(tms_srid, "int"),
             )
-            + raw(" AS geom ")
+        else:
+            tms_proj = str(tms.crs.to_proj4())
+            transform_logic = logic.Func(
+                "st_transform",
+                logic.V(geometry_column.name),
+                pg_funcs.cast(tms_proj, "text"),
+            )
+
+        sel = self._select_no_geo(properties, addid=False).comma(
+            logic.Func(
+                "st_asmvtgeom",
+                transform_logic,
+                logic.Func(
+                    "ST_Segmentize",
+                    logic.Func(
+                        "ST_MakeEnvelope",
+                        bbox.left,
+                        bbox.bottom,
+                        bbox.right,
+                        bbox.top,
+                    ),
+                    bbox.right - bbox.left,
+                ),
+                tilesettings.tile_resolution,
+                tilesettings.tile_buffer,
+            ).as_("geom")
         )
 
-        return RawComponent(sel)
+        return sel
 
     def _select_count(self):
         return clauses.Select(pg_funcs.count("*"))
@@ -254,7 +266,8 @@ class Table(CollectionLayer, DBTable):
                 if p.name in function_parameters:
                     params.append(
                         pg_funcs.cast(
-                            pg_funcs.cast(function_parameters[p.name], "text"), p.type
+                            pg_funcs.cast(function_parameters[p.name], "text"),
+                            p.type,
                         )
                     )
             return clauses.From(logic.Func(self.id, *params))
@@ -367,8 +380,7 @@ class Table(CollectionLayer, DBTable):
             wheres.append(to_filter(cql, [p.name for p in self.properties]))
 
         if tile and tms and geometry_column:
-            tilebox = tms.xy_bounds(tile)
-            proj = tms.crs.to_epsg()  # or tms.crs.to_proj4()
+            tilebox = tms.bounds(tile)
 
             wheres.append(
                 logic.Func(
@@ -383,7 +395,7 @@ class Table(CollectionLayer, DBTable):
                                 tilebox.bottom,
                                 tilebox.right,
                                 tilebox.top,
-                                pg_funcs.cast(proj, "int"),
+                                4326,
                             ),
                             tilebox.right - tilebox.left,
                         ),
@@ -474,16 +486,16 @@ class Table(CollectionLayer, DBTable):
         function_parameters: Optional[Dict[str, str]],
     ):
         """Build Features query."""
-        c = (
+        c = clauses.Clauses(
             self._select(
                 properties=properties,
                 geometry_column=self.get_geometry_column(geom),
                 bbox_only=bbox_only,
                 simplify=simplify,
                 geom_as_wkt=geom_as_wkt,
-            )
-            + self._from(function_parameters)
-            + self._where(
+            ),
+            self._from(function_parameters),
+            self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
                 bbox=bbox_filter,
@@ -491,10 +503,10 @@ class Table(CollectionLayer, DBTable):
                 cql=cql_filter,
                 geom=geom,
                 dt=dt,
-            )
-            + self._sortby(sortby)
-            + clauses.Limit(limit or 10)
-            + clauses.Offset(offset or 0)
+            ),
+            self._sortby(sortby),
+            clauses.Limit(limit or 10),
+            clauses.Offset(offset or 0),
         )
 
         q, p = render(":c", c=c)
@@ -520,10 +532,10 @@ class Table(CollectionLayer, DBTable):
         function_parameters: Optional[Dict[str, str]],
     ) -> int:
         """Build features COUNT query."""
-        c = (
-            self._select_count()
-            + self._from(function_parameters)
-            + self._where(
+        c = clauses.Clauses(
+            self._select_count(),
+            self._from(function_parameters),
+            self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
                 bbox=bbox_filter,
@@ -531,7 +543,7 @@ class Table(CollectionLayer, DBTable):
                 cql=cql_filter,
                 geom=geom,
                 dt=dt,
-            )
+            ),
         )
 
         q, p = render(":c", c=c)
@@ -631,15 +643,15 @@ class Table(CollectionLayer, DBTable):
         if limit and limit > tilesettings.max_features_per_tile:
             raise InvalidLimit
 
-        c = (
+        c = clauses.Clauses(
             self._select_mvt(
                 properties=properties,
                 geometry_column=geometry_column,
                 tms=tms,
                 tile=tile,
-            )
-            + self._from(function_parameters)
-            + self._where(
+            ),
+            self._from(function_parameters),
+            self._where(
                 ids=ids_filter,
                 datetime=datetime_filter,
                 bbox=bbox_filter,
@@ -649,8 +661,8 @@ class Table(CollectionLayer, DBTable):
                 dt=dt,
                 tms=tms,
                 tile=tile,
-            )
-            + clauses.Limit(limit or 10)
+            ),
+            clauses.Limit(limit or 10),
         )
 
         q, p = render(
@@ -661,6 +673,7 @@ class Table(CollectionLayer, DBTable):
             """,
             c=c,
         )
+        # debug_query(q, *p)
 
         async with pool.acquire() as conn:
             return await conn.fetchval(q, *p)
