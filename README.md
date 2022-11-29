@@ -96,7 +96,7 @@ $ docker-compose up
 ```
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/10407788/199774870-2e385617-bae8-4513-9349-d97e43670767.png"/>
+  <img src="https://user-images.githubusercontent.com/10407788/204579207-f1c92083-8840-430e-9040-a6c0718d5c2f.png"/>
 </p>
 
 ## Contribution & Development
