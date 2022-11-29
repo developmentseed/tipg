@@ -1,10 +1,9 @@
 """tipg dependencies."""
 
 import re
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-from morecantile import Tile, TileMatrixSet, tms
+from morecantile import Tile
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
@@ -19,12 +18,6 @@ from fastapi import Depends, HTTPException, Path, Query
 from starlette.requests import Request
 
 tile_settings = TileSettings()
-
-TileMatrixSetNames = Enum(  # type: ignore
-    "TileMatrixSetNames", [(a, a) for a in sorted(tms.list())]
-)
-
-default_tms = TileMatrixSetNames[tile_settings.default_tms]
 
 
 def CollectionParams(
@@ -284,21 +277,21 @@ def sortby_query(
     return sortby
 
 
-def TileMatrixSetParams(
-    tileMatrixSetId: TileMatrixSetNames = Query(
-        default_tms,
-        description=f"TileMatrixSet Name (default: '{tile_settings.default_tms}')",
-    ),
-) -> TileMatrixSet:
-    """TileMatrixSet parameters."""
-    print(tileMatrixSetId.name)
-    return tms.get(tileMatrixSetId.name)
-
-
 def TileParams(
-    tileMatrix: int = Path(..., ge=0, le=30, description="Tiles's zoom level"),
-    tileCol: int = Path(..., description="Tiles's column"),
-    tileRow: int = Path(..., description="Tiles's row"),
+    tileMatrix: int = Path(
+        ...,
+        ge=0,
+        le=30,
+        description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
+    ),
+    tileCol: int = Path(
+        ...,
+        description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
+    ),
+    tileRow: int = Path(
+        ...,
+        description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
+    ),
 ) -> Tile:
     """Tile parameters."""
     return Tile(tileCol, tileRow, tileMatrix)
