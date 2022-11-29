@@ -57,25 +57,24 @@ def app(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
     monkeypatch.setenv("DATABASE_URL", str(database_url))
     monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
-    monkeypatch.setenv(
-        "TIFEATURES_TEMPLATE_DIRECTORY", os.path.join(DATA_DIR, "templates")
-    )
-    monkeypatch.setenv(
-        "TIFEATURES_TABLE_CONFIG__public_my_data__datetimecol", "datetime"
-    )
-    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__geomcol", "geom")
-    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data__pk", "ogc_fid")
-    monkeypatch.setenv(
-        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdt"
-    )
-    monkeypatch.setenv(
-        "TIFEATURES_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom"
-    )
-    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_my_data_alt__pk", "id")
-    monkeypatch.setenv("TIFEATURES_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
-    monkeypatch.setenv("TIMVT_DEFAULT_MINZOOM", str(5))
-    monkeypatch.setenv("TIMVT_DEFAULT_MAXZOOM", str(12))
+    # API config
+    monkeypatch.setenv("TIPG_TEMPLATE_DIRECTORY", os.path.join(DATA_DIR, "templates"))
+
+    # Tables configs
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data__datetimecol", "datetime")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data__geomcol", "geom")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data__pk", "ogc_fid")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__datetimecol", "otherdt")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__pk", "id")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat__geomcol", "geom")
+
+    # monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", os.path.join(DATA_DIR, "functions"))
+
+    # OGC Tiles Settings
+    monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
+    monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
 
     from tipg.main import app
 

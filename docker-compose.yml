@@ -62,3 +62,31 @@ services:
   #   depends_on:
   #   - database
 
+  # pg_tileserv:
+  #   image: pramsey/pg_tileserv:latest
+  #   environment:
+  #     - DATABASE_URL=postgresql://username:password@database:5432/postgis
+  #   ports:
+  #     - "7800:7800"
+  #   depends_on:
+  #   - database
+
+  # martin:
+  #   image: maplibre/martin
+  #   environment:
+  #     - DATABASE_URL=postgresql://username:password@database:5432/postgis
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #   - database
+
+  # t-rex:
+  #   platform: linux/amd64
+  #   image: sourcepole/t-rex
+  #   ports:
+  #     - "3000:3000"
+  #   command:
+  #     serve --dbconn postgresql://username:password@database:5432/postgis --bind=0.0.0.0 --port 3000
+  #   depends_on:
+  #     - database
+

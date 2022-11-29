@@ -14,51 +14,51 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
-class TiFeaturesError(Exception):
+class TiPgError(Exception):
     """Base exception class."""
 
 
-class NotFound(TiFeaturesError):
+class NotFound(TiPgError):
     """Invalid table name."""
 
 
-class NoPrimaryKey(TiFeaturesError):
+class NoPrimaryKey(TiPgError):
     """Table has no primary key."""
 
 
-class MissingGeometryColumn(TiFeaturesError):
+class MissingGeometryColumn(TiPgError):
     """Table has no geometry column."""
 
 
-class MissingDatetimeColumn(TiFeaturesError):
+class MissingDatetimeColumn(TiPgError):
     """Table has no datetime column."""
 
 
-class InvalidBBox(TiFeaturesError):
+class InvalidBBox(TiPgError):
     """Invalid bounding box coordinates."""
 
 
-class InvalidPropertyName(TiFeaturesError):
+class InvalidPropertyName(TiPgError):
     """Invalid property/column name."""
 
 
-class InvalidGeometryColumnName(TiFeaturesError):
+class InvalidGeometryColumnName(TiPgError):
     """Invalid geometry column name."""
 
 
-class InvalidDatetimeColumnName(TiFeaturesError):
+class InvalidDatetimeColumnName(TiPgError):
     """Invalid datetime column name."""
 
 
-class InvalidDatetime(TiFeaturesError):
+class InvalidDatetime(TiPgError):
     """Invalid datetime."""
 
 
-class InvalidLimit(TiFeaturesError):
+class InvalidLimit(TiPgError):
     """Invalid Limit."""
 
 
-class MissingFunctionParameter(TiFeaturesError):
+class MissingFunctionParameter(TiPgError):
     """Missing Function Parameter."""
 
 

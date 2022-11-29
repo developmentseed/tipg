@@ -1,6 +1,6 @@
 [project]
 name = "tipg"
-description = "Simple and Fast Geospatial Features API for PostGIS."
+description = "Simple and Fast Geospatial OGC Features and Tiles API for PostGIS."
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
@@ -8,7 +8,7 @@ authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.org"},
     {name = "David Bitner", email = "david@developmentseed.org"},
 ]
-keywords = ["FastAPI", "POSTGIS", "OGC Features"]
+keywords = ["FastAPI", "POSTGIS", "OGC Features", "OGC Tiles"]
 classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",

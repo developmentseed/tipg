@@ -32,41 +32,13 @@ class TableSettings(pydantic.BaseSettings):
     class Config:
         """model config"""
 
-        env_prefix = "TIFEATURES_"
+        env_prefix = "TIPG_"
         env_file = ".env"
         env_nested_delimiter = "__"
 
 
-class _APISettings(pydantic.BaseSettings):
-    """API settings"""
-
-    name: str = "TiFeatures"
-    DEBUG: bool = False
-    cors_origins: str = "*"
-    cachecontrol: str = "public, max-age=3600"
-    template_directory: Optional[str] = None
-
-    @pydantic.validator("cors_origins")
-    def parse_cors_origin(cls, v):
-        """Parse CORS origins."""
-        return [origin.strip() for origin in v.split(",")]
-
-    class Config:
-        """model config"""
-
-        env_prefix = "TIFEATURES_"
-        env_file = ".env"
-        env_nested_delimiter = "__"
-
-
-@lru_cache()
-def APISettings() -> _APISettings:
-    """This function returns a cached instance of the Settings object."""
-    return _APISettings()
-
-
-class _TileSettings(pydantic.BaseSettings):
-    """MVT settings"""
+class TileSettings(pydantic.BaseSettings):
+    """TiPG MVT settings"""
 
     tile_resolution: int = 4096
     tile_buffer: int = 256
@@ -78,14 +50,37 @@ class _TileSettings(pydantic.BaseSettings):
     class Config:
         """model config"""
 
-        env_prefix = "TIMVT_"
+        env_prefix = "TIPG_"
         env_file = ".env"
 
 
+class _APISettings(pydantic.BaseSettings):
+    """API settings"""
+
+    name: str = "TiPg"
+    DEBUG: bool = False
+    cors_origins: str = "*"
+    cachecontrol: str = "public, max-age=3600"
+    template_directory: Optional[str] = None
+    functions_directory: Optional[str]
+
+    @pydantic.validator("cors_origins")
+    def parse_cors_origin(cls, v):
+        """Parse CORS origins."""
+        return [origin.strip() for origin in v.split(",")]
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_"
+        env_file = ".env"
+        env_nested_delimiter = "__"
+
+
 @lru_cache()
-def TileSettings() -> _TileSettings:
-    """Cache settings."""
-    return _TileSettings()
+def APISettings() -> _APISettings:
+    """This function returns a cached instance of the Settings object."""
+    return _APISettings()
 
 
 class PostgresSettings(pydantic.BaseSettings):

@@ -103,40 +103,40 @@ def test_tile_tms(app):
     )
 
 
-def test_function_tilejson(app):
-    """Test TileJSON endpoint."""
-    response = app.get("/collections/squares/tilejson.json")
-    assert response.status_code == 200
-    resp_json = response.json()
-    assert resp_json["name"] == "squares"
-    assert resp_json["minzoom"] == 5
-    assert resp_json["maxzoom"] == 12
-    np.testing.assert_almost_equal(resp_json["bounds"], [-180.0, -90, 180.0, 90])
+# def test_function_tilejson(app):
+#     """Test TileJSON endpoint."""
+#     response = app.get("/collections/squares/tilejson.json")
+#     assert response.status_code == 200
+#     resp_json = response.json()
+#     assert resp_json["name"] == "squares"
+#     assert resp_json["minzoom"] == 5
+#     assert resp_json["maxzoom"] == 12
+#     np.testing.assert_almost_equal(resp_json["bounds"], [-180.0, -90, 180.0, 90])
 
-    response = app.get("/collections/squares/tilejson.json?minzoom=1&maxzoom=2")
-    assert response.status_code == 200
-    resp_json = response.json()
-    assert resp_json["name"] == "squares"
-    assert resp_json["minzoom"] == 1
-    assert resp_json["maxzoom"] == 2
+#     response = app.get("/collections/squares/tilejson.json?minzoom=1&maxzoom=2")
+#     assert response.status_code == 200
+#     resp_json = response.json()
+#     assert resp_json["name"] == "squares"
+#     assert resp_json["minzoom"] == 1
+#     assert resp_json["maxzoom"] == 2
 
-    response = app.get("/collections/squares/tilejson.json?minzoom=1&maxzoom=2&depth=4")
-    assert response.status_code == 200
-    resp_json = response.json()
-    assert resp_json["name"] == "squares"
-    assert resp_json["minzoom"] == 1
-    assert resp_json["maxzoom"] == 2
-    assert "?depth=4" in resp_json["tiles"][0]
+#     response = app.get("/collections/squares/tilejson.json?minzoom=1&maxzoom=2&depth=4")
+#     assert response.status_code == 200
+#     resp_json = response.json()
+#     assert resp_json["name"] == "squares"
+#     assert resp_json["minzoom"] == 1
+#     assert resp_json["maxzoom"] == 2
+#     assert "?depth=4" in resp_json["tiles"][0]
 
 
-def test_function_tile(app):
-    """request a tile."""
-    response = app.get("/collections/squares/tiles/0/0/0")
-    assert response.status_code == 200
-    decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 4
+# def test_function_tile(app):
+#     """request a tile."""
+#     response = app.get("/collections/squares/tiles/0/0/0")
+#     assert response.status_code == 200
+#     decoded = mapbox_vector_tile.decode(response.content)
+#     assert len(decoded["default"]["features"]) == 4
 
-    response = app.get("/collections/squares/tiles/0/0/0?depth=4")
-    assert response.status_code == 200
-    decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 16
+#     response = app.get("/collections/squares/tiles/0/0/0?depth=4")
+#     assert response.status_code == 200
+#     decoded = mapbox_vector_tile.decode(response.content)
+#     assert len(decoded["default"]["features"]) == 16

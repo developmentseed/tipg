@@ -246,7 +246,6 @@ class Table(CollectionLayer, DBTable):
         return clauses.Select(pg_funcs.count("*"))
 
     def _from(self, function_parameters: Optional[Dict[str, str]]):
-        print(self.type, function_parameters)
         if self.type == "Function":
             if not function_parameters:
                 return clauses.From(self.id) + raw("()")
@@ -499,7 +498,6 @@ class Table(CollectionLayer, DBTable):
         )
 
         q, p = render(":c", c=c)
-        print(q, p)
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
                 props = dict(r)
@@ -537,7 +535,6 @@ class Table(CollectionLayer, DBTable):
         )
 
         q, p = render(":c", c=c)
-        print(q, p)
         async with pool.acquire() as conn:
             count = await conn.fetchval(q, *p)
             return count
