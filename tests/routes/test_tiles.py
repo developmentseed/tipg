@@ -81,7 +81,6 @@ def test_tile_tms(app):
     response = app.get("/collections/public.landsat_wrs/tiles/WorldCRS84Quad/0/0/0")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
-    print(decoded)
     assert len(decoded["default"]["features"]) > 1000
 
     response = app.get(

@@ -673,7 +673,7 @@ class Table(CollectionLayer, DBTable):
             """,
             c=c,
         )
-        debug_query(q, *p)
+        # debug_query(q, *p)
 
         async with pool.acquire() as conn:
             return await conn.fetchval(q, *p)
