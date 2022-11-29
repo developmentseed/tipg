@@ -44,7 +44,7 @@ templates = Jinja2Templates(
 
 # Register endpoints.
 endpoints = Endpoints(title=settings.name, templates=templates)
-app.include_router(endpoints.router)
+app.include_router(endpoints.router, tags=["OGC API"])
 
 # Set all CORS enabled origins
 if settings.cors_origins:

@@ -2,12 +2,24 @@
 
 import csv
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+)
 from urllib.parse import urlencode
 
 import jinja2
 import orjson
 from morecantile import TileMatrixSet
+from morecantile import tms as default_tms
+from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
@@ -16,8 +28,6 @@ from tipg.dependencies import (
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
-    TileMatrixSetNames,
-    TileMatrixSetParams,
     TileParams,
     bbox_query,
     datetime_query,
@@ -33,6 +43,7 @@ from tipg.layer import CollectionLayer
 from tipg.layer import Table as TableLayer
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tipg.settings import TileSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -41,6 +52,8 @@ from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
+
+tilesettings = TileSettings()
 
 DEFAULT_TEMPLATES = Jinja2Templates(
     directory="",
@@ -97,13 +110,15 @@ class Endpoints:
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
+    # OGC Tiles dependency
+    supported_tms: TileMatrixSets = default_tms
+
     def __post_init__(self):
         """Post Init: register route and configure specific options."""
         self.register_landing()
         self.register_conformance()
         self.register_collections()
         self.register_tiles()
-        self.register_tms()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -299,6 +314,13 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
                     "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    # OGC Tiles
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/core",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/tileset",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/dataset-tilesets",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/geodata-tilesets",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/oas30",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/mvt",
                 ]
             )
 
@@ -975,17 +997,20 @@ class Endpoints:
         """Register Tile endpoints."""
 
         @self.router.get(
-            "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}",
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
             **TILE_RESPONSE_PARAMS,
         )
         @self.router.get(
-            "/collections/{collectionId}/tiles/{tileMatrix}/{tileRow}/{tileCol}",
+            "/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
             **TILE_RESPONSE_PARAMS,
         )
         async def tile(
             request: Request,
             collection=Depends(self.collection_dependency),
-            tms=Depends(TileMatrixSetParams),
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
+                tilesettings.default_tms,
+                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tilesettings.default_tms}')",
+            ),
             tile=Depends(TileParams),
             ids_filter: Optional[List[str]] = Depends(ids_query),
             bbox_filter: Optional[List[float]] = Depends(bbox_query),
@@ -1011,6 +1036,7 @@ class Endpoints:
             ),
         ):
             """Return Vector Tile."""
+            tms = self.supported_tms.get(tileMatrixSetId)
 
             tile = await collection.get_tile(
                 pool=request.app.state.pool,
@@ -1046,7 +1072,10 @@ class Endpoints:
         async def tilejson(
             request: Request,
             collection=Depends(self.collection_dependency),
-            tms=Depends(TileMatrixSetParams),
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
+                tilesettings.default_tms,
+                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tilesettings.default_tms}')",
+            ),
             minzoom: Optional[int] = Query(
                 None, description="Overwrite default minzoom."
             ),
@@ -1060,6 +1089,8 @@ class Endpoints:
             ),
         ):
             """Return TileJSON document."""
+            tms = self.supported_tms.get(tileMatrixSetId)
+
             geom = collection.get_geometry_column(geom_column)
             if not geom:
                 raise MissingGeometryColumn
@@ -1067,9 +1098,9 @@ class Endpoints:
             path_params: Dict[str, Any] = {
                 "tileMatrixSetId": tms.identifier,
                 "collectionId": collection.id,
-                "tileMatrix": "{z}",
-                "tileCol": "{x}",
-                "tileRow": "{y}",
+                "tileMatrix": "{tileMatrix}",
+                "tileCol": "{tileCol}",
+                "tileRow": "{tileRow}",
             }
             tile_endpoint = self.url_for(request, "tile", **path_params)
 
@@ -1101,7 +1132,6 @@ class Endpoints:
                 }
             )
 
-    def register_tms(self):  # noqa
         @self.router.get(
             r"/tileMatrixSets",
             response_model=model.TileMatrixSetList,
@@ -1109,35 +1139,45 @@ class Endpoints:
         )
         async def TileMatrixSet_list(request: Request):
             """
-            Return list of supported TileMatrixSets.
+            Tiling Schemes.
+
             Specs: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
             """
             return {
                 "tileMatrixSets": [
                     {
-                        "id": tms.name,
-                        "title": tms.name,
+                        "id": tms.identifier,
+                        "title": tms.identifier,
                         "links": [
                             {
                                 "href": self.url_for(
                                     request,
                                     "TileMatrixSet_info",
-                                    TileMatrixSetId=tms.name,
+                                    tileMatrixSetId=tms.identifier,
                                 ),
                                 "rel": "item",
                                 "type": "application/json",
                             }
                         ],
                     }
-                    for tms in TileMatrixSetNames
+                    for tms in self.supported_tms.tms.values()
                 ]
             }
 
         @self.router.get(
-            r"/tileMatrixSets/{TileMatrixSetId}",
+            r"/tileMatrixSets/{tileMatrixSetId}",
             response_model=TileMatrixSet,
             response_model_exclude_none=True,
         )
-        async def TileMatrixSet_info(tms: TileMatrixSet = Depends(TileMatrixSetParams)):
-            """Return TileMatrixSet JSON document."""
-            return tms
+        async def TileMatrixSet_info(
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
+                ...,
+                description="Identifier selecting one of the TileMatrixSetId supported.",
+            ),
+        ):
+            """
+            Tiling Scheme.
+
+
+            """
+            return self.supported_tms.get(tileMatrixSetId)
