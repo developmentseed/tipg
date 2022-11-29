@@ -7,14 +7,13 @@
       <img src="https://github.com/developmentseed/tipg/workflows/CI/badge.svg" alt="Test">
   </a>
   <a href="https://codecov.io/gh/developmentseed/tipg" target="_blank">
-      <img src="https://codecov.io/gh/developmentseed/tipg/branch/master/graph/badge.svg" alt="Coverage">
+      <img src="https://codecov.io/gh/developmentseed/tipg/branch/main/graph/badge.svg" alt="Coverage">
   </a>
   <a href="https://pypi.org/project/tipg" target="_blank">
       <img src="https://img.shields.io/pypi/v/tipg?color=%2334D058&label=pypi%20package" alt="Package version">
   </a>
-  <a href="https://github.com/developmentseed/tipg/blob/master/LICENSE" target="_blank">
+  <a href="https://github.com/developmentseed/tipg/blob/main/LICENSE" target="_blank">
       <img src="https://img.shields.io/github/license/developmentseed/tipg.svg" alt="License">
-
   </a>
 </p>
 
