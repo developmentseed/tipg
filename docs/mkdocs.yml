@@ -1,11 +1,11 @@
-site_name: tifeatures
-site_description: Simple and Fast Geospatial OGC Features API for PostGIS.
+site_name: tipg
+site_description: Simple and Fast Geospatial OGC Features and Tiles API for PostGIS.
 
 docs_dir: 'src'
 site_dir: 'build'
 
-repo_name: "developmentseed/tifeatures"
-repo_url: "https://github.com/developmentseed/tifeatures"
+repo_name: "developmentseed/tipg"
+repo_url: "https://github.com/developmentseed/tipg"
 
 extra:
   social:
@@ -17,27 +17,25 @@ extra:
       link: "https://medium.com/devseed"
 
 nav:
-  - TiFeatures: "index.md"
+  - TiPg: "index.md"
   - User Guide:
     - "Endpoints": endpoints.md
-  - Advanced User Guide:
-    - "Combine MVT and Features": advanced/timvt_and_tifeatures.md
   - API:
-    - db: api/tifeatures/db.md
-    - dbmodel: api/tifeatures/dbmodel.md
-    - dependencies: api/tifeatures/dependencies.md
-    - errors: api/tifeatures/errors.md
-    - factory: api/tifeatures/factory.md
-    - layer: api/tifeatures/layer.md
-    - middleware: api/tifeatures/middleware.md
-    - model: api/tifeatures/model.md
-    - settings: api/tifeatures/settings.md
+    - db: api/tipg/db.md
+    - dbmodel: api/tipg/dbmodel.md
+    - dependencies: api/tipg/dependencies.md
+    - errors: api/tipg/errors.md
+    - factory: api/tipg/factory.md
+    - layer: api/tipg/layer.md
+    - middleware: api/tipg/middleware.md
+    - model: api/tipg/model.md
+    - settings: api/tipg/settings.md
     - resources:
-      - enums: api/tifeatures/resources/enums.md
-      - response: api/tifeatures/resources/response.md
+      - enums: api/tipg/resources/enums.md
+      - response: api/tipg/resources/response.md
     - filters:
-      - evaluate: api/tifeatures/filter/evaluate.md
-      - filters: api/tifeatures/filter/filters.md
+      - evaluate: api/tipg/filter/evaluate.md
+      - filters: api/tipg/filter/filters.md
   - Development - Contributing: "contributing.md"
   - Release Notes: "release-notes.md"
 

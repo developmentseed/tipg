@@ -1,62 +1,66 @@
 <p align="center">
-  <img width="500" src="https://user-images.githubusercontent.com/10407788/172736520-18da1910-87ac-41a9-b6f0-6c6ae503bd5e.png"/>
-  <p align="center">Simple and Fast Geospatial Features API for PostGIS.</p>
+  <img width="500" src="https://user-images.githubusercontent.com/10407788/204477834-2533241a-5927-4f56-959e-4e8494027bc0.png"/>
+  <p align="center">Simple and Fast Geospatial OGC Features and Tiles API for PostGIS.</p>
 </p>
 <p align="center">
-  <a href="https://github.com/developmentseed/tifeatures/actions?query=workflow%3ACI" target="_blank">
-      <img src="https://github.com/developmentseed/tifeatures/workflows/CI/badge.svg" alt="Test">
+  <a href="https://github.com/developmentseed/tipg/actions?query=workflow%3ACI" target="_blank">
+      <img src="https://github.com/developmentseed/tipg/workflows/CI/badge.svg" alt="Test">
   </a>
-  <a href="https://codecov.io/gh/developmentseed/tifeatures" target="_blank">
-      <img src="https://codecov.io/gh/developmentseed/tifeatures/branch/master/graph/badge.svg" alt="Coverage">
+  <a href="https://codecov.io/gh/developmentseed/tipg" target="_blank">
+      <img src="https://codecov.io/gh/developmentseed/tipg/branch/master/graph/badge.svg" alt="Coverage">
   </a>
-  <a href="https://pypi.org/project/tifeatures" target="_blank">
-      <img src="https://img.shields.io/pypi/v/tifeatures?color=%2334D058&label=pypi%20package" alt="Package version">
+  <a href="https://pypi.org/project/tipg" target="_blank">
+      <img src="https://img.shields.io/pypi/v/tipg?color=%2334D058&label=pypi%20package" alt="Package version">
   </a>
-  <a href="https://github.com/developmentseed/tifeatures/blob/master/LICENSE" target="_blank">
-      <img src="https://img.shields.io/github/license/developmentseed/tifeatures.svg" alt="License">
+  <a href="https://github.com/developmentseed/tipg/blob/master/LICENSE" target="_blank">
+      <img src="https://img.shields.io/github/license/developmentseed/tipg.svg" alt="License">
 
   </a>
 </p>
 
 ---
 
-**Documentation**: <a href="https://developmentseed.org/tifeatures/" target="_blank">https://developmentseed.org/tifeatures/</a>
+**Documentation**: <a href="https://developmentseed.org/tipg/" target="_blank">https://developmentseed.org/tipg/</a>
 
-**Source Code**: <a href="https://github.com/developmentseed/tifeatures" target="_blank">https://github.com/developmentseed/tifeatures</a>
+**Source Code**: <a href="https://github.com/developmentseed/tipg" target="_blank">https://github.com/developmentseed/tipg</a>
 
 ---
 
-`TiFeatures`, pronounced *T[ee]Features*, is a **python** package which helps creating lightweight **Features** server for PostGIS Database. The API has been designed with respect to [OGC Features API specification](https://github.com/opengeospatial/ogcapi-features).
+`tipg`, pronounced *T[ee]pg*, is a **python** package which helps creating lightweight OGC **Features** and **Tiles** API with PostGIS Database backend. The API has been designed with respect to [OGC Features](https://ogcapi.ogc.org/features) and [OGC Tiles](https://ogcapi.ogc.org/tiles/) specifications.
+
+> **Note**
+> This project is the result of the merge between [tifeatures](https://github.com/developmentseed/tifeatures) and [timvt](https://github.com/developmentseed/timvt).
 
 ## Install
 
 ```bash
 $ python -m pip install pip -U
-$ python -m pip install tifeatures
+$ python -m pip install tipg
 
 # or from source
-$ git clone https://github.com/developmentseed/tifeatures.git
-$ cd tifeatures
+$ git clone https://github.com/developmentseed/tipg.git
+$ cd tipg
 $ python -m pip install -e .
 ```
 
-## OGC Specification
+## OGC Specifications
 
 Specification | Status | link |
 |          -- |     -- |   -- |
-Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
-Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
-Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
+OGC Features Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
+OGC Features Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
+OGC Features Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
+OGC Tiles Part 1: Core                | ✅ | https://docs.ogc.org/is/20-057/20-057.html
 
 Notes:
 
 The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
 
-While the authors tried to follow the specification (part 1 and 3) to the letter, some API endpoints might have more capabilities (e.g geometry column selection).
+While the authors tried to follow OGC specifications to the letter, some API endpoints might have more capabilities (e.g geometry column selection).
 
 ## PostGIS/PostgreSQL
 
-`TiFeatures` rely a lot of `ST_*` PostGIS functions. You need to make sure your PostgreSQL database has PostGIS installed.
+`tipg` rely a lot of `ST_*` PostGIS functions. You need to make sure your PostgreSQL database has PostGIS installed.
 
 ```sql
 SELECT name, default_version,installed_version
@@ -69,9 +73,9 @@ CREATE EXTENSION postgis;
 
 ### Configuration
 
-To be able to work, the application will need access to the database. `tifeatures` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
+To be able to work, the application will need access to the database. `tipg` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
 
-Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tifeatures/blob/master/.env.example)
+Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tipg/blob/master/.env.example)
 
 ```
 # you need define the DATABASE_URL directly
@@ -85,7 +89,7 @@ $ pip install uvicorn
 
 # Set your postgis database instance URL in the environment
 $ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
-$ uvicorn tifeatures.main:app
+$ uvicorn tipg.main:app
 
 # or using Docker
 
@@ -98,11 +102,11 @@ $ docker-compose up
 
 ## Contribution & Development
 
-See [CONTRIBUTING.md](https://github.com/developmentseed/tifeatures/blob/master/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/developmentseed/tipg/blob/master/CONTRIBUTING.md)
 
 ## License
 
-See [LICENSE](https://github.com/developmentseed/tifeatures/blob/master/LICENSE)
+See [LICENSE](https://github.com/developmentseed/tipg/blob/master/LICENSE)
 
 ## Authors
 
@@ -110,5 +114,5 @@ Created by [Development Seed](<http://developmentseed.org>)
 
 ## Changes
 
-See [CHANGES.md](https://github.com/developmentseed/tifeatures/blob/master/CHANGES.md).
+See [CHANGES.md](https://github.com/developmentseed/tipg/blob/master/CHANGES.md).
 

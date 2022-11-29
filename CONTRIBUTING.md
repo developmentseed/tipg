@@ -1,19 +1,19 @@
 # Development - Contributing
 
-Issues and pull requests are more than welcome: https://github.com/developmentseed/tifeatures/issues
+Issues and pull requests are more than welcome: https://github.com/developmentseed/tipg/issues
 
 **dev install**
 
 ```bash
-$ git clone https://github.com/developmentseed/tifeatures.git
-$ cd tifeatures
+$ git clone https://github.com/developmentseed/tipg.git
+$ cd tipg
 $ pip install -e .["test,dev"]
 ```
 
 You can then run the tests with the following command:
 
 ```sh
-python -m pytest --cov tifeatures --cov-report term-missing --asyncio-mode=strict
+python -m pytest --cov tipg --cov-report term-missing --asyncio-mode=strict
 ```
 
 and run benchmark

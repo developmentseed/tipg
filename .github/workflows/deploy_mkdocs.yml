@@ -38,19 +38,19 @@ jobs:
             --output_dir docs/src/api \
             --exclude_source \
             --overwrite \
-            tifeatures.filter.evaluate \
-            tifeatures.filter.filters \
-            tifeatures.resources.enums \
-            tifeatures.resources.response \
-            tifeatures.db \
-            tifeatures.dbmodel \
-            tifeatures.dependencies \
-            tifeatures.errors \
-            tifeatures.factory \
-            tifeatures.layer \
-            tifeatures.middleware \
-            tifeatures.model \
-            tifeatures.settings
+            tipg.filter.evaluate \
+            tipg.filter.filters \
+            tipg.resources.enums \
+            tipg.resources.response \
+            tipg.db \
+            tipg.dbmodel \
+            tipg.dependencies \
+            tipg.errors \
+            tipg.factory \
+            tipg.layer \
+            tipg.middleware \
+            tipg.model \
+            tipg.settings
 
       - name: Deploy docs
         run: mkdocs gh-deploy --force -f docs/mkdocs.yml
