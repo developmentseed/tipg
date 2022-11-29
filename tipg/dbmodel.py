@@ -156,6 +156,7 @@ async def get_table_index(
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,
+    function_schemas: Optional[List[str]] = ["public"],
     functions: Optional[List[str]] = None,
     spatial: bool = True,
 ) -> Database:
@@ -266,7 +267,7 @@ async def get_table_index(
             table_columns
         GROUP BY 1,2,3,4,5,6 ORDER BY 1,2,3,4
         ),
-        f AS (
+        f_init AS (
             SELECT
                 'Function' as entity,
                 nspname as dbschema,
@@ -280,9 +281,12 @@ async def get_table_index(
                     ) || string_to_array(pg_get_expr(p.proargdefaults, 0::OID),',')
                 ELSE array_fill(null::text, ARRAY[pronargs])
                 END as defaults,
-                p.proallargtypes,
-                p.proargmodes,
-                p.proargnames
+                coalesce(p.proallargtypes, (p.proargtypes::oid[])[:]) as argtypes,
+                coalesce(p.proargmodes,array_fill('i'::text,ARRAY[cardinality(p.proargnames)])) as argmodes,
+                p.proargnames,
+                cardinality(p.proargnames) as argnamecount,
+                p.prorettype as basetype,
+                format_type(p.prorettype, null) as basetypename
             FROM
                 pg_proc p
                 JOIN
@@ -290,16 +294,42 @@ async def get_table_index(
                 LEFT JOIN pg_description d ON (p.oid = d.objoid)
             WHERE
                 proretset
-                AND nspname='public'
                 AND prokind='f'
                 AND proargnames is not null
                 AND '' != ANY(proargnames)
                 AND has_function_privilege(p.oid, 'execute')
                 AND has_schema_privilege(n.oid, 'usage')
                 AND provariadic=0
-                AND cardinality(p.proargnames) = cardinality(p.proargmodes)
-                AND cardinality(p.proargmodes) = cardinality(p.proallargtypes)
-        ), functions as (
+                AND (:function_schemas::text[] IS NULL  OR n.nspname = ANY (:function_schemas))
+                AND (:functions::text[] IS NULL OR p.proname = ANY (:functions))
+        ),
+        f AS (
+            SELECT
+                entity,
+                dbschema,
+                tbl,
+                id,
+                description,
+                defaults,
+                CASE WHEN basetypename = 'record'
+                    THEN argtypes
+                    ELSE argtypes || basetype
+                END as argtypes,
+                CASE WHEN basetypename = 'record'
+                    THEN argmodes
+                    ELSE argmodes || 'o'::text
+                END as argmodes,
+                CASE WHEN basetypename = 'record'
+                    THEN proargnames
+                    ELSE proargnames || tbl
+                END as proargnames
+            FROM f_init
+            WHERE TRUE
+                --argnamecount = cardinality(argmodes)
+                --AND
+                --argnamecount = cardinality(argtypes)
+        ),
+        functions as (
         SELECT
             entity,
             dbschema,
@@ -339,7 +369,7 @@ async def get_table_index(
             ) FILTER (WHERE argmode IN ('i', 'b')),'[]'::jsonb) as parameters
         FROM
             f
-            LEFT JOIN LATERAL unnest(f.proallargtypes,f.proargmodes,f.proargnames,f.defaults) WITH ORDINALITY AS a(argtype,argmode,argname,def,argnum) ON TRUE
+            LEFT JOIN LATERAL unnest(f.argtypes,f.argmodes,f.proargnames,f.defaults) WITH ORDINALITY AS a(argtype,argmode,argname,def,argnum) ON TRUE
         GROUP BY 1,2,3,4,5,6 ORDER BY 1,2,3,4
         ),
         unioned as (
@@ -357,6 +387,7 @@ async def get_table_index(
             query,
             schemas=schemas,
             tables=tables,
+            function_schemas=function_schemas,
             functions=functions,
             spatial=spatial,
         )

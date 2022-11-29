@@ -109,6 +109,8 @@ class PostgresSettings(pydantic.BaseSettings):
 
     db_schemas: List[str] = ["public"]
     db_tables: Optional[List[str]]
+    db_function_schemas: List[str] = ["public"]
+    db_functions: Optional[List[str]]
 
     only_spatial_tables: bool = True
 
