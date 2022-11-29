@@ -74,7 +74,7 @@ CREATE EXTENSION postgis;
 
 To be able to work, the application will need access to the database. `tipg` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
 
-Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tipg/blob/master/.env.example)
+Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tipg/blob/main/.env.example)
 
 ```
 # you need define the DATABASE_URL directly
@@ -101,11 +101,11 @@ $ docker-compose up
 
 ## Contribution & Development
 
-See [CONTRIBUTING.md](https://github.com/developmentseed/tipg/blob/master/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/developmentseed/tipg/blob/main/CONTRIBUTING.md)
 
 ## License
 
-See [LICENSE](https://github.com/developmentseed/tipg/blob/master/LICENSE)
+See [LICENSE](https://github.com/developmentseed/tipg/blob/main/LICENSE)
 
 ## Authors
 
@@ -113,5 +113,5 @@ Created by [Development Seed](<http://developmentseed.org>)
 
 ## Changes
 
-See [CHANGES.md](https://github.com/developmentseed/tipg/blob/master/CHANGES.md).
+See [CHANGES.md](https://github.com/developmentseed/tipg/blob/main/CHANGES.md).
 
