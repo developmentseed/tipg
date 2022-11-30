@@ -250,6 +250,19 @@ class Endpoints:
                         rel="data",
                     ),
                     model.Link(
+                        title="Collection Vector Tiles",
+                        href=self.url_for(
+                            request,
+                            "tile",
+                            collectionId="{collectionId}",
+                            tileMatrix="{tileMatrix}",
+                            tileCol="{tileCol}",
+                            tileRow="{tileRow}",
+                        ),
+                        type=MediaType.mvt,
+                        rel="data",
+                    ),
+                    model.Link(
                         title="Collection Feature",
                         href=self.url_for(
                             request,
@@ -258,6 +271,25 @@ class Endpoints:
                             itemId="{itemId}",
                         ),
                         type=MediaType.geojson,
+                        rel="data",
+                    ),
+                    model.Link(
+                        title="TileMatrixSets",
+                        href=self.url_for(
+                            request,
+                            "tilematrixsets",
+                        ),
+                        type=MediaType.json,
+                        rel="data",
+                    ),
+                    model.Link(
+                        title="TileMatrixSet",
+                        href=self.url_for(
+                            request,
+                            "tilematrixset",
+                            tileMatrixSetId="{tileMatrixSetId}",
+                        ),
+                        type=MediaType.json,
                         rel="data",
                     ),
                 ],
@@ -994,12 +1026,12 @@ class Endpoints:
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
             response_class=Response,
-            responses={200: {"content": {"application/vnd.mapbox-vector-tile": {}}}},
+            responses={200: {"content": {MediaType.mvt.value: {}}}},
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
             response_class=Response,
-            responses={200: {"content": {"application/vnd.mapbox-vector-tile": {}}}},
+            responses={200: {"content": {MediaType.mvt.value: {}}}},
         )
         async def tile(
             request: Request,
@@ -1052,9 +1084,7 @@ class Endpoints:
                 dt=datetime_column,
             )
 
-            return Response(
-                bytes(tile), media_type="application/vnd.mapbox-vector-tile"
-            )
+            return Response(bytes(tile), media_type=MediaType.mvt.value)
 
         @self.router.get(
             "/collections/{collectionId}/{TileMatrixSetId}/tilejson.json",
@@ -1138,7 +1168,7 @@ class Endpoints:
             summary="Retrieve the list of available tiling schemes (tile matrix sets).",
             operation_id="getTileMatrixSetsList",
         )
-        async def TileMatrixSet_list(request: Request):
+        async def tilematrixsets(request: Request):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
             """
@@ -1151,7 +1181,7 @@ class Endpoints:
                             {
                                 "href": self.url_for(
                                     request,
-                                    "TileMatrixSet_info",
+                                    "tilematrixset",
                                     tileMatrixSetId=tms.identifier,
                                 ),
                                 "rel": "item",
@@ -1170,7 +1200,7 @@ class Endpoints:
             summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
             operation_id="getTileMatrixSet",
         )
-        async def TileMatrixSet_info(
+        async def tilematrixset(
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
                 ...,
                 description="Identifier for a supported TileMatrixSet.",

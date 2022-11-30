@@ -63,7 +63,7 @@ def TileSettings() -> _TileSettings:
 class _APISettings(pydantic.BaseSettings):
     """API settings"""
 
-    name: str = "TiPg"
+    name: str = "TiPg: OGC Features and Tiles API"
     DEBUG: bool = False
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"

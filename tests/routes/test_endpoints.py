@@ -7,19 +7,19 @@ def test_landing(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "TiPg"
+    assert body["title"] == "TiPg: OGC Features and Tiles API"
     assert body["links"]
 
     response = app.get("/?f=html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "TiPg" in response.text
+    assert "TiPg: OGC Features and Tiles API" in response.text
 
     # Check accept headers
     response = app.get("/", headers={"accept": "text/html"})
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "TiPg" in response.text
+    assert "TiPg: OGC Features and Tiles API" in response.text
 
     # accept quality
     response = app.get(
@@ -27,28 +27,28 @@ def test_landing(app):
     )
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "TiPg" in response.text
+    assert "TiPg: OGC Features and Tiles API" in response.text
 
     # accept quality but only json is available
     response = app.get("/", headers={"accept": "text/csv;q=1.0, application/json"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "TiPg"
+    assert body["title"] == "TiPg: OGC Features and Tiles API"
 
     # accept quality but only json is available
     response = app.get("/", headers={"accept": "text/csv;q=1.0, */*"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "TiPg"
+    assert body["title"] == "TiPg: OGC Features and Tiles API"
 
     # Invalid accept, return default
     response = app.get("/", headers={"accept": "text/htm"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "TiPg"
+    assert body["title"] == "TiPg: OGC Features and Tiles API"
     assert body["links"]
 
     # make sure `?f=` has priority over headers
@@ -56,7 +56,7 @@ def test_landing(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["title"] == "TiPg"
+    assert body["title"] == "TiPg: OGC Features and Tiles API"
 
 
 def test_docs(app):

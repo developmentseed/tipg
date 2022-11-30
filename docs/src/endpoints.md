@@ -17,7 +17,7 @@ Example:
 ```json
 curl http://127.0.0.1:8081 | jq
 {
-  "title": "TiFeatures",
+  "title": "TiPg: OGC Features and Tiles API",
   "links": [
     {
       "href": "http://127.0.0.1:8081/",
@@ -68,10 +68,28 @@ curl http://127.0.0.1:8081 | jq
       "title": "Collection Features"
     },
     {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
+      "rel": "data",
+      "type": "application/vnd.mapbox-vector-tile",
+      "title": "Collection Vector Tiles"
+    },
+    {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/items/{itemId}",
       "rel": "data",
       "type": "application/geo+json",
       "title": "Collection Feature"
+    },
+    {
+      "href": "http://127.0.0.1:8081/tileMatrixSets",
+      "rel": "data",
+      "type": "application/json",
+      "title": "TileMatrixSets"
+    },
+    {
+      "href": "http://127.0.0.1:8081/tileMatrixSets/{tileMatrixSetId}",
+      "rel": "data",
+      "type": "application/json",
+      "title": "TileMatrixSet"
     }
   ]
 }
@@ -97,10 +115,6 @@ Example:
 curl http://127.0.0.1:8081/conformance | jq
 {
   "conformsTo": [
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landing-page",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
@@ -108,8 +122,16 @@ curl http://127.0.0.1:8081/conformance | jq
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter,",
-    "http://www.opengis.net/def/rel/ogc/1.0/queryables"
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+    "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+    "http://www.opengis.net/spec/tms/2.0/req/tilematrixset",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/core",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/oas30",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/mvt"
   ]
 }
 ```
@@ -154,12 +176,24 @@ curl http://127.0.0.1:8081/collections | jq
           "type": "application/schema+json"
         }
       ],
+      "extent": {
+        "spatial": {
+          "bbox": [
+            [
+              -180,
+              -89.99893188476562,
+              180,
+              83.599609375
+            ]
+          ],
+          "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+        }
+      },
       "itemType": "feature",
       "crs": [
-        "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        "http://www.opengis.net/def/crs/EPSG/0/4326"
       ]
-    },
-    ...
+    }
   ],
   "links": [
     {
@@ -231,9 +265,22 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
       "title": "Queryables"
     }
   ],
+  "extent": {
+    "spatial": {
+      "bbox": [
+        [
+          -180,
+          -89.99893188476562,
+          180,
+          83.599609375
+        ]
+      ],
+      "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+    }
+  },
   "itemType": "feature",
   "crs": [
-    "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    "http://www.opengis.net/def/crs/EPSG/0/4326"
   ]
 }
 ```
@@ -290,7 +337,7 @@ curl http://127.0.0.1:8081/collections/public.landsat_wrs/queryables | jq
   },
   "type": "object",
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "http://127.0.0.1:8081/collections/public.landsat_wrs/queryables"
+  "$id": "http://127.0.0.1:8081/collections/public.landsat_wrs/queryables?f=schemajson"
 }
 ```
 
@@ -322,6 +369,7 @@ QueryParams:
 - **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
 - **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
 - **datetime-column** * (str): Select datetime column to apply filter on.
+- **sortby** (str): Sort the items by a specific column (ascending (default) or descending). argument should be in form of `-/+{column}`.
 - **bbox-only**  * (bool): Only return the bounding box of the feature.
 - **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
 
@@ -342,6 +390,7 @@ Example:
 - `http://127.0.0.1:8081/collections/public.countries/items`
 - `http://127.0.0.1:8081/collections/public.countries/items?limit=1` *limit to only 1 feature*
 - `http://127.0.0.1:8081/collections/public.countries/items?limit=1&offset=2` *limit to only 1 feature and add offset 2 (return the third feature of the collection)*
+- `http://127.0.0.1:8081/collections/public.countries/items?sortby=-name` *sort countries by name in the descending order
 - `http://127.0.0.1:8081/collections/public.countries/items?bbox=-94.702148,34.488448,-85.429688,41.112469` *limit result to a specific bbox*.
 - `http://127.0.0.1:8081/collections/public.countries/items?ids=1,2,3` *limit result to ids `1`, `2` and `3`*
 - `http://127.0.0.1:8081/collections/public.countries/items?properties=name` *only return `name` property*
@@ -413,3 +462,37 @@ Example:
 ```
 
 Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_
+
+## Tiles
+
+Path:
+- `/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}`
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+- **tileMatrix** (int): TMS's scale identifier (Z).
+- **tileCol** (int): TMS's column identifier (X).
+- **tileRow** (int): TMS's row identifier (Y).
+
+QueryParams:
+- **limit** (int): Limits the number of features in the response. Defaults to 10000.
+- **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
+- **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
+
+    - interval-bounded            = `date-time/date-time`
+    - interval-half-bounded-start = `../date-time`
+    - interval-half-bounded-end   = `date-time/..`
+    - datetime                    = `date-time`
+
+- **ids** * (str): Coma (,) delimited list of item Ids.
+- **properties** * (str): Coma (,) delimited list of item properties to return in each feature.
+- **filter** (str): CQL2 filter as defined by https://docs.ogc.org/DRAFTS/19-079r1.html#rc_filter
+- **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
+- **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
+- **datetime-column** * (str): Select datetime column to apply filter on.
+- **sortby** (str): Sort the items by a specific column (ascending (default) or descending). argument should be in form of `-/+{column}`.
+- **bbox-only**  * (bool): Only return the bounding box of the feature.
+- **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
