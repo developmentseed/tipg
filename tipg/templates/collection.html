@@ -59,7 +59,7 @@
 
     // map.addLayer(bbox_polygon);
     map.addLayer(L.vectorGrid.protobuf(
-      '{{ baseurl }}{{ urlpath }}/tiles/{z}/{y}/{x}?{{ urlparams | safe}}',{
+      '{{ baseurl }}{{ urlpath }}/tiles/{z}/{x}/{y}?{{ urlparams | safe}}',{
         vectorTileLayerStyles:{
           default: function(properties, zoom, geometryDimension) {
             if (geometryDimension === 1) {   // point
