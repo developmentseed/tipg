@@ -58,7 +58,7 @@ class MediaType(str, Enum):
     openapi30_json = "application/vnd.oai.openapi+json;version=3.0"
     openapi30_yaml = "application/vnd.oai.openapi;version=3.0"
     pbf = "application/x-protobuf"
-    mvt = "application/x-protobuf"
+    mvt = "application/vnd.mapbox-vector-tile"
 
 
 class FilterLang(str, Enum):

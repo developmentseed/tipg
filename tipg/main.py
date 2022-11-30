@@ -81,7 +81,13 @@ async def shutdown_event() -> None:
     await close_db_connection(app)
 
 
-@app.get("/healthz", description="Health Check", tags=["Health Check"])
+@app.get(
+    "/healthz",
+    description="Health Check.",
+    summary="Health Check.",
+    operation_id="healthCheck",
+    tags=["Health Check"],
+)
 def ping():
     """Health check."""
     return {"ping": "pong!"}

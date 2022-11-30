@@ -60,11 +60,6 @@ DEFAULT_TEMPLATES = Jinja2Templates(
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
 )  # type:ignore
 
-TILE_RESPONSE_PARAMS: Dict[str, Any] = {
-    "responses": {200: {"content": {"application/x-protobuf": {}}}},
-    "response_class": Response,
-}
-
 
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
     """Creates an iterator that returns lines of csv from an iterable of dicts."""
@@ -301,10 +296,7 @@ class Endpoints:
             """Get conformance."""
             data = model.Conformance(
                 conformsTo=[
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
+                    # OGC Common
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landing-page",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
@@ -312,13 +304,16 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+                    # OGC Features
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
                     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
                     "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                     # OGC Tiles
+                    "http://www.opengis.net/spec/tms/2.0/req/tilematrixset",
                     "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/core",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/tileset",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/dataset-tilesets",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/geodata-tilesets",
                     "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/oas30",
                     "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/mvt",
                 ]
@@ -998,11 +993,13 @@ class Endpoints:
 
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
-            **TILE_RESPONSE_PARAMS,
+            response_class=Response,
+            responses={200: {"content": {"application/vnd.mapbox-vector-tile": {}}}},
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
-            **TILE_RESPONSE_PARAMS,
+            response_class=Response,
+            responses={200: {"content": {"application/vnd.mapbox-vector-tile": {}}}},
         )
         async def tile(
             request: Request,
@@ -1055,7 +1052,9 @@ class Endpoints:
                 dt=datetime_column,
             )
 
-            return Response(bytes(tile), media_type="application/x-protobuf")
+            return Response(
+                bytes(tile), media_type="application/vnd.mapbox-vector-tile"
+            )
 
         @self.router.get(
             "/collections/{collectionId}/{TileMatrixSetId}/tilejson.json",
@@ -1136,12 +1135,12 @@ class Endpoints:
             r"/tileMatrixSets",
             response_model=model.TileMatrixSetList,
             response_model_exclude_none=True,
+            summary="Retrieve the list of available tiling schemes (tile matrix sets).",
+            operation_id="getTileMatrixSetsList",
         )
         async def TileMatrixSet_list(request: Request):
             """
-            Tiling Schemes.
-
-            Specs: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
+            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
             """
             return {
                 "tileMatrixSets": [
@@ -1168,16 +1167,16 @@ class Endpoints:
             r"/tileMatrixSets/{tileMatrixSetId}",
             response_model=TileMatrixSet,
             response_model_exclude_none=True,
+            summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
+            operation_id="getTileMatrixSet",
         )
         async def TileMatrixSet_info(
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
                 ...,
-                description="Identifier selecting one of the TileMatrixSetId supported.",
+                description="Identifier for a supported TileMatrixSet.",
             ),
         ):
             """
-            Tiling Scheme.
-
-
+            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
             """
             return self.supported_tms.get(tileMatrixSetId)
