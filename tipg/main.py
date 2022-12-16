@@ -5,8 +5,7 @@ from typing import Any, List
 import jinja2
 
 from tipg import __version__ as tipg_version
-from tipg.db import close_db_connection, connect_to_db, register_table_catalog
-from tipg.dbmodel import Table
+from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware
@@ -65,7 +64,7 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 async def startup_event() -> None:
     """Connect to database on startup."""
     await connect_to_db(app, settings=postgres_settings)
-    await register_table_catalog(
+    await register_collection_catalog(
         app,
         schemas=postgres_settings.db_schemas,
         tables=postgres_settings.db_tables,
@@ -99,8 +98,4 @@ if settings.DEBUG:
     async def raw_catalog(request: Request):
         """Return parsed catalog data for testing."""
         await startup_event()
-        ret = {}
-        cat = request.app.state.table_catalog
-        for k, v in cat.items():
-            ret[k] = Table(**v)
-        return ret
+        return request.app.state.collection_catalog

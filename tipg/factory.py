@@ -23,6 +23,7 @@ from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
+from tipg.dbmodel import Collection
 from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -39,8 +40,6 @@ from tipg.dependencies import (
     sortby_query,
 )
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
-from tipg.layer import CollectionLayer
-from tipg.layer import Table as TableLayer
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import TileSettings
@@ -95,7 +94,7 @@ class Endpoints:
     router: APIRouter = field(default_factory=APIRouter)
 
     # collection dependency
-    collection_dependency: Callable[..., CollectionLayer] = CollectionParams
+    collection_dependency: Callable[..., Collection] = CollectionParams
 
     # Router Prefix is needed to find the path for routes when prefixed
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
@@ -382,10 +381,7 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """List of collections."""
-            function_catalog = getattr(request.app.state, "tipg_function_catalog", {})
-            table_catalog = getattr(request.app.state, "table_catalog", {})
-            # convert all table to Table object
-            tables = [TableLayer(**t) for t in table_catalog.values()]
+            collection_catalog = getattr(request.app.state, "collection_catalog", {})
 
             data = model.Collections(
                 links=[
@@ -446,10 +442,7 @@ class Endpoints:
                             ],
                         }
                     )
-                    for collection in [
-                        *tables,
-                        *list(function_catalog.values()),
-                    ]
+                    for collection in collection_catalog.values()
                 ],
             )
 

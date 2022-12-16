@@ -5,7 +5,7 @@ from typing import Any, Optional
 import orjson
 from buildpg import asyncpg
 
-from tipg.dbmodel import get_table_index
+from tipg.dbmodel import get_collection_index
 from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
@@ -41,9 +41,9 @@ async def connect_to_db(
     )
 
 
-async def register_table_catalog(app: FastAPI, **kwargs: Any) -> None:
+async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
     """Register Table catalog."""
-    app.state.table_catalog = await get_table_index(app.state.pool, **kwargs)
+    app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)
 
 
 async def close_db_connection(app: FastAPI) -> None:

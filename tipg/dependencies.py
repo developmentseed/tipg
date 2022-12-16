@@ -8,8 +8,8 @@ from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
+from tipg.dbmodel import Collection
 from tipg.errors import InvalidBBox, MissingFunctionParameter
-from tipg.layer import Table as TableLayer
 from tipg.resources import enums
 from tipg.settings import TileSettings
 
@@ -23,22 +23,22 @@ tile_settings = TileSettings()
 def CollectionParams(
     request: Request,
     collectionId: str = Path(..., description="Collection identifier"),
-) -> TableLayer:
+) -> Collection:
     """Return Layer Object."""
-    table_pattern = re.match(  # type: ignore
-        r"^(?P<schema>.+)\.(?P<table>.+)$", collectionId
+    collection_pattern = re.match(  # type: ignore
+        r"^(?P<schema>.+)\.(?P<collection>.+)$", collectionId
     )
-    if not table_pattern:
+    if not collection_pattern:
         raise HTTPException(
-            status_code=422, detail=f"Invalid Table format '{collectionId}'."
+            status_code=422, detail=f"Invalid Collection format '{collectionId}'."
         )
 
-    assert table_pattern.groupdict()["schema"]
-    assert table_pattern.groupdict()["table"]
+    assert collection_pattern.groupdict()["schema"]
+    assert collection_pattern.groupdict()["collection"]
 
-    table_catalog = getattr(request.app.state, "table_catalog", {})
-    if collectionId in table_catalog:
-        return TableLayer(**table_catalog[collectionId])
+    collection_catalog = getattr(request.app.state, "collection_catalog", {})
+    if collectionId in collection_catalog:
+        return collection_catalog[collectionId]
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."
@@ -221,7 +221,7 @@ def properties_query(
 
 def properties_filter_query(
     request: Request,
-    collection: TableLayer = Depends(CollectionParams),
+    collection: Collection = Depends(CollectionParams),
 ) -> List[Tuple[str, str]]:
     """Get properties to filter on excluding reserved keys."""
     exclude = [
@@ -299,7 +299,7 @@ def TileParams(
 
 def function_parameters_query(
     request: Request,
-    collection: TableLayer = Depends(CollectionParams),
+    collection: Collection = Depends(CollectionParams),
 ) -> Dict[str, str]:
     """Get parameters for function layers."""
     function_parameters = {}
