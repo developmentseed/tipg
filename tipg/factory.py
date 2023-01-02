@@ -1168,21 +1168,21 @@ class Endpoints:
             return {
                 "tileMatrixSets": [
                     {
-                        "id": tms.identifier,
-                        "title": tms.identifier,
+                        "id": tms,
+                        "title": tms,
                         "links": [
                             {
                                 "href": self.url_for(
                                     request,
                                     "tilematrixset",
-                                    tileMatrixSetId=tms.identifier,
+                                    tileMatrixSetId=tms,
                                 ),
                                 "rel": "item",
                                 "type": "application/json",
                             }
                         ],
                     }
-                    for tms in self.supported_tms.tms.values()
+                    for tms in self.supported_tms.list()
                 ]
             }
 
