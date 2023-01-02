@@ -46,7 +46,7 @@ def test_collections_landsat(app):
     response = app.get("/collections/landsat_wrs")
     assert response.status_code == 422
     body = response.json()
-    assert body["detail"] == "Invalid Table format 'landsat_wrs'."
+    assert body["detail"] == "Invalid Collection format 'landsat_wrs'."
 
 
 def test_collections_queryables(app):
