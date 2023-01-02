@@ -1021,6 +1021,13 @@ async def get_collection_index(
 
         for table in rows:
             id = table["id"]
+
+            if table_settings.excludes and id in table_settings.excludes:
+                continue
+
+            if table_settings.includes and id not in table_settings.includes:
+                continue
+
             confid = id.replace(".", "_")
             table_conf = table_confs.get(confid, {})
 

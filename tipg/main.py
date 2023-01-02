@@ -97,5 +97,10 @@ if settings.DEBUG:
     @app.get("/rawcatalog")
     async def raw_catalog(request: Request):
         """Return parsed catalog data for testing."""
+        return request.app.state.collection_catalog
+
+    @app.get("/refresh")
+    async def refresh(request: Request):
+        """Return parsed catalog data for testing."""
         await startup_event()
         return request.app.state.collection_catalog
