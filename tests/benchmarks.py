@@ -34,3 +34,19 @@ def test_benchmark_item(benchmark, format, name, app):
     assert response.status_code == 200
     if format == "geojson":
         assert response.json()["features"][0]["properties"]["prnom"] == name
+
+
+@pytest.mark.parametrize("tms", ["WGS1984Quad", "WebMercatorQuad"])
+@pytest.mark.parametrize("tile", ["0/0/0", "4/8/5", "6/33/25"])
+def test_benchmark_tile(benchmark, tile, tms, app):
+    """Benchmark items endpoint."""
+
+    def f(input_tms, input_tile):
+        return app.get(
+            f"/collections/public.landsat_wrs/tiles/{input_tms}/{input_tile}"
+        )
+
+    benchmark.group = f"Tiles-{tms}"
+
+    response = benchmark(f, tms, tile)
+    assert response.status_code == 200
