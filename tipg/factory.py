@@ -17,6 +17,7 @@ from urllib.parse import urlencode
 
 import jinja2
 import orjson
+from ciso8601 import parse_rfc3339
 from morecantile import TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
@@ -86,14 +87,43 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
         yield writer.writerow(row)
 
 
-def s_intersects(bbox_left: List[float], bbox_right: List[float]) -> bool:
-    """Check if two bbox intersect."""
+def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
+    """Check if bbox intersects with spatial extent."""
     return (
-        (bbox_left[0] < bbox_right[2])
-        and (bbox_left[2] > bbox_right[0])
-        and (bbox_left[3] > bbox_right[1])
-        and (bbox_left[1] < bbox_right[3])
+        (bbox[0] < spatial_extent[2])
+        and (bbox[2] > spatial_extent[0])
+        and (bbox[3] > spatial_extent[1])
+        and (bbox[1] < spatial_extent[3])
     )
+
+
+def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
+    """Check if dates intersect with temporal extent."""
+    if len(interval) == 1:
+        start = end = parse_rfc3339(interval[0])
+
+    else:
+        start = parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
+        end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
+
+    for (mint, maxt) in temporal_extent:
+        min_ext = parse_rfc3339(mint) if mint is not None else None
+        max_ext = parse_rfc3339(maxt) if maxt is not None else None
+
+        if len(interval) == 1:
+            if start == min_ext or start == max_ext:
+                return True
+
+        if not start:
+            return max_ext <= end or min_ext <= end
+
+        elif not end:
+            return min_ext >= start or max_ext >= start
+
+        else:
+            return min_ext >= start and max_ext <= end
+
+    return False
 
 
 @dataclass
@@ -389,7 +419,7 @@ class Endpoints:
             request: Request,
             output_type: Optional[MediaType] = Depends(OutputType),
             bbox_filter: Optional[List[float]] = Depends(bbox_query),
-            # datetime_filter: Optional[List[str]] = Depends(datetime_query),
+            datetime_filter: Optional[List[str]] = Depends(datetime_query),
             limit: Optional[int] = Query(
                 None,
                 ge=0,
@@ -419,7 +449,14 @@ class Endpoints:
                 ]
 
             # datetime filter
-            # TODO: datetime filter
+            if datetime_filter is not None:
+                collections_list = [
+                    collection
+                    for collection in collections_list
+                    if collection.extent is not None
+                    and collection.extent.temporal is not None
+                    and t_intersects(datetime_filter, collection.extent.temporal)
+                ]
 
             matched_items = len(collections_list)
 
