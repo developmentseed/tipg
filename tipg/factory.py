@@ -339,26 +339,23 @@ class Endpoints:
                 conformsTo=[
                     # OGC Common
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landing-page",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/rm/bbox",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/rm/datetime",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                     # OGC Features
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
                     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
-                    "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    # OGC Tiles
-                    "http://www.opengis.net/spec/tms/2.0/req/tilematrixset",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/core",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/oas30",
-                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/mvt",
+                    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+                    # OGC Tiles (WIP)
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
+                    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
                 ]
             )
 
