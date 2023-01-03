@@ -86,3 +86,43 @@ def app(database_url, monkeypatch):
 
     with TestClient(app) as app:
         yield app
+
+
+@pytest.fixture()
+def app_excludes(database_url, monkeypatch):
+    """Create app with connection to the pytest database."""
+    monkeypatch.setenv("DATABASE_URL", str(database_url))
+    monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
+
+    monkeypatch.setenv("TIPG_EXCLUDES", '["public.nongeo_data"]')
+
+    from tipg.main import app
+
+    # Remove middlewares https://github.com/encode/starlette/issues/472
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+
+    # register functions to app.state.function_catalog here
+
+    with TestClient(app) as app:
+        yield app
+
+
+@pytest.fixture()
+def app_includes(database_url, monkeypatch):
+    """Create app with connection to the pytest database."""
+    monkeypatch.setenv("DATABASE_URL", str(database_url))
+    monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
+
+    monkeypatch.setenv("TIPG_INCLUDES", '["public.nongeo_data"]')
+
+    from tipg.main import app
+
+    # Remove middlewares https://github.com/encode/starlette/issues/472
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+
+    # register functions to app.state.function_catalog here
+
+    with TestClient(app) as app:
+        yield app
