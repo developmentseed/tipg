@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
-from buildpg import asyncpg, clauses
+from buildpg import V, asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
@@ -1020,6 +1020,7 @@ async def get_collection_index(
         fallback_key_names = table_settings.fallback_key_names
 
         for table in rows:
+            print(table)
             id = table["id"]
 
             if table_settings.excludes and id in table_settings.excludes:
@@ -1048,11 +1049,26 @@ async def get_collection_index(
                         break
 
             # Datetime Column
-            datetime_columns = [
-                c
-                for c in table.get("datetime_columns", [])
-                if c["name"] in property_names
-            ]
+            datetime_columns = []
+            datetime_column = None
+            for c in table.get("datetime_columns", []):
+                print(c, property_names)
+                if c["name"] in property_names:
+                    # get min/max from database
+                    mindt, maxdt = await conn.fetchrow_b(
+                        "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
+                        dtcol=V(c["name"]),
+                        tbl=V(id),
+                    )
+                    print(c, mindt, maxdt)
+                    if mindt and maxdt:
+                        c["min"] = mindt
+                        c["max"] = maxdt
+                    print(c)
+                    datetime_columns.append(c)
+
+                    if table_conf.get("datetimecol") == c["name"]:
+                        datetime_column = c
 
             datetime_column = None
             for col in datetime_columns:
