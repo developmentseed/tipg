@@ -9,15 +9,35 @@ def test_collections(app):
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
 
-    assert list(filter(lambda x: x["id"] == "public.landsat_wrs", body["collections"]))
-    assert list(filter(lambda x: x["id"] == "public.my_data", body["collections"]))
-    assert list(filter(lambda x: x["id"] == "public.nongeo_data", body["collections"]))
-    assert list(filter(lambda x: x["id"] == "public.landsat", body["collections"]))
+    ids = [x["id"] for x in body["collections"]]
+    assert "public.landsat_wrs" in ids
+    assert "public.my_data" in ids
+    assert "public.nongeo_data" in ids
+    assert "public.landsat" in ids
 
     response = app.get("/?f=html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "Collections" in response.text
+
+
+def test_collections_excludes(app_excludes):
+    """Test /collections endpoint."""
+    response = app_excludes.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [x["id"] for x in body["collections"]]
+    assert "public.my_data" in ids
+    assert "public.nongeo_data" not in ids
+
+
+def test_collections_includes(app_includes):
+    """Test /collections endpoint."""
+    response = app_includes.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [x["id"] for x in body["collections"]]
+    assert ["public.nongeo_data"] == ids
 
 
 def test_collections_landsat(app):

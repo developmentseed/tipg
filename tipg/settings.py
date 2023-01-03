@@ -28,6 +28,8 @@ class TableSettings(pydantic.BaseSettings):
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
+    includes: Optional[List[str]]
+    excludes: Optional[List[str]]
 
     class Config:
         """model config"""
