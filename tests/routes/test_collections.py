@@ -7,7 +7,7 @@ def test_collections(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert ["collections", "links"] == list(body)
+    assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
 
     assert list(filter(lambda x: x["id"] == "public.landsat_wrs", body["collections"]))
     assert list(filter(lambda x: x["id"] == "public.my_data", body["collections"]))
@@ -27,7 +27,7 @@ def test_collections_landsat(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert body["id"] == "public.landsat_wrs"
-    assert ["id", "links", "extent", "itemType", "crs"] == list(body)
+    assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
     assert ["bbox", "crs"] == list(body["extent"]["spatial"])
 
     response = app.get("/collections/public.landsat_wrs?f=html")

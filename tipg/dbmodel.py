@@ -22,6 +22,7 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
+from tipg.model import Extent
 from tipg.settings import TableSettings, TileSettings
 
 tile_settings = TileSettings()
@@ -149,8 +150,7 @@ class Collection(BaseModel):
     dbschema: str = Field(..., alias="schema")
     title: Optional[str]
     description: Optional[str]
-    bounds: Optional[List[float]]  # TODO: Should be moved to Extent
-    crs: Optional[str]  # TODO: Should be moved to Extent
+    extent: Optional[Extent]
     properties: List[Column] = []
     id_column: Optional[str]
     geometry_columns: List[GeometryColumn] = []
@@ -163,14 +163,30 @@ class Collection(BaseModel):
     default_tms: str = tile_settings.default_tms
 
     @root_validator
-    def bounds_default(cls, values):
+    def extent_default(cls, values):
         """Get default bounds from the first geometry columns."""
+        extent = {}
+
         geoms = values.get("geometry_columns")
         if geoms:
             # Get the Extent of all the bounds
             minx, miny, maxx, maxy = zip(*[geom.bounds for geom in geoms])
-            values["bounds"] = [min(minx), min(miny), max(maxx), max(maxy)]
-            values["crs"] = f"http://www.opengis.net/def/crs/EPSG/0/{geoms[0].srid}"
+            extent["spatial"] = {
+                "bbox": [[min(minx), min(miny), max(maxx), max(maxy)]],
+                "crs": f"http://www.opengis.net/def/crs/EPSG/0/{geoms[0].srid}",
+            }
+
+        dates = values.get("datetime_columns")
+        if dates:
+            intervals = []
+            for d in dates:
+                if d.min or d.max:
+                    intervals.append([d.min, d.max])
+            if intervals:
+                extent["temporal"] = {"interval": intervals}
+
+        if extent:
+            values["extent"] = Extent(**extent)
 
         return values
 
@@ -201,6 +217,14 @@ class Collection(BaseModel):
         for col in self.geometry_columns:
             if col.name == name:
                 return col
+
+        return None
+
+    @property
+    def bounds(self) -> Optional[List[float]]:
+        """Return bounds from collection extent."""
+        if self.extent and self.extent.spatial:
+            return self.extent.spatial.bbox[0]
 
         return None
 

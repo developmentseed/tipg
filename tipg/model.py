@@ -89,12 +89,15 @@ class Collections(BaseModel):
     """
     Collections model.
 
-    Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/collections.yaml
+    Ref: http://beta.schemas.opengis.net/ogcapi/common/part2/0.1/collections/openapi/schemas/collections.yaml
 
     """
 
-    collections: List[Collection]
     links: List[Link]
+    timeStamp: Optional[str]
+    numberMatched: Optional[int]
+    numberReturned: Optional[int]
+    collections: List[Collection]
 
 
 class Item(Feature):

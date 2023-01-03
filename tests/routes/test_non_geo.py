@@ -8,7 +8,7 @@ def test_non_geo(app):
     body = response.json()
     assert body["id"] == "public.nongeo_data"
     # No Extent for non-geo table
-    assert ["id", "links", "itemType", "crs"] == list(body)
+    assert ["id", "title", "links", "itemType", "crs"] == list(body)
 
     response = app.get("/collections/public.nongeo_data/items")
     assert response.status_code == 200

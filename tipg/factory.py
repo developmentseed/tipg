@@ -86,6 +86,16 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
         yield writer.writerow(row)
 
 
+def s_intersects(bbox_left: List[float], bbox_right: List[float]) -> bool:
+    """Check if two bbox intersect."""
+    return (
+        (bbox_left[0] < bbox_right[2])
+        and (bbox_left[2] > bbox_right[0])
+        and (bbox_left[3] > bbox_right[1])
+        and (bbox_left[1] < bbox_right[3])
+    )
+
+
 @dataclass
 class Endpoints:
     """Endpoints Factory."""
@@ -334,6 +344,8 @@ class Endpoints:
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
                     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/rm/bbox",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/rm/datetime",
                     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
                     # OGC Features
                     "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
@@ -379,38 +391,109 @@ class Endpoints:
         def collections(
             request: Request,
             output_type: Optional[MediaType] = Depends(OutputType),
+            bbox_filter: Optional[List[float]] = Depends(bbox_query),
+            # datetime_filter: Optional[List[str]] = Depends(datetime_query),
+            limit: Optional[int] = Query(
+                None,
+                ge=0,
+                le=1000,
+                description="Limits the number of collection in the response.",
+            ),
+            offset: Optional[int] = Query(
+                None,
+                ge=0,
+                description="Starts the response at an offset.",
+            ),
         ):
             """List of collections."""
             collection_catalog = getattr(request.app.state, "collection_catalog", {})
+            collections_list = list(collection_catalog.values())
+
+            limit = limit or 0
+            offset = offset or 0
+
+            # bbox filter
+            if bbox_filter is not None:
+                collections_list = [
+                    collection
+                    for collection in collections_list
+                    if collection.bounds is not None
+                    and s_intersects(bbox_filter, collection.bounds)
+                ]
+
+            # datetime filter
+            # TODO: datetime filter
+
+            matched_items = len(collections_list)
+
+            if limit:
+                collections_list = collections_list[offset : offset + limit]
+            else:
+                collections_list = collections_list[offset:]
+
+            items_returned = len(collections_list)
+
+            links = [
+                model.Link(
+                    href=self.url_for(request, "landing"),
+                    rel="parent",
+                    type=MediaType.json,
+                ),
+                model.Link(
+                    href=self.url_for(request, "collections"),
+                    rel="self",
+                    type=MediaType.json,
+                ),
+            ]
+
+            if (matched_items - items_returned) > offset:
+                next_offset = offset + items_returned
+                query_params = QueryParams(
+                    {**request.query_params, "offset": next_offset}
+                )
+                url = self.url_for(request, "collections") + f"?{query_params}"
+                links.append(
+                    model.Link(
+                        href=url,
+                        rel="next",
+                        type=MediaType.geojson,
+                        title="Next page",
+                    ).dict(exclude_none=True),
+                )
+
+            if offset:
+                qp = dict(request.query_params)
+                qp.pop("offset")
+                prev_offset = max(offset - items_returned, 0)
+                if prev_offset:
+                    query_params = QueryParams({**qp, "offset": prev_offset})
+                else:
+                    query_params = QueryParams({**qp})
+
+                url = self.url_for(request, "collections")
+                if qp:
+                    url += f"?{query_params}"
+
+                links.append(
+                    model.Link(
+                        href=url,
+                        rel="prev",
+                        type=MediaType.geojson,
+                        title="Previous page",
+                    ).dict(exclude_none=True),
+                )
 
             data = model.Collections(
-                links=[
-                    model.Link(
-                        href=self.url_for(request, "landing"),
-                        rel="parent",
-                        type=MediaType.json,
-                    ),
-                    model.Link(
-                        href=self.url_for(request, "collections"),
-                        rel="self",
-                        type=MediaType.json,
-                    ),
-                ],
+                links=links,
+                numberMatched=matched_items,
+                numberReturned=items_returned,
                 collections=[
                     model.Collection(
                         **{
                             "id": collection.id,
                             "title": collection.id,
                             "description": collection.description,
-                            # TODO: Add Spatial/Temporal Extent
-                            "extent": model.Extent(
-                                spatial=model.Spatial(
-                                    bbox=[collection.bounds],
-                                    crs=collection.crs,
-                                )
-                                if collection.bounds is not None
-                                else None
-                            ),
+                            "extent": collection.extent,
                             "links": [
                                 model.Link(
                                     href=self.url_for(
@@ -442,7 +525,7 @@ class Endpoints:
                             ],
                         }
                     )
-                    for collection in collection_catalog.values()
+                    for collection in collections_list
                 ],
             )
 
@@ -475,20 +558,12 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
-            # Difference between the collection output Model
-            # and the collection database model
-            collection_data = collection.dict(exclude={"crs", "bounds"})
-            if collection.bounds:
-                collection_data["extent"] = model.Extent(
-                    spatial=model.Spatial(
-                        bbox=[collection.bounds],
-                        crs=collection.crs,
-                    )
-                )
-
             data = model.Collection(
                 **{
-                    **collection_data,
+                    "id": collection.id,
+                    "title": collection.id,
+                    "description": collection.description,
+                    "extent": collection.extent,
                     "links": [
                         model.Link(
                             href=self.url_for(
