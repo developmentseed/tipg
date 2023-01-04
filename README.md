@@ -46,10 +46,12 @@ $ python -m pip install -e .
 
 Specification | Status | link |
 |          -- |     -- |   -- |
-OGC Features Part 1: Core             | ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
-OGC Features Part 2: CRS by Reference | ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
-OGC Features Part 3: Filtering / CQL2 | ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
-OGC Tiles Part 1: Core                | ✅ | https://docs.ogc.org/is/20-057/20-057.html
+OGC Common Part 1: Core                |  ✅ | https://docs.ogc.org/DRAFTS/19-072.html
+OGC Common Part 2: Geospatial Data     |  ✅ | http://docs.ogc.org/DRAFTS/20-024.html
+OGC Features Part 1: Core              |  ✅ | https://docs.ogc.org/is/17-069r4/17-069r4.html
+OGC Features Part 2: CRS by Reference  |  ❌ | https://docs.ogc.org/is/18-058r1/18-058r1.html
+OGC Features Part 3: Filtering / CQL2  |  ✅ | https://docs.ogc.org/DRAFTS/19-079r1.html
+OGC Tiles Part 1: Core                 | WIP | https://docs.ogc.org/is/20-057/20-057.html
 
 Notes:
 

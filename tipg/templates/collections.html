@@ -1,5 +1,13 @@
 {% include "header.html" %}
 
+{% set show_prev_link = false %}
+{% set show_next_link = false %}
+{%  if 'items?' in url %}
+  {% set urlq = url + '&' %}
+  {% else %}
+  {% set urlq = url + '?' %}
+{% endif %}
+
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb bg-light">
     {% for crumb in crumbs %}
@@ -14,6 +22,34 @@
 </nav>
 
 <h1>Collections</h1>
+
+<p>
+  <b>Number of matching collections:</b> {{ response.numberMatched }}<br/>
+  <b>Number of returned collections:</b> {{ response.numberReturned }}<br/>
+  <b>Page:</b> <span id="current_page"></span> of <span id="total_pages"></span><br/>
+</p>
+
+<div class="form-row" style="margin-bottom:10px;" id="controls">
+  {% for link in response.links %}
+    {% if link.rel == 'prev' %}
+      <div class="col-auto"><a class="btn btn-secondary" title="previous page" href="{{ link.href }}">prev</a></div>
+    {% endif %}
+  {% endfor %}
+  <div class="col-auto">
+    <select class="form-control" id="limit"> <!-- TODO: dynamically populate the values based on oga_max_limit -->
+      <option value="10">page size</option>
+      <option>10</option>
+      <option>100</option>
+      <option>1000</option>
+      <option>10000</option>
+    </select>
+  </div>
+  {% for link in response.links %}
+    {% if link.rel == 'next' %}
+      <div class="col-auto"><a class="btn btn-secondary" title="next page" href="{{ link.href }}">next</a></div>
+    {% endif %}
+  {% endfor %}
+</div>
 
 <div class="table-responsive">
   <table class="table" style="width:100%;">
@@ -35,5 +71,46 @@
     </tbody>
   </table>
 </div>
+
+<script>
+function changePageSize() {
+  var url = "{{ template.api_root }}/collections?";
+  url += "limit=" + $("#limit").val();
+  window.location.href = url;
+}
+$(function() {
+    //
+    // paging
+    //
+    var offset = 0; // defaults
+    var limit = 0;
+
+    {% if "offset" in template.params %}
+    offset = {{ template.params.offset }};
+    {% endif %}
+    {% if "limit" in template.params %}
+    limit = {{ template.params.limit }};
+    {% endif %}
+
+    var current_page = 1;
+    if (limit > 0) {
+      current_page = (offset + limit)/limit;
+    }
+    $("#current_page").html(current_page);
+
+    var total_pages = 1;
+    if (limit > 0) {
+      total_pages = Math.ceil({{ response.numberMatched }} / limit);
+    }
+    $("#total_pages").html(total_pages);
+
+    //
+    // event handling
+    //
+    $("#limit").on("change", function() {
+      changePageSize();
+    });
+});
+</script>
 
 {% include "footer.html" %}
