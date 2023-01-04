@@ -798,7 +798,7 @@ class Collection(BaseModel):
 Database = Dict[str, Collection]
 
 
-async def get_collection_index(
+async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,
@@ -1076,7 +1076,6 @@ async def get_collection_index(
             datetime_columns = []
             datetime_column = None
             for c in table.get("datetime_columns", []):
-                print(c, property_names)
                 if c["name"] in property_names:
                     # get min/max from database
                     mindt, maxdt = await conn.fetchrow_b(
@@ -1084,20 +1083,14 @@ async def get_collection_index(
                         dtcol=V(c["name"]),
                         tbl=V(id),
                     )
-                    print(c, mindt, maxdt)
                     if mindt and maxdt:
                         c["min"] = mindt
                         c["max"] = maxdt
-                    print(c)
+
                     datetime_columns.append(c)
 
                     if table_conf.get("datetimecol") == c["name"]:
                         datetime_column = c
-
-            datetime_column = None
-            for col in datetime_columns:
-                if table_conf.get("datetimecol") == col["name"]:
-                    datetime_column = col
 
             if not datetime_column and datetime_columns:
                 datetime_column = datetime_columns[0]
