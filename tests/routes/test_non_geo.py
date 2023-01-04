@@ -8,7 +8,13 @@ def test_non_geo(app):
     body = response.json()
     assert body["id"] == "public.nongeo_data"
     # No Extent for non-geo table
-    assert ["id", "title", "links", "itemType", "crs"] == list(body)
+    assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
+    assert body["extent"]["temporal"]
+    assert body["extent"]["temporal"]["interval"][0] == [
+        "2004-10-19 10:23:54",
+        "2004-10-24 10:23:54",
+    ]
+    assert not body["extent"].get("spatial")
 
     response = app.get("/collections/public.nongeo_data/items")
     assert response.status_code == 200
