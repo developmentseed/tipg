@@ -1044,16 +1044,15 @@ async def get_collection_index(  # noqa: C901
         fallback_key_names = table_settings.fallback_key_names
 
         for table in rows:
-            print(table)
-            id = table["id"]
+            table_id = table["id"]
 
-            if table_settings.excludes and id in table_settings.excludes:
+            if table_settings.excludes and table_id in table_settings.excludes:
                 continue
 
-            if table_settings.includes and id not in table_settings.includes:
+            if table_settings.includes and table_id not in table_settings.includes:
                 continue
 
-            confid = id.replace(".", "_")
+            confid = table_id.replace(".", "_")
             table_conf = table_confs.get(confid, {})
 
             # Make sure that any properties set in conf exist in table
@@ -1077,15 +1076,16 @@ async def get_collection_index(  # noqa: C901
             datetime_column = None
             for c in table.get("datetime_columns", []):
                 if c["name"] in property_names:
-                    # get min/max from database
-                    mindt, maxdt = await conn.fetchrow_b(
-                        "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
-                        dtcol=V(c["name"]),
-                        tbl=V(id),
-                    )
-                    if mindt and maxdt:
-                        c["min"] = mindt
-                        c["max"] = maxdt
+                    if table_settings.datetime_extent:
+                        # get min/max from database
+                        mindt, maxdt = await conn.fetchrow_b(
+                            "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
+                            dtcol=V(c["name"]),
+                            tbl=V(table_id),
+                        )
+                        if mindt and maxdt:
+                            c["min"] = mindt
+                            c["max"] = maxdt
 
                     datetime_columns.append(c)
 
@@ -1108,9 +1108,9 @@ async def get_collection_index(  # noqa: C901
             if not geometry_column and geometry_columns:
                 geometry_column = geometry_columns[0]
 
-            catalog[id] = Collection(
+            catalog[table_id] = Collection(
                 type=table["entity"],
-                id=id,
+                id=table_id,
                 table=table["tbl"],
                 schema=table["dbschema"],
                 description=table["description"],
