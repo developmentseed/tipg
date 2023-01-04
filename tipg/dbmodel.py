@@ -1079,7 +1079,7 @@ async def get_collection_index(  # noqa: C901
                     if table_settings.datetime_extent:
                         # get min/max from database
                         mindt, maxdt = await conn.fetchrow_b(
-                            "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
+                            "SELECT to_json(min(:dtcol)::timestamptz), to_json(max(:dtcol)::timestamptz) FROM :tbl",
                             dtcol=V(c["name"]),
                             tbl=V(table_id),
                         )

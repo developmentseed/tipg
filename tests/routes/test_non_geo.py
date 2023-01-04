@@ -11,8 +11,8 @@ def test_non_geo(app):
     assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
     assert body["extent"]["temporal"]
     assert body["extent"]["temporal"]["interval"][0] == [
-        "2004-10-19 10:23:54",
-        "2004-10-24 10:23:54",
+        "2004-10-19T09:23:54+00:00",
+        "2004-10-24T09:23:54+00:00",
     ]
     assert not body["extent"].get("spatial")
 

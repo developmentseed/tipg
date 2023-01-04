@@ -455,7 +455,9 @@ class Endpoints:
                     for collection in collections_list
                     if collection.extent is not None
                     and collection.extent.temporal is not None
-                    and t_intersects(datetime_filter, collection.extent.temporal)
+                    and t_intersects(
+                        datetime_filter, collection.extent.temporal.interval
+                    )
                 ]
 
             matched_items = len(collections_list)
