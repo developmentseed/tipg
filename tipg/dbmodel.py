@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
-from buildpg import asyncpg, clauses
+from buildpg import V, asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
@@ -798,7 +798,7 @@ class Collection(BaseModel):
 Database = Dict[str, Collection]
 
 
-async def get_collection_index(
+async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,
@@ -1044,15 +1044,15 @@ async def get_collection_index(
         fallback_key_names = table_settings.fallback_key_names
 
         for table in rows:
-            id = table["id"]
+            table_id = table["id"]
 
-            if table_settings.excludes and id in table_settings.excludes:
+            if table_settings.excludes and table_id in table_settings.excludes:
                 continue
 
-            if table_settings.includes and id not in table_settings.includes:
+            if table_settings.includes and table_id not in table_settings.includes:
                 continue
 
-            confid = id.replace(".", "_")
+            confid = table_id.replace(".", "_")
             table_conf = table_confs.get(confid, {})
 
             # Make sure that any properties set in conf exist in table
@@ -1072,16 +1072,25 @@ async def get_collection_index(
                         break
 
             # Datetime Column
-            datetime_columns = [
-                c
-                for c in table.get("datetime_columns", [])
-                if c["name"] in property_names
-            ]
-
+            datetime_columns = []
             datetime_column = None
-            for col in datetime_columns:
-                if table_conf.get("datetimecol") == col["name"]:
-                    datetime_column = col
+            for c in table.get("datetime_columns", []):
+                if c["name"] in property_names:
+                    if table_settings.datetime_extent:
+                        # get min/max from database
+                        mindt, maxdt = await conn.fetchrow_b(
+                            "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
+                            dtcol=V(c["name"]),
+                            tbl=V(table_id),
+                        )
+                        if mindt and maxdt:
+                            c["min"] = mindt
+                            c["max"] = maxdt
+
+                    datetime_columns.append(c)
+
+                    if table_conf.get("datetimecol") == c["name"]:
+                        datetime_column = c
 
             if not datetime_column and datetime_columns:
                 datetime_column = datetime_columns[0]
@@ -1099,9 +1108,9 @@ async def get_collection_index(
             if not geometry_column and geometry_columns:
                 geometry_column = geometry_columns[0]
 
-            catalog[id] = Collection(
+            catalog[table_id] = Collection(
                 type=table["entity"],
-                id=id,
+                id=table_id,
                 table=table["tbl"],
                 schema=table["dbschema"],
                 description=table["description"],

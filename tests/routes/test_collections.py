@@ -49,6 +49,7 @@ def test_collections_landsat(app):
     assert body["id"] == "public.landsat_wrs"
     assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
     assert ["bbox", "crs"] == list(body["extent"]["spatial"])
+    assert not body["extent"].get("temporal")
 
     response = app.get("/collections/public.landsat_wrs?f=html")
     assert response.status_code == 200
