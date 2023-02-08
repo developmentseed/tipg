@@ -26,7 +26,6 @@ nav:
     - dependencies: api/tipg/dependencies.md
     - errors: api/tipg/errors.md
     - factory: api/tipg/factory.md
-    - layer: api/tipg/layer.md
     - middleware: api/tipg/middleware.md
     - model: api/tipg/model.md
     - settings: api/tipg/settings.md

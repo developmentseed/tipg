@@ -23,6 +23,7 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
+from tipg.model import Extent
 from tipg.settings import TableSettings, TileSettings
 
 tile_settings = TileSettings()
@@ -233,6 +234,14 @@ class Collection(BaseModel):
         for col in self.geometry_columns:
             if col.name == name:
                 return col
+
+        return None
+
+    @property
+    def bounds(self) -> Optional[List[float]]:
+        """Return bounds from collection extent."""
+        if self.extent and self.extent.spatial:
+            return self.extent.spatial.bbox[0]
 
         return None
 
@@ -806,7 +815,7 @@ class Collection(BaseModel):
 Database = Dict[str, Collection]
 
 
-async def get_collection_index(
+async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
     tables: Optional[List[str]] = None,
@@ -847,10 +856,10 @@ async def get_collection_index(
             id = table["schema"] + "." + table["name"]
             confid = table["schema"] + "_" + table["name"]
 
-            if table_settings.excludes and id in table_settings.excludes:
+            if table_settings.excludes and table_id in table_settings.excludes:
                 continue
 
-            if table_settings.includes and id not in table_settings.includes:
+            if table_settings.includes and table_id not in table_settings.includes:
                 continue
 
             table_conf = table_confs.get(confid, {})
@@ -888,7 +897,7 @@ async def get_collection_index(
                     ):
                         geometry_column = c
 
-            catalog[id] = Collection(
+            catalog[table_id] = Collection(
                 type=table["entity"],
                 id=id,
                 table=table["name"],

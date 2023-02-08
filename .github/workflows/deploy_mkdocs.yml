@@ -47,7 +47,6 @@ jobs:
             tipg.dependencies \
             tipg.errors \
             tipg.factory \
-            tipg.layer \
             tipg.middleware \
             tipg.model \
             tipg.settings

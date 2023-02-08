@@ -28,6 +28,7 @@ class TableSettings(pydantic.BaseSettings):
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
+    datetime_extent: bool = True
     includes: Optional[List[str]]
     excludes: Optional[List[str]]
 
