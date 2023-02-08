@@ -86,6 +86,10 @@ exclude = [
   ".gitignore",
   ".pre-commit-config.yaml",
 ]
+include = [
+  "/tipg/dbcatalog.sql",
+  "/tipg/templates/*.html",
+]
 
 [build-system]
 requires = ["hatchling"]

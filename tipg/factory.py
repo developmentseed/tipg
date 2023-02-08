@@ -402,15 +402,7 @@ class Endpoints:
                             "id": collection.id,
                             "title": collection.id,
                             "description": collection.description,
-                            # TODO: Add Spatial/Temporal Extent
-                            "extent": model.Extent(
-                                spatial=model.Spatial(
-                                    bbox=[collection.bounds],
-                                    crs=collection.crs,
-                                )
-                                if collection.bounds is not None
-                                else None
-                            ),
+                            "extent": collection.extent,
                             "links": [
                                 model.Link(
                                     href=self.url_for(
@@ -475,20 +467,10 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
-            # Difference between the collection output Model
-            # and the collection database model
-            collection_data = collection.dict(exclude={"crs", "bounds"})
-            if collection.bounds:
-                collection_data["extent"] = model.Extent(
-                    spatial=model.Spatial(
-                        bbox=[collection.bounds],
-                        crs=collection.crs,
-                    )
-                )
 
             data = model.Collection(
                 **{
-                    **collection_data,
+                    **collection.dict(),
                     "links": [
                         model.Link(
                             href=self.url_for(
@@ -1149,7 +1131,7 @@ class Endpoints:
                     "minzoom": minzoom,
                     "maxzoom": maxzoom,
                     "name": collection.id,
-                    "bounds": geom.bounds,
+                    "bounds": collection.extent.spatial[1],
                     "tiles": [tile_endpoint],
                 }
             )

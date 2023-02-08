@@ -38,6 +38,7 @@ services:
     command: postgres -N 500
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
+      - ./tipg:/tmp/tipg
 
   # pg_featureserv:
   #   image: pramsey/pg_featureserv:latest

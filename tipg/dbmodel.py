@@ -1,5 +1,6 @@
 """tipg.dbmodel: database events."""
 
+import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
@@ -85,6 +86,11 @@ class Column(BaseModel):
     name: str
     type: str
     description: Optional[str]
+    geometry_type: Optional[str]
+    srid: Optional[str]
+    bounds: Optional[List[float]]
+    mindt: Optional[str]
+    maxdt: Optional[str]
 
     @property
     def json_type(self) -> str:
@@ -118,26 +124,41 @@ class Column(BaseModel):
 
         return "string"
 
+    @property
+    def is_geometry(self) -> bool:
+        if self.geometry_type:
+            return True
+        return False
 
-class GeometryColumn(Column):
-    """Model for PostGIS geometry/geography column."""
-
-    bounds: List[float] = [-180, -90, 180, 90]
-    srid: int = 4326
-    geometry_type: str
-
-
-class DatetimeColumn(Column):
-    """Model for PostGIS geometry/geography column."""
-
-    min: Optional[str]
-    max: Optional[str]
+    @property
+    def is_datetime(self) -> bool:
+        return self.type in ("timestamp", "timestamptz")
 
 
 class Parameter(Column):
     """Model for PostGIS function parameters."""
 
     default: Optional[str] = None
+
+
+class SpatialExtent(BaseModel):
+    """Model for spatial extent."""
+
+    bbox: Optional[List[List[float]]]
+    crs: Optional[str]
+
+
+class TemporalExtent(BaseModel):
+    """Model for temporal extent."""
+
+    interval: Optional[List[List[str]]]
+
+
+class Extent(BaseModel):
+    """Model for extent."""
+
+    spatial: Optional[SpatialExtent]
+    temporal: Optional[TemporalExtent]
 
 
 class Collection(BaseModel):
@@ -149,30 +170,43 @@ class Collection(BaseModel):
     dbschema: str = Field(..., alias="schema")
     title: Optional[str]
     description: Optional[str]
-    bounds: Optional[List[float]]  # TODO: Should be moved to Extent
-    crs: Optional[str]  # TODO: Should be moved to Extent
     properties: List[Column] = []
     id_column: Optional[str]
-    geometry_columns: List[GeometryColumn] = []
-    datetime_columns: List[DatetimeColumn] = []
-    geometry_column: Optional[GeometryColumn]
-    datetime_column: Optional[DatetimeColumn]
+    geometry_column: Optional[Column]
+    datetime_column: Optional[Column]
     parameters: List[Parameter] = []
     minzoom: int = tile_settings.default_minzoom
     maxzoom: int = tile_settings.default_maxzoom
     default_tms: str = tile_settings.default_tms
 
-    @root_validator
-    def bounds_default(cls, values):
-        """Get default bounds from the first geometry columns."""
-        geoms = values.get("geometry_columns")
-        if geoms:
-            # Get the Extent of all the bounds
-            minx, miny, maxx, maxy = zip(*[geom.bounds for geom in geoms])
-            values["bounds"] = [min(minx), min(miny), max(maxx), max(maxy)]
-            values["crs"] = f"http://www.opengis.net/def/crs/EPSG/0/{geoms[0].srid}"
+    @property
+    def geometry_columns(self):
+        return [c for c in self.properties if c.is_geometry]
 
-        return values
+    @property
+    def extent(self):
+        spatial = None
+        temporal = None
+        if self.geometry_column and self.geometry_column.bounds:
+            spatial = SpatialExtent(bbox=[self.geometry_column.bounds], crs=self.crs)
+        if (
+            self.datetime_column
+            and self.datetime_column.mindt
+            and self.datetime_column.maxdt
+        ):
+            temporal = TemporalExtent(
+                interval=[[self.datetime_column.mindt, self.datetime_column.maxdt]]
+            )
+        return Extent(spatial=spatial, temporal=temporal)
+
+    @property
+    def crs(self):
+        if self.geometry_column:
+            return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
+
+    @property
+    def datetime_columns(self):
+        return [c for c in self.properties if c.is_datetime]
 
     def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the Column for either the passed in tstz column or the first tstz column."""
@@ -188,9 +222,7 @@ class Collection(BaseModel):
 
         return None
 
-    def get_geometry_column(
-        self, name: Optional[str] = None
-    ) -> Optional[GeometryColumn]:
+    def get_geometry_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the name of the first geometry column."""
         if (not self.geometry_columns) or (name and name.lower() == "none"):
             return None
@@ -256,7 +288,7 @@ class Collection(BaseModel):
     def _select(
         self,
         properties: Optional[List[str]],
-        geometry_column: Optional[GeometryColumn],
+        geometry_column: Optional[Column],
         bbox_only: Optional[bool],
         simplify: Optional[float],
         geom_as_wkt: bool = False,
@@ -285,7 +317,7 @@ class Collection(BaseModel):
     def _select_mvt(
         self,
         properties: Optional[List[str]],
-        geometry_column: GeometryColumn,
+        geometry_column: Column,
         tms: TileMatrixSet,
         tile: Tile,
     ):
@@ -348,7 +380,7 @@ class Collection(BaseModel):
 
     def _geom(
         self,
-        geometry_column: Optional[GeometryColumn],
+        geometry_column: Optional[Column],
         bbox_only: Optional[bool],
         simplify: Optional[float],
     ):
@@ -785,223 +817,13 @@ async def get_collection_index(
     """Fetch Table and Functions index."""
 
     query = """
-        WITH table_columns AS (
-            SELECT
-                nspname,
-                relname,
-                format('%I.%I', nspname, relname) as id,
-                c.oid as t_oid,
-                obj_description(c.oid, 'pg_class') as description,
-                attname,
-                atttypmod,
-                replace(replace(replace(replace(format_type(atttypid, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp') as typ,
-                col_description(attrelid, attnum)
-            FROM
-                pg_class c
-                JOIN pg_namespace n on (c.relnamespace=n.oid)
-                JOIN pg_attribute a on (attnum>0 and attrelid=c.oid and not attisdropped)
-            WHERE
-                relkind IN ('r','v', 'm', 'f', 'p')
-                AND has_table_privilege(c.oid, 'SELECT')
-                AND has_column_privilege(c.oid,a.attnum, 'SELECT')
-                AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-                AND c.relname NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
-                AND (:schemas::text[] IS NULL  OR n.nspname = ANY (:schemas))
-                AND (:tables::text[] IS NULL OR c.relname = ANY (:tables))
-        ),
-        grouped as
-        (SELECT
-            'Table' as entity,
-            nspname as dbschema,
-            relname as tbl,
-            id,
-            description,
-            (
-                SELECT attname
-                FROM
-                    pg_attribute a
-                    LEFT JOIN
-                    pg_index i
-                        ON (
-                            a.attrelid = i.indrelid
-                            AND a.attnum = ANY(i.indkey)
-                            )
-                WHERE
-                    a.attrelid = t_oid
-                    AND
-                    i.indnatts = 1
-                ORDER BY
-                    i.indisprimary DESC NULLS LAST,
-                    i.indisunique DESC NULLS LAST
-                LIMIT 1
-            ) as id_column,
-            coalesce(jsonb_agg(
-                jsonb_build_object(
-                    'name', attname,
-                    'type', typ,
-                    'geometry_type', postgis_typmod_type(atttypmod),
-                    'srid', postgis_typmod_srid(atttypmod),
-                    'description', col_description,
-                    'bounds',
-                        CASE WHEN postgis_typmod_srid(atttypmod) IS NOT NULL AND postgis_typmod_srid(atttypmod) != 0 THEN
-                            (
-                                SELECT
-                                    ARRAY[
-                                        ST_XMin(extent.geom),
-                                        ST_YMin(extent.geom),
-                                        ST_XMax(extent.geom),
-                                        ST_YMax(extent.geom)
-                                    ]
-                                FROM (
-                                    SELECT
-                                        coalesce(
-                                            ST_Transform(
-                                                ST_SetSRID(
-                                                    ST_EstimatedExtent(nspname, relname, attname),
-                                                    postgis_typmod_srid(atttypmod)
-                                                ),
-                                                4326
-                                            ),
-                                            ST_MakeEnvelope(-180, -90, 180, 90, 4326)
-                                        ) as geom
-                                    ) AS extent
-                            )
-                        ELSE ARRAY[-180,-90,180,90]
-                        END
-                )
-            ) FILTER (WHERE typ IN ('geometry','geography')), '[]'::jsonb) as geometry_columns,
-            coalesce(jsonb_agg(
-                jsonb_build_object(
-                    'name', attname,
-                    'type', typ,
-                    'description', col_description
-                )
-            ) FILTER (WHERE typ LIKE 'timestamp%'), '[]'::jsonb) as datetime_columns,
-            coalesce(jsonb_agg(
-                jsonb_build_object(
-                    'name', attname,
-                    'type', typ,
-                    'description', col_description
-                )
-            ),'[]'::jsonb) as properties,
-            '[]'::jsonb as parameters
-        FROM
-            table_columns
-        GROUP BY 1,2,3,4,5,6 ORDER BY 1,2,3,4
-        ),
-        f_init AS (
-            SELECT
-                'Function' as entity,
-                nspname as dbschema,
-                proname as tbl,
-                format('%s.%s',nspname, proname) as id,
-                d.description as description,
-                CASE WHEN pronargdefaults > 0 AND pronargs > 0 THEN
-                    array_fill(
-                        NULL::text,
-                        ARRAY[pronargs-pronargdefaults]
-                    ) || string_to_array(pg_get_expr(p.proargdefaults, 0::OID),',')
-                ELSE array_fill(null::text, ARRAY[pronargs])
-                END as defaults,
-                coalesce(p.proallargtypes, (p.proargtypes::oid[])[:]) as argtypes,
-                coalesce(p.proargmodes,array_fill('i'::text,ARRAY[cardinality(p.proargnames)])) as argmodes,
-                p.proargnames,
-                cardinality(p.proargnames) as argnamecount,
-                p.prorettype as basetype,
-                format_type(p.prorettype, null) as basetypename
-            FROM
-                pg_proc p
-                JOIN
-                pg_namespace n on (p.pronamespace=n.oid)
-                LEFT JOIN pg_description d ON (p.oid = d.objoid)
-            WHERE
-                proretset
-                AND prokind='f'
-                AND proargnames is not null
-                AND '' != ANY(proargnames)
-                AND has_function_privilege(p.oid, 'execute')
-                AND has_schema_privilege(n.oid, 'usage')
-                AND provariadic=0
-                AND (:function_schemas::text[] IS NULL  OR n.nspname = ANY (:function_schemas))
-                AND (:functions::text[] IS NULL OR p.proname = ANY (:functions))
-        ),
-        f AS (
-            SELECT
-                entity,
-                dbschema,
-                tbl,
-                id,
-                description,
-                defaults,
-                CASE WHEN basetypename = 'record'
-                    THEN argtypes
-                    ELSE argtypes || basetype
-                END as argtypes,
-                CASE WHEN basetypename = 'record'
-                    THEN argmodes
-                    ELSE argmodes || 'o'::text
-                END as argmodes,
-                CASE WHEN basetypename = 'record'
-                    THEN proargnames
-                    ELSE proargnames || tbl
-                END as proargnames
-            FROM f_init
-            WHERE TRUE
-                --argnamecount = cardinality(argmodes)
-                --AND
-                --argnamecount = cardinality(argtypes)
-        ),
-        functions as (
-        SELECT
-            entity,
-            dbschema,
-            tbl,
-            id,
-            description,
-            null::text as id_column,
-            coalesce(jsonb_agg(
-                jsonb_strip_nulls(jsonb_build_object(
-                    'name', a.argname,
-                    'type', replace(replace(replace(replace(format_type(argtype, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp'),
-                    'geometry_type', 'Geometry'
-                ))
-                ORDER BY a.argnum
-            ) FILTER (WHERE argmode IN ('t', 'b', 'o') AND format_type(argtype, null) LIKE 'geo%'),'[]'::jsonb) as geometry_columns,
-            coalesce(jsonb_agg(
-                jsonb_strip_nulls(jsonb_build_object(
-                    'name', a.argname,
-                    'type', replace(replace(replace(replace(format_type(argtype, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp')
-                ))
-                ORDER BY a.argnum
-            ) FILTER (WHERE argmode IN ('t', 'b', 'o') AND format_type(argtype, null) LIKE 'timestamp%'),'[]'::jsonb) as datetime_columns,
-            coalesce(jsonb_agg(
-                jsonb_build_object(
-                    'name', a.argname,
-                    'type', replace(replace(replace(replace(format_type(argtype, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp')
-                )
-                ORDER BY a.argnum
-            ) FILTER (WHERE argmode IN ('t', 'b', 'o')),'[]'::jsonb) as properties,
-            coalesce(jsonb_agg(
-                jsonb_strip_nulls(jsonb_build_object(
-                    'name', a.argname,
-                    'type', replace(replace(replace(replace(format_type(argtype, null),'character varying','text'),'double precision','float8'),'timestamp with time zone','timestamptz'),'timestamp without time zone','timestamp')
-                    ,'default', regexp_replace(def, '''([a-zA-Z0-9_\-\.]+)''::\w+', '\1', 'g')
-                ))
-                ORDER BY a.argnum
-            ) FILTER (WHERE argmode IN ('i', 'b')),'[]'::jsonb) as parameters
-        FROM
-            f
-            LEFT JOIN LATERAL unnest(f.argtypes,f.argmodes,f.proargnames,f.defaults) WITH ORDINALITY AS a(argtype,argmode,argname,def,argnum) ON TRUE
-        GROUP BY 1,2,3,4,5,6 ORDER BY 1,2,3,4
-        ),
-        unioned as (
-        SELECT * FROM grouped
-        UNION ALL
-        SELECT * FROM functions
-        )
-        SELECT * FROM unioned
-        WHERE :spatial = FALSE OR jsonb_array_length(geometry_columns)>=1
-        ;
+        SELECT pg_temp.tipg_catalog(
+            :schemas,
+            :tables,
+            :function_schemas,
+            :functions,
+            :spatial
+        );
     """  # noqa: W605
 
     async with db_pool.acquire() as conn:
@@ -1019,9 +841,11 @@ async def get_collection_index(
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
 
-        for table in rows:
-            print(table)
-            id = table["id"]
+        for row in rows:
+            table = row[0]
+            logging.warning(table)
+            id = table["schema"] + "." + table["name"]
+            confid = table["schema"] + "_" + table["name"]
 
             if table_settings.excludes and id in table_settings.excludes:
                 continue
@@ -1029,7 +853,6 @@ async def get_collection_index(
             if table_settings.includes and id not in table_settings.includes:
                 continue
 
-            confid = id.replace(".", "_")
             table_conf = table_confs.get(confid, {})
 
             # Make sure that any properties set in conf exist in table
@@ -1041,69 +864,41 @@ async def get_collection_index(
             property_names = [p["name"] for p in properties]
 
             # ID Column
-            id_column = table_conf.get("pk") or table["id_column"]
+            id_column = table_conf.get("pk") or table.get("pk")
             if not id_column and fallback_key_names:
                 for p in properties:
                     if p["name"] in fallback_key_names:
                         id_column = p["name"]
                         break
 
-            # Datetime Column
-            datetime_columns = []
             datetime_column = None
-            for c in table.get("datetime_columns", []):
-                print(c, property_names)
-                if c["name"] in property_names:
-                    # get min/max from database
-                    mindt, maxdt = await conn.fetchrow_b(
-                        "SELECT min(:dtcol)::text, max(:dtcol)::text FROM :tbl",
-                        dtcol=V(c["name"]),
-                        tbl=V(id),
-                    )
-                    print(c, mindt, maxdt)
-                    if mindt and maxdt:
-                        c["min"] = mindt
-                        c["max"] = maxdt
-                    print(c)
-                    datetime_columns.append(c)
-
-                    if table_conf.get("datetimecol") == c["name"]:
-                        datetime_column = c
-
-            datetime_column = None
-            for col in datetime_columns:
-                if table_conf.get("datetimecol") == col["name"]:
-                    datetime_column = col
-
-            if not datetime_column and datetime_columns:
-                datetime_column = datetime_columns[0]
-
-            # Geometry Column
-            geometry_columns = [
-                c
-                for c in table.get("geometry_columns", [])
-                if c["name"] in property_names
-            ]
             geometry_column = None
-            for col in geometry_columns:
-                if table_conf.get("geomcol") == col["name"]:
-                    geometry_column = col
-            if not geometry_column and geometry_columns:
-                geometry_column = geometry_columns[0]
+
+            for c in properties:
+                if c.get("type") in ("timestamp", "timestamptz"):
+                    if (
+                        table_conf.get("datetimecol") == c["name"]
+                        or datetime_column is None
+                    ):
+                        datetime_column = c
+                if c.get("type") in ("geometry", "geography"):
+                    if (
+                        table_conf.get("geomcol") == c["name"]
+                        or geometry_column is None
+                    ):
+                        geometry_column = c
 
             catalog[id] = Collection(
                 type=table["entity"],
                 id=id,
-                table=table["tbl"],
-                schema=table["dbschema"],
-                description=table["description"],
+                table=table["name"],
+                schema=table["schema"],
+                description=table.get("description", None),
                 id_column=id_column,
-                geometry_columns=geometry_columns,
-                datetime_columns=datetime_columns,
                 properties=properties,
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
-                parameters=table["parameters"],
+                parameters=table.get("parameters", []),
             )
 
         return catalog
