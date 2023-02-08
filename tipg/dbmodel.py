@@ -766,9 +766,10 @@ class Collection(BaseModel):
             """
             WITH
             t AS (:c)
-            SELECT ST_AsMVT(t.*) FROM t
+            SELECT ST_AsMVT(t.*, :l) FROM t
             """,
             c=c,
+            l=self.table
         )
         # debug_query(q, *p)
 
