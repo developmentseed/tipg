@@ -967,7 +967,7 @@ async def get_collection_index(  # noqa: C901
                 END as argmodes,
                 CASE WHEN basetypename = 'record'
                     THEN proargnames
-                    ELSE proargnames || tbl
+                    ELSE proargnames || tbl::text
                 END as proargnames
             FROM f_init
             WHERE TRUE
