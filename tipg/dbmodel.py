@@ -435,7 +435,7 @@ class Collection(BaseModel):
         # `properties filter
         if properties is not None:
             w = []
-            for (prop, val) in properties:
+            for prop, val in properties:
                 col = self.get_column(prop)
                 if not col:
                     raise InvalidPropertyName(f"Invalid property name: {prop}")
@@ -769,7 +769,7 @@ class Collection(BaseModel):
             SELECT ST_AsMVT(t.*, :l) FROM t
             """,
             c=c,
-            l=self.table
+            l=self.table,
         )
         # debug_query(q, *p)
 
