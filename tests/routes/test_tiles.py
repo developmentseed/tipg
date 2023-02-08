@@ -72,9 +72,7 @@ def test_tile(app):
     assert len(decoded[name]["features"]) == 10000
 
     # invalid geometry column name
-    response = app.get(
-        f"/collections/public.{name}/tiles/0/0/0?geom-column=the_geom"
-    )
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=the_geom")
     assert response.status_code == 404
 
 
