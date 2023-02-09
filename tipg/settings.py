@@ -47,7 +47,7 @@ class _TileSettings(pydantic.BaseSettings):
     tile_resolution: int = 4096
     tile_buffer: int = 256
     tile_clip: bool = True
-    max_features_per_tile: int = 100
+    max_features_per_tile: int = 10000
     default_tms: str = "WebMercatorQuad"
     default_minzoom: int = 0
     default_maxzoom: int = 22
