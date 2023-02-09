@@ -75,6 +75,7 @@ def app(database_url, monkeypatch):
     # OGC Tiles Settings
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
+    monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", "tests/fixtures/functions")
 
     from tipg.main import app, postgres_settings
 
