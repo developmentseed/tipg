@@ -15,7 +15,6 @@ services:
       - POSTGRES_HOST=database
       - POSTGRES_PORT=5432
       - DEBUG=TRUE
-      - TIPG_DEBUG=TRUE
     ports:
       - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
     depends_on:
@@ -38,7 +37,6 @@ services:
     command: postgres -N 500
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
-      - ./tipg:/tmp/tipg
 
   # pg_featureserv:
   #   image: pramsey/pg_featureserv:latest
@@ -91,3 +89,4 @@ services:
   #     serve --dbconn postgresql://username:password@database:5432/postgis --bind=0.0.0.0 --port 3000
   #   depends_on:
   #     - database
+

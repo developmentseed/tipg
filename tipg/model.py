@@ -36,7 +36,6 @@ class Spatial(BaseModel):
 
     """
 
-    # bbox: List[BBox]
     bbox: List[List[float]]
     crs: str
 
@@ -48,7 +47,6 @@ class Temporal(BaseModel):
 
     """
 
-    # interval: List[List[Optional[str], Optional[str]]]
     interval: List[List[Optional[str]]]
     trs: str = "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
 

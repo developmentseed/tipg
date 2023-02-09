@@ -1,3 +1,5 @@
+SELECT TRUE;
+/*
 CREATE OR REPLACE FUNCTION squares(
     -- mandatory parameters
     xmin float,
@@ -63,3 +65,4 @@ LANGUAGE 'plpgsql'
 IMMUTABLE -- Same inputs always give same outputs
 STRICT -- Null input gets null output
 PARALLEL SAFE;
+*/

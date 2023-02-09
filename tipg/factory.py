@@ -1162,7 +1162,7 @@ class Endpoints:
                 alias="datetime-column",
             ),
             limit: int = Query(
-                10000,
+                tilesettings.max_features_per_tile,
                 description="Limits the number of features in the response.",
             ),
         ):

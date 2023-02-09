@@ -1,16 +1,15 @@
 """tipg.dbmodel: database events."""
 
-import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
-from buildpg import V, asyncpg, clauses
+from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field
 from pygeofilter.ast import AstType
 
 from tipg.errors import (
@@ -23,7 +22,7 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
-from tipg.model import Extent
+from tipg.model import Extent, Spatial, Temporal
 from tipg.settings import TableSettings, TileSettings
 
 tile_settings = TileSettings()
@@ -88,7 +87,7 @@ class Column(BaseModel):
     type: str
     description: Optional[str]
     geometry_type: Optional[str]
-    srid: Optional[str]
+    srid: Optional[int]
     bounds: Optional[List[float]]
     mindt: Optional[str]
     maxdt: Optional[str]
@@ -127,12 +126,14 @@ class Column(BaseModel):
 
     @property
     def is_geometry(self) -> bool:
+        """Returns true if this property is a geometry column."""
         if self.geometry_type:
             return True
         return False
 
     @property
     def is_datetime(self) -> bool:
+        """Returns true if this property is a datetime column."""
         return self.type in ("timestamp", "timestamptz")
 
 
@@ -140,26 +141,6 @@ class Parameter(Column):
     """Model for PostGIS function parameters."""
 
     default: Optional[str] = None
-
-
-class SpatialExtent(BaseModel):
-    """Model for spatial extent."""
-
-    bbox: Optional[List[List[float]]]
-    crs: Optional[str]
-
-
-class TemporalExtent(BaseModel):
-    """Model for temporal extent."""
-
-    interval: Optional[List[List[str]]]
-
-
-class Extent(BaseModel):
-    """Model for extent."""
-
-    spatial: Optional[SpatialExtent]
-    temporal: Optional[TemporalExtent]
 
 
 class Collection(BaseModel):
@@ -182,31 +163,35 @@ class Collection(BaseModel):
 
     @property
     def geometry_columns(self):
+        """Return geometry columns."""
         return [c for c in self.properties if c.is_geometry]
 
     @property
     def extent(self):
+        """Return extent."""
         spatial = None
         temporal = None
         if self.geometry_column and self.geometry_column.bounds:
-            spatial = SpatialExtent(bbox=[self.geometry_column.bounds], crs=self.crs)
+            spatial = Spatial(bbox=[self.geometry_column.bounds], crs=self.crs)
         if (
             self.datetime_column
             and self.datetime_column.mindt
             and self.datetime_column.maxdt
         ):
-            temporal = TemporalExtent(
+            temporal = Temporal(
                 interval=[[self.datetime_column.mindt, self.datetime_column.maxdt]]
             )
         return Extent(spatial=spatial, temporal=temporal)
 
     @property
     def crs(self):
+        """Return crs of set geometry column."""
         if self.geometry_column:
             return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
 
     @property
     def datetime_columns(self):
+        """Return datetime columns."""
         return [c for c in self.properties if c.is_datetime]
 
     def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
@@ -690,7 +675,9 @@ class Collection(BaseModel):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
         if limit and limit > tile_settings.max_features_per_tile:
-            raise
+            raise InvalidLimit(
+                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {tile_settings.max_features_per_tile}"
+            )
 
         count = await self._features_count_query(
             pool=pool,
@@ -752,10 +739,12 @@ class Collection(BaseModel):
         """Build query to get Vector Tile."""
         geometry_column = self.get_geometry_column(geom)
         if not geometry_column:
-            raise InvalidGeometryColumnName
+            raise InvalidGeometryColumnName(f"Invalid Geometry Column Name {geom}")
 
         if limit and limit > tile_settings.max_features_per_tile:
-            raise InvalidLimit
+            raise InvalidLimit(
+                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {tile_settings.max_features_per_tile}"
+            )
 
         c = clauses.Clauses(
             self._select_mvt(
@@ -787,7 +776,7 @@ class Collection(BaseModel):
             """,
             c=c,
         )
-        # debug_query(q, *p)
+        debug_query(q, *p)
 
         async with pool.acquire() as conn:
             return await conn.fetchval(q, *p)
@@ -852,15 +841,8 @@ async def get_collection_index(  # noqa: C901
 
         for row in rows:
             table = row[0]
-            logging.warning(table)
-            id = table["schema"] + "." + table["name"]
+            table_id = table["schema"] + "." + table["name"]
             confid = table["schema"] + "_" + table["name"]
-
-            if table_settings.excludes and table_id in table_settings.excludes:
-                continue
-
-            if table_settings.includes and table_id not in table_settings.includes:
-                continue
 
             table_conf = table_confs.get(confid, {})
 
@@ -869,8 +851,6 @@ async def get_collection_index(  # noqa: C901
             properties_setting = table_conf.get("properties", [])
             if properties_setting:
                 properties = [p for p in properties if p["name"] in properties_setting]
-
-            property_names = [p["name"] for p in properties]
 
             # ID Column
             id_column = table_conf.get("pk") or table.get("pk")
@@ -899,7 +879,7 @@ async def get_collection_index(  # noqa: C901
 
             catalog[table_id] = Collection(
                 type=table["entity"],
-                id=id,
+                id=table_id,
                 table=table["name"],
                 schema=table["schema"],
                 description=table.get("description", None),

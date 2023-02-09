@@ -1,7 +1,5 @@
 """tipg app."""
 
-import logging
-from pathlib import Path
 from typing import Any, List
 
 import jinja2

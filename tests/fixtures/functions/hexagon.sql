@@ -1,9 +1,11 @@
+SELECT TRUE;
 -- Custom "hexagon" layer
 -- Adapted from https://github.com/CrunchyData/pg_tileserv
 --
 --
 -- Given an input ZXY tile coordinate, output a set of hexagons
 -- (and hexagon coordinates) in web mercator that cover that tile
+/*
 CREATE OR REPLACE FUNCTION tilehexagons(
     bounds geometry,
     step integer,
@@ -137,4 +139,4 @@ LANGUAGE 'plpgsql'
 STABLE
 STRICT
 PARALLEL SAFE;
-
+*/

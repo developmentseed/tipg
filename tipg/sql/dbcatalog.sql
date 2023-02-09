@@ -3,8 +3,12 @@ CREATE OR REPLACE FUNCTION pg_temp.typ(t text) RETURNS text AS $$
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION pg_temp.nspname(n oid) RETURNS text AS $$
-    SELECT CASE WHEN n=pg_my_temp_schema() THEN 'tipgtmp' ELSE nspname END
+    SELECT CASE WHEN n=pg_my_temp_schema() THEN 'pg_temp' ELSE nspname::text END
     FROM pg_namespace WHERE oid=n;
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION pg_temp.nspname(n regnamespace) RETURNS text AS $$
+    SELECT pg_temp.nspname(n::oid);
 $$ LANGUAGE SQL STABLE;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_pk(
@@ -113,7 +117,7 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_tproperties(
         'entity', 'Table',
         'pk', pg_temp.tipg_pk(c.oid),
         'name', c.relname::text,
-        'schema', c.relnamespace::regnamespace::text,
+        'schema', pg_temp.nspname(c.relnamespace),
         'properties', properties
     ) FROM t;
 $$ LANGUAGE SQL;
@@ -178,7 +182,7 @@ BEGIN
     RETURN jsonb_build_object(
         'entity', 'Function',
         'name', p.proname,
-        'schema', p.pronamespace::regnamespace::text,
+        'schema', pg_temp.nspname(p.pronamespace),
         'properties', properties,
         'parameters', parameters
     );
@@ -208,8 +212,9 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND has_table_privilege(c.oid, 'SELECT')
             AND c.relnamespace::regnamespace::text NOT IN ('pg_catalog', 'information_schema')
             AND c.relname::text NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
-            AND (schemas IS NULL  OR c.relnamespace::regnamespace::text = ANY (schemas))
+            AND (schemas IS NULL  OR c.relnamespace::regnamespace::text = ANY (schemas || pg_my_temp_schema()::regnamespace::text))
             AND (tables IS NULL OR c.relname::text = ANY (tables))
+            AND (pg_table_is_visible(oid) or relnamespace=pg_my_temp_schema())
         UNION ALL
         SELECT
             pg_temp.tipg_fproperties(p) as meta
@@ -224,7 +229,7 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND has_function_privilege(oid, 'execute')
             AND has_schema_privilege(pronamespace, 'usage')
             AND provariadic=0
-            AND (function_schemas IS NULL  OR p.pronamespace::regnamespace::text = ANY (function_schemas))
+            AND (function_schemas IS NULL  OR p.pronamespace::regnamespace::text = ANY (function_schemas  || pg_my_temp_schema()::regnamespace::text))
             AND (functions IS NULL OR proname::text = ANY (functions))
     )
     SELECT meta FROM a

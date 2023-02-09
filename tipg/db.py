@@ -1,6 +1,5 @@
 """tipg.db: database events."""
 
-import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -8,19 +7,42 @@ import orjson
 from buildpg import asyncpg
 
 from tipg.dbmodel import get_collection_index
-from tipg.settings import APISettings, PostgresSettings
+from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
 
 
-async def con_init(conn):
+async def con_init(
+    conn,
+    settings: Optional[PostgresSettings] = None,
+):
     """Use json for json returns."""
+    if not settings:
+        settings = PostgresSettings()
+
     await conn.set_type_codec(
         "json", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
         "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
+    await conn.execute(
+        """
+            SELECT set_config(
+                'search_path',
+                'pg_temp,' || current_setting('search_path', false),
+                false
+                );
+            """
+    )
+    if (
+        settings.tipg_functions_directory
+        and Path(settings.tipg_functions_directory).exists()
+    ):
+        for sqlfile in Path(settings.tipg_functions_directory).glob("**/*.sql"):
+            await conn.execute(sqlfile.read_text())
+    dbcatalogsql = Path("tipg/sql/dbcatalog.sql")
+    await conn.execute(dbcatalogsql.read_text())
 
 
 async def connect_to_db(
@@ -31,8 +53,7 @@ async def connect_to_db(
     """Connect."""
     if not settings:
         settings = PostgresSettings()
-    apisettings = APISettings()
-    logging.warning("Creating database pool.")
+
     app.state.pool = await asyncpg.create_pool_b(
         settings.database_url,
         min_size=settings.db_min_conn_size,
@@ -42,27 +63,6 @@ async def connect_to_db(
         init=con_init,
         **kwargs,
     )
-    async with app.state.pool.acquire() as conn:
-        logging.warning("Running tmp sql")
-        await conn.execute(
-            """
-            SELECT set_config(
-                'search_path',
-                'pg_temp,' || current_setting('search_path', false),
-                false
-                );
-            """
-        )
-        if (
-            apisettings.functions_directory
-            and Path(apisettings.functions_directory).exists
-        ):
-            for sqlfile in Path(apisettings.functions_directory).glob("**/*.sql"):
-                await conn.execute(sqlfile.read_text())
-        dbcatalogsql = Path("tipg/dbcatalog.sql")
-        logging.warning(dbcatalogsql.exists())
-        logging.warning(dbcatalogsql.read_text())
-        await conn.execute(dbcatalogsql.read_text())
 
 
 async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
