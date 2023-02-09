@@ -51,7 +51,7 @@ BEGIN
     IF atttype IN ('timestamp', 'timestamptz') THEN
         EXECUTE FORMAT(
             $q$
-                SELECT to_json(min(%I)), to_json(max(%I))
+                SELECT to_json(min(%I::timestamptz)), to_json(max(%I::timestamptz))
                 FROM %s;
             $q$,
             attname,
@@ -198,9 +198,13 @@ $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
     schemas text[] DEFAULT '{public}',
+    exclude_schemas text[] DEFAULT NULL,
     tables text[] DEFAULT NULL,
+    exclude_tables text[] DEFAULT NULL,
     function_schemas text[] DEFAULT '{public}',
+    exclude_function_schemas text[] DEFAULT NULL,
     functions text[] DEFAULT NULL,
+    exclude_functions text[] DEFAULT NULL,
     spatial boolean DEFAULT FALSE
 ) RETURNS SETOF jsonb AS $$
     WITH a AS (
@@ -213,7 +217,9 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND c.relnamespace::regnamespace::text NOT IN ('pg_catalog', 'information_schema')
             AND c.relname::text NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
             AND (schemas IS NULL  OR c.relnamespace::regnamespace::text = ANY (schemas || pg_my_temp_schema()::regnamespace::text))
-            AND (tables IS NULL OR c.relname::text = ANY (tables))
+            AND (exclude_schemas IS NULL OR c.relnamespace::regnamespace::text != ANY (exclude_schemas))
+            AND (exclude_tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) != ANY (exclude_tables))
+            AND (tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) = ANY (tables))
             AND (pg_table_is_visible(oid) or relnamespace=pg_my_temp_schema())
         UNION ALL
         SELECT
@@ -230,7 +236,9 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND has_schema_privilege(pronamespace, 'usage')
             AND provariadic=0
             AND (function_schemas IS NULL  OR p.pronamespace::regnamespace::text = ANY (function_schemas  || pg_my_temp_schema()::regnamespace::text))
-            AND (functions IS NULL OR proname::text = ANY (functions))
+            AND (functions IS NULL OR concat(p.pronamespace::regnamespace::text, '.', proname::text) = ANY (functions))
+            AND (exclude_function_schemas IS NULL OR p.pronamespace::regnamespace::text != ANY (exclude_function_schemas))
+            AND (exclude_functions IS NULL OR concat(p.pronamespace::regnamespace::text,'.',proname::text) != ANY (exclude_functions))
     )
     SELECT meta FROM a
     WHERE

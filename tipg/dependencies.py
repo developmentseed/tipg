@@ -4,6 +4,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from morecantile import Tile
+from morecantile import tms as default_tms
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
@@ -305,14 +306,44 @@ def function_parameters_query(
     function_parameters = {}
     errors = []
     params = request.query_params
+    path_params = request.path_params
 
     if collection.type == "Function" and collection.parameters:
         for param in collection.parameters:
             v = params.get(param.name, None)
             if v:
                 function_parameters[param.name] = v
+            elif path_params.get("tileMatrix", None):
+                z = int(path_params.get("tileMatrix"))
+                x = int(path_params.get("tileCol"))
+                y = int(path_params.get("tileRow"))
+                tilematrix = path_params.get(
+                    "tileMatrixSetId", tile_settings.default_tms
+                )
+                if param.name == "z":
+                    function_parameters["z"] = z
+                if param.name == "x":
+                    function_parameters["x"] = x
+                if param.name == "y":
+                    function_parameters["y"] = y
+                if param.name == "bounds":
+                    tms = default_tms.get(tilematrix)
+                    left, bottom, right, top = tms.bounds(Tile(x, y, z))
+                    function_parameters["bounds"] = (
+                        "srid=4326;"
+                        "POLYGON(("
+                        f"{left} {bottom},"
+                        f"{left} {top},"
+                        f"{right} {top},"
+                        f"{right} {bottom},"
+                        f"{left} {bottom}"
+                        "))"
+                    )
+                elif param.default:
+                    function_parameters[param.name] = param.default
             else:
                 errors.append(f"{param.name} (expected type:{param.type}).")
+
     if errors:
         raise MissingFunctionParameter(
             f"Missing Required parameters for function: {collection.id}. {errors}"

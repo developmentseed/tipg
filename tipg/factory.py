@@ -87,14 +87,17 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
         yield writer.writerow(row)
 
 
-def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
+def s_intersects(bbox: List[float], spatial_extent: List[List[float]]) -> bool:
     """Check if bbox intersects with spatial extent."""
-    return (
-        (bbox[0] < spatial_extent[2])
-        and (bbox[2] > spatial_extent[0])
-        and (bbox[3] > spatial_extent[1])
-        and (bbox[1] < spatial_extent[3])
-    )
+    for ext in spatial_extent:
+        if (
+            (bbox[0] < ext[2])
+            and (bbox[2] > ext[0])
+            and (bbox[3] > ext[1])
+            and (bbox[1] < ext[3])
+        ):
+            return True
+    return False
 
 
 def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
@@ -444,8 +447,9 @@ class Endpoints:
                 collections_list = [
                     collection
                     for collection in collections_list
-                    if collection.bounds is not None
-                    and s_intersects(bbox_filter, collection.bounds)
+                    if collection.extent is not None
+                    and collection.extent.spatial is not None
+                    and s_intersects(bbox_filter, collection.extent.spatial.bbox)
                 ]
 
             # datetime filter
@@ -598,6 +602,8 @@ class Endpoints:
             data = model.Collection(
                 **{
                     **collection.dict(),
+                    "title": collection.id,
+                    "extent": collection.extent,
                     "links": [
                         model.Link(
                             href=self.url_for(
@@ -1258,7 +1264,7 @@ class Endpoints:
                     "minzoom": minzoom,
                     "maxzoom": maxzoom,
                     "name": collection.id,
-                    "bounds": collection.extent.spatial[1],
+                    "bounds": collection.extent.spatial.bbox[0],
                     "tiles": [tile_endpoint],
                 }
             )

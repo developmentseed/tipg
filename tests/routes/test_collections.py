@@ -8,8 +8,8 @@ def test_collections(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
-    assert body["numberMatched"] == 9
-    assert body["numberReturned"] == 9
+    assert body["numberMatched"] == 12
+    assert body["numberReturned"] == 12
 
     ids = [x["id"] for x in body["collections"]]
     assert "public.landsat_wrs" in ids
@@ -27,7 +27,7 @@ def test_collections_search(app):
     """Test /collections endpoint."""
     response = app.get("/collections", params={"limit": 1})
     body = response.json()
-    assert body["numberMatched"] == 9
+    assert body["numberMatched"] == 12
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
@@ -35,15 +35,15 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"limit": 1, "offset": 1})
     body = response.json()
-    assert body["numberMatched"] == 9
+    assert body["numberMatched"] == 12
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
     assert "prev" in rels
 
-    response = app.get("/collections", params={"limit": 1, "offset": 8})
+    response = app.get("/collections", params={"limit": 1, "offset": 11})
     body = response.json()
-    assert body["numberMatched"] == 9
+    assert body["numberMatched"] == 12
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" not in rels
@@ -51,7 +51,7 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"bbox": "-180,81,180,87"})
     body = response.json()
-    assert body["numberMatched"] == 7
+    assert body["numberMatched"] == 9
     ids = [x["id"] for x in body["collections"]]
     assert "public.nongeo_data" not in ids
     assert "public.canada" not in ids
@@ -76,7 +76,8 @@ def test_collections_search(app):
     body = response.json()
     assert body["numberMatched"] == 1
     ids = [x["id"] for x in body["collections"]]
-    assert ["public.my_data"] == ids
+
+    assert ["public.my_data_alt"] == ids
 
     response = app.get(
         "/collections", params={"datetime": "2004-01-01T00:00:00Z/2004-12-31T23:59:59Z"}
@@ -84,7 +85,7 @@ def test_collections_search(app):
     body = response.json()
     assert body["numberMatched"] == 2
     ids = [x["id"] for x in body["collections"]]
-    assert ["public.my_data_alt", "public.nongeo_data"] == ids
+    assert ["public.my_data", "public.nongeo_data"] == ids
 
 
 def test_collections_excludes(app_excludes):

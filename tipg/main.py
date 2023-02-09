@@ -67,9 +67,13 @@ async def startup_event() -> None:
     await register_collection_catalog(
         app,
         schemas=postgres_settings.db_schemas,
+        exclude_schemas=postgres_settings.db_exclude_schemas,
         tables=postgres_settings.db_tables,
+        exclude_tables=postgres_settings.db_exclude_tables,
         function_schemas=postgres_settings.db_function_schemas,
+        exclude_function_schemas=postgres_settings.db_exclude_function_schemas,
         functions=postgres_settings.db_functions,
+        exclude_functions=postgres_settings.db_exclude_functions,
         spatial=postgres_settings.only_spatial_tables,
     )
 

@@ -9,7 +9,7 @@ from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from pygeofilter.ast import AstType
 
 from tipg.errors import (
@@ -91,6 +91,14 @@ class Column(BaseModel):
     bounds: Optional[List[float]]
     mindt: Optional[str]
     maxdt: Optional[str]
+
+    @root_validator(pre=True)
+    def sridbounds_default(cls, values):
+        """Set default bounds and srid when this is a function."""
+        if values.get("geometry_type"):
+            values["srid"] = values.get("srid", 4326)
+            values["bounds"] = values.get("bounds", [-180, -90, 180, 90])
+        return values
 
     @property
     def json_type(self) -> str:
@@ -316,18 +324,37 @@ class Collection(BaseModel):
         tile: Tile,
     ):
         bbox = tms.xy_bounds(tile)
+        llbounds = tms.bounds(tile)
         tms_srid = tms.crs.to_epsg()
+
+        if (
+            tms.identifier in ("WebMercatorQuad")
+            and llbounds.top > 85
+            or llbounds.bottom < -85
+        ):
+            geom = logic.Func(
+                "st_intersection",
+                logic.Func("st_makeenvelope", -180, 85, 180, -85, 4326),
+                logic.Func(
+                    "st_transform",
+                    logic.V(geometry_column.name),
+                    pg_funcs.cast(4326, "int"),
+                ),
+            )
+        else:
+            geom = logic.V(geometry_column.name)
+
         if tms_srid:
             transform_logic = logic.Func(
                 "st_transform",
-                logic.V(geometry_column.name),
+                geom,
                 pg_funcs.cast(tms_srid, "int"),
             )
         else:
             tms_proj = str(tms.crs.to_proj4())
             transform_logic = logic.Func(
                 "st_transform",
-                logic.V(geometry_column.name),
+                geom,
                 pg_funcs.cast(tms_proj, "text"),
             )
 
@@ -348,6 +375,7 @@ class Collection(BaseModel):
                 ),
                 tile_settings.tile_resolution,
                 tile_settings.tile_buffer,
+                tile_settings.tile_clip,
             ).as_("geom")
         )
 
@@ -491,9 +519,9 @@ class Collection(BaseModel):
                             logic.Func(
                                 "ST_MakeEnvelope",
                                 tilebox.left,
-                                tilebox.bottom,
+                                max(-85, tilebox.bottom),
                                 tilebox.right,
-                                tilebox.top,
+                                min(85, tilebox.top),
                                 4326,
                             ),
                             tilebox.right - tilebox.left,
@@ -807,9 +835,13 @@ Database = Dict[str, Collection]
 async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
+    exclude_schemas: Optional[List[str]] = None,
     tables: Optional[List[str]] = None,
+    exclude_tables: Optional[List[str]] = None,
     function_schemas: Optional[List[str]] = ["public"],
+    exclude_function_schemas: Optional[List[str]] = None,
     functions: Optional[List[str]] = None,
+    exclude_functions: Optional[List[str]] = None,
     spatial: bool = True,
 ) -> Database:
     """Fetch Table and Functions index."""
@@ -817,9 +849,13 @@ async def get_collection_index(  # noqa: C901
     query = """
         SELECT pg_temp.tipg_catalog(
             :schemas,
+            :exclude_schemas,
             :tables,
+            :exclude_tables,
             :function_schemas,
+            :exclude_function_schemas,
             :functions,
+            :exclude_functions,
             :spatial
         );
     """  # noqa: W605
@@ -828,9 +864,13 @@ async def get_collection_index(  # noqa: C901
         rows = await conn.fetch_b(
             query,
             schemas=schemas,
+            exclude_schemas=exclude_schemas,
             tables=tables,
+            exclude_tables=exclude_tables,
             function_schemas=function_schemas,
+            exclude_function_schemas=exclude_function_schemas,
             functions=functions,
+            exclude_functions=exclude_functions,
             spatial=spatial,
         )
 
@@ -843,6 +883,9 @@ async def get_collection_index(  # noqa: C901
             table = row[0]
             table_id = table["schema"] + "." + table["name"]
             confid = table["schema"] + "_" + table["name"]
+
+            if table_id == "pg_temp.tipg_catalog":
+                continue
 
             table_conf = table_confs.get(confid, {})
 

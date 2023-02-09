@@ -76,7 +76,13 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
 
-    from tipg.main import app
+    from tipg.main import app, postgres_settings
+
+    postgres_settings.database_url = str(database_url)
+    postgres_settings.only_spatial_tables = False
+    postgres_settings.db_exclude_tables = None
+    postgres_settings.db_tables = None
+    postgres_settings.db_functions = None
 
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
@@ -91,12 +97,16 @@ def app(database_url, monkeypatch):
 @pytest.fixture()
 def app_excludes(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
-    monkeypatch.setenv("DATABASE_URL", str(database_url))
-    monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
 
-    monkeypatch.setenv("TIPG_EXCLUDES", '["public.nongeo_data"]')
+    from tipg.main import app, postgres_settings
 
-    from tipg.main import app
+    postgres_settings.database_url = str(database_url)
+    postgres_settings.only_spatial_tables = False
+    postgres_settings.db_exclude_tables = ["public.nongeo_data"]
+    postgres_settings.db_tables = None
+    postgres_settings.db_functions = []
+
+    assert postgres_settings.db_exclude_tables == ["public.nongeo_data"]
 
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
@@ -111,13 +121,14 @@ def app_excludes(database_url, monkeypatch):
 @pytest.fixture()
 def app_includes(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
-    monkeypatch.setenv("DATABASE_URL", str(database_url))
-    monkeypatch.setenv("ONLY_SPATIAL_TABLES", "FALSE")
 
-    monkeypatch.setenv("TIPG_INCLUDES", '["public.nongeo_data"]')
+    from tipg.main import app, postgres_settings
 
-    from tipg.main import app
-
+    postgres_settings.database_url = str(database_url)
+    postgres_settings.only_spatial_tables = False
+    postgres_settings.db_exclude_tables = None
+    postgres_settings.db_tables = ["public.nongeo_data"]
+    postgres_settings.db_functions = []
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
     app.middleware_stack = app.build_middleware_stack()

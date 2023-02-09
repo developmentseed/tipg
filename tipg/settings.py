@@ -32,8 +32,6 @@ class TableSettings(pydantic.BaseSettings):
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
     datetime_extent: bool = True
-    includes: Optional[List[str]]
-    excludes: Optional[List[str]]
 
     class Config:
         """model config"""
@@ -48,6 +46,7 @@ class _TileSettings(pydantic.BaseSettings):
 
     tile_resolution: int = 4096
     tile_buffer: int = 256
+    tile_clip: bool = True
     max_features_per_tile: int = 100
     default_tms: str = "WebMercatorQuad"
     default_minzoom: int = 0
@@ -119,9 +118,13 @@ class PostgresSettings(pydantic.BaseSettings):
     db_max_inactive_conn_lifetime: float = 300
 
     db_schemas: List[str] = ["public"]
+    db_exclude_schemas: Optional[List[str]]
     db_tables: Optional[List[str]]
+    db_exclude_tables: Optional[List[str]]
     db_function_schemas: List[str] = ["public"]
+    db_exclude_function_schemas: Optional[List[str]]
     db_functions: Optional[List[str]]
+    db_exclude_functions: Optional[List[str]]
 
     only_spatial_tables: bool = True
 
