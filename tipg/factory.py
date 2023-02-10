@@ -1251,16 +1251,16 @@ class Endpoints:
 
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+            tj = {
+                "minzoom": minzoom,
+                "maxzoom": maxzoom,
+                "name": collection.id,
+                "tiles": [tile_endpoint],
+            }
+            if bounds := collection.bounds:
+                tj["bounds"] = bounds
 
-            return ORJSONResponse(
-                {
-                    "minzoom": minzoom,
-                    "maxzoom": maxzoom,
-                    "name": collection.id,
-                    "bounds": collection.extent.spatial.bbox[0],
-                    "tiles": [tile_endpoint],
-                }
-            )
+            return ORJSONResponse(tj)
 
         @self.router.get(
             r"/tileMatrixSets",
