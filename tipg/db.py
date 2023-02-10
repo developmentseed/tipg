@@ -2,7 +2,7 @@
 
 import os
 import pathlib
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import orjson
 from buildpg import asyncpg
@@ -13,7 +13,7 @@ from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
 
-custom_sql: list[pathlib.Path] = []
+custom_sql: List[pathlib.Path] = []
 user_sql_dir = os.environ.get("TIPG_CUSTOM_SQL_DIRECTORY", None)
 if user_sql_dir:
     if not pathlib.Path(user_sql_dir).exists():
