@@ -22,7 +22,7 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
-from tipg.model import Extent, Spatial, Temporal
+from tipg.model import Extent
 from tipg.settings import TableSettings, TileSettings
 
 tile_settings = TileSettings()
@@ -135,9 +135,7 @@ class Column(BaseModel):
     @property
     def is_geometry(self) -> bool:
         """Returns true if this property is a geometry column."""
-        if self.geometry_type:
-            return True
-        return False
+        return self.type in ("geometry", "geography")
 
     @property
     def is_datetime(self) -> bool:
@@ -170,26 +168,63 @@ class Collection(BaseModel):
     default_tms: str = tile_settings.default_tms
 
     @property
-    def geometry_columns(self):
-        """Return geometry columns."""
-        return [c for c in self.properties if c.is_geometry]
+    def extent(self) -> Optional[Extent]:
+        """Return extent."""
+        extent = {}
+        if cols := self.geometry_columns:
+            if len(cols) == 1:
+                bbox = [cols[0].bounds]
+            else:
+                minx, miny, maxx, maxy = zip(*[col.bounds for col in cols])
+                bbox = [
+                    [min(minx), min(miny), max(maxx), max(maxy)],
+                    *[col.bounds for col in cols],
+                ]
+
+            extent["spatial"] = {
+                "bbox": bbox,
+                "crs": f"http://www.opengis.net/def/crs/EPSG/0/{cols[0].srid}",
+            }
+
+        if cols := self.datetime_columns:
+            cols = [col for col in cols if col.mindt or col.maxdt]
+
+            intervals = []
+            if len(cols) == 1:
+                if cols[0].mindt or cols[0].maxdt:
+                    intervals = [[cols[0].mindt, cols[0].maxdt]]
+
+            else:
+                mindt = [col.mindt for col in cols if col.mindt]
+                maxdt = [col.maxdt for col in cols if col.maxdt]
+                intervals = [
+                    [min(mindt), max(maxdt)],
+                    *[[col.mindt, col.maxdt] for col in cols if col.mindt or col.maxdt],
+                ]
+
+            if intervals:
+                extent["temporal"] = {"interval": intervals}
+
+        if extent:
+            return Extent(**extent)
+
+        return None
 
     @property
-    def extent(self):
-        """Return extent."""
-        spatial = None
-        temporal = None
-        if self.geometry_column and self.geometry_column.bounds:
-            spatial = Spatial(bbox=[self.geometry_column.bounds], crs=self.crs)
-        if (
-            self.datetime_column
-            and self.datetime_column.mindt
-            and self.datetime_column.maxdt
-        ):
-            temporal = Temporal(
-                interval=[[self.datetime_column.mindt, self.datetime_column.maxdt]]
-            )
-        return Extent(spatial=spatial, temporal=temporal)
+    def bounds(self) -> Optional[List[float]]:
+        """Return spatial bounds from collection extent."""
+        if self.extent and self.extent.spatial:
+            return self.extent.spatial.bbox[0]
+
+        return None
+
+    @property
+    def dt_bounds(self) -> Optional[List[str]]:
+        """Return temporal bounds from collection extent."""
+        if self.extent and self.extent.temporal:
+            return self.extent.temporal.interval[0]
+
+        return None
 
     @property
     def crs(self):
@@ -198,23 +233,14 @@ class Collection(BaseModel):
             return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
 
     @property
-    def datetime_columns(self):
+    def geometry_columns(self) -> List[Column]:
+        """Return geometry columns."""
+        return [c for c in self.properties if c.is_geometry]
+
+    @property
+    def datetime_columns(self) -> List[Column]:
         """Return datetime columns."""
         return [c for c in self.properties if c.is_datetime]
-
-    def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
-        """Return the Column for either the passed in tstz column or the first tstz column."""
-        if not self.datetime_columns:
-            return None
-
-        if name is None:
-            return self.datetime_column
-
-        for col in self.datetime_columns:
-            if col.name == name:
-                return col
-
-        return None
 
     def get_geometry_column(self, name: Optional[str] = None) -> Optional[Column]:
         """Return the name of the first geometry column."""
@@ -230,11 +256,17 @@ class Collection(BaseModel):
 
         return None
 
-    @property
-    def bounds(self) -> Optional[List[float]]:
-        """Return bounds from collection extent."""
-        if self.extent and self.extent.spatial:
-            return self.extent.spatial.bbox[0]
+    def get_datetime_column(self, name: Optional[str] = None) -> Optional[Column]:
+        """Return the Column for either the passed in tstz column or the first tstz column."""
+        if not self.datetime_columns:
+            return None
+
+        if name is None:
+            return self.datetime_column
+
+        for col in self.datetime_columns:
+            if col.name == name:
+                return col
 
         return None
 
@@ -913,6 +945,7 @@ async def get_collection_index(  # noqa: C901
                         or datetime_column is None
                     ):
                         datetime_column = c
+
                 if c.get("type") in ("geometry", "geography"):
                     if (
                         table_conf.get("geomcol") == c["name"]

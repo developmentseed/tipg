@@ -70,12 +70,12 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__pk", "id")
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
-    # monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", os.path.join(DATA_DIR, "functions"))
+    # monkeypatch.setenv("TIPG_CUSTOM_SQL_DIRECTORY", os.path.join(DATA_DIR, "functions"))
 
     # OGC Tiles Settings
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
-    monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", "tests/fixtures/functions")
+    monkeypatch.setenv("TIPG_CUSTOM_SQL_DIRECTORY", "tests/fixtures/functions")
 
     from tipg.main import app, postgres_settings
 

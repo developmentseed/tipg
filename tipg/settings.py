@@ -2,7 +2,6 @@
 
 import sys
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pydantic
@@ -13,8 +12,6 @@ if sys.version_info < (3, 9, 2):
     from typing_extensions import TypedDict
 else:
     from typing import TypedDict
-
-from tipg.errors import FunctionDirectoryDoesNotExist
 
 
 class TableConfig(TypedDict, total=False):
@@ -128,8 +125,6 @@ class PostgresSettings(pydantic.BaseSettings):
 
     only_spatial_tables: bool = True
 
-    tipg_functions_directory: Optional[str] = None
-
     class Config:
         """model config"""
 
@@ -150,10 +145,3 @@ class PostgresSettings(pydantic.BaseSettings):
             port=values.get("postgres_port", 5432),
             path=f"/{values.get('postgres_dbname') or ''}",
         )
-
-    @pydantic.validator("tipg_functions_directory", pre=True)
-    def validate_functions_directory_exists(cls, v: Optional[str]):
-        """Validate that function directory exists if set."""
-        if v and not Path(v).exists():
-            raise FunctionDirectoryDoesNotExist
-        return v
