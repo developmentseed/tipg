@@ -300,14 +300,14 @@ class Collection(BaseModel):
         geom = self._geom(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
             if geom:
-                sel = sel.comma(logic.Func("st_asewkt", geom).as_("tipg_geom"))
+                sel = sel.comma(logic.Func("ST_AsEWKT", geom).as_("tipg_geom"))
             else:
                 sel = sel.comma(pg_funcs.cast(None, "text").as_("tipg_geom"))
 
         else:
             if geom:
                 sel = sel.comma(
-                    pg_funcs.cast(logic.Func("st_asgeojson", geom), "json").as_(
+                    pg_funcs.cast(logic.Func("ST_AsGeoJSON", geom), "json").as_(
                         "tipg_geom"
                     )
                 )
@@ -323,44 +323,42 @@ class Collection(BaseModel):
         tms: TileMatrixSet,
         tile: Tile,
     ):
-        bbox = tms.xy_bounds(tile)
-        llbounds = tms.bounds(tile)
-        tms_srid = tms.crs.to_epsg()
+        """Create MVT from intersecting geometries."""
+        geom = logic.V(geometry_column.name)
 
-        if (
-            tms.identifier in ("WebMercatorQuad")
-            and llbounds.top > 85
-            or llbounds.bottom < -85
-        ):
+        # make sure the geometries do not overflow the TMS bbox
+        if not tms.is_valid(tile):
             geom = logic.Func(
-                "st_intersection",
-                logic.Func("st_makeenvelope", -180, 85, 180, -85, 4326),
+                "ST_Intersection",
+                logic.Func("ST_MakeEnvelope", *tms.bbox, 4326),
                 logic.Func(
-                    "st_transform",
-                    logic.V(geometry_column.name),
+                    "ST_Transform",
+                    geom,
                     pg_funcs.cast(4326, "int"),
                 ),
             )
-        else:
-            geom = logic.V(geometry_column.name)
 
-        if tms_srid:
+        # Transform the geometries to TMS CRS using EPSG code
+        if tms_srid := tms.crs.to_epsg():
             transform_logic = logic.Func(
-                "st_transform",
+                "ST_Transform",
                 geom,
                 pg_funcs.cast(tms_srid, "int"),
             )
+
+        # Transform the geometries to TMS CRS using PROJ String
         else:
             tms_proj = str(tms.crs.to_proj4())
             transform_logic = logic.Func(
-                "st_transform",
+                "ST_Transform",
                 geom,
                 pg_funcs.cast(tms_proj, "text"),
             )
 
+        bbox = tms.xy_bounds(tile)
         sel = self._select_no_geo(properties, addid=False).comma(
             logic.Func(
-                "st_asmvtgeom",
+                "ST_AsMVTGeom",
                 transform_logic,
                 logic.Func(
                     "ST_Segmentize",
@@ -409,14 +407,17 @@ class Collection(BaseModel):
         if geometry_column is None:
             return None
 
-        g = logic.V(geometry_column.name)
-        g = pg_funcs.cast(g, "geometry")
+        g = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
 
-        if geometry_column.srid == 4326:
+        # Reproject to WGS64 if needed
+        if geometry_column.srid != 4326:
             g = logic.Func("ST_Transform", g, pg_funcs.cast(4326, "int"))
 
+        # Return BBOX Only
         if bbox_only:
             g = logic.Func("ST_Envelope", g)
+
+        # Simplify the geometry
         elif simplify:
             g = logic.Func(
                 "ST_SnapToGrid",
@@ -507,24 +508,29 @@ class Collection(BaseModel):
             wheres.append(to_filter(cql, [p.name for p in self.properties]))
 
         if tile and tms and geometry_column:
-            tilebox = tms.bounds(tile)
+            # Get Tile Bounds in Geographic CRS (usually epsg:4326)
+            left, bottom, right, top = tms.bounds(tile)
+
+            # Truncate bounds to the max TMS bbox
+            left, bottom = tms.truncate_lnglat(left, bottom)
+            right, top = tms.truncate_lnglat(right, top)
 
             wheres.append(
                 logic.Func(
                     "ST_Intersects",
                     logic.Func(
-                        "st_transform",
+                        "ST_Transform",
                         logic.Func(
                             "ST_Segmentize",
                             logic.Func(
                                 "ST_MakeEnvelope",
-                                tilebox.left,
-                                max(-85, tilebox.bottom),
-                                tilebox.right,
-                                min(85, tilebox.top),
+                                left,
+                                bottom,
+                                right,
+                                top,
                                 4326,
                             ),
-                            tilebox.right - tilebox.left,
+                            right - left,
                         ),
                         pg_funcs.cast(geometry_column.srid, "int"),
                     ),
