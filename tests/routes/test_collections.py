@@ -51,7 +51,7 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"bbox": "-180,81,180,87"})
     body = response.json()
-    assert body["numberMatched"] == 9
+    assert body["numberMatched"] == 10
     ids = [x["id"] for x in body["collections"]]
     assert "public.nongeo_data" not in ids
     assert "public.canada" not in ids
@@ -74,18 +74,17 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"datetime": "2004-12-31T23:59:59Z/.."})
     body = response.json()
-    assert body["numberMatched"] == 1
+    assert body["numberMatched"] == 2
     ids = [x["id"] for x in body["collections"]]
-
-    assert ["public.my_data_alt"] == ids
+    assert ["public.my_data", "public.my_data_alt"] == ids
 
     response = app.get(
         "/collections", params={"datetime": "2004-01-01T00:00:00Z/2004-12-31T23:59:59Z"}
     )
     body = response.json()
-    assert body["numberMatched"] == 2
+    assert body["numberMatched"] == 1
     ids = [x["id"] for x in body["collections"]]
-    assert ["public.my_data", "public.nongeo_data"] == ids
+    assert ["public.nongeo_data"] == ids
 
 
 def test_collections_excludes(app_excludes):

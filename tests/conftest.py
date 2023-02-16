@@ -70,20 +70,21 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__pk", "id")
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat__geomcol", "geom")
 
-    # monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", os.path.join(DATA_DIR, "functions"))
+    # monkeypatch.setenv("TIPG_CUSTOM_SQL_DIRECTORY", os.path.join(DATA_DIR, "functions"))
 
     # OGC Tiles Settings
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
-    monkeypatch.setenv("TIPG_FUNCTIONS_DIRECTORY", "tests/fixtures/functions")
+    monkeypatch.setenv("TIPG_CUSTOM_SQL_DIRECTORY", "tests/fixtures/functions")
 
-    from tipg.main import app, postgres_settings
+    from tipg.main import app, db_settings, postgres_settings
 
     postgres_settings.database_url = str(database_url)
-    postgres_settings.only_spatial_tables = False
-    postgres_settings.db_exclude_tables = None
-    postgres_settings.db_tables = None
-    postgres_settings.db_functions = None
+
+    db_settings.only_spatial_tables = False
+    db_settings.exclude_tables = None
+    db_settings.tables = None
+    db_settings.functions = None
 
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
@@ -99,15 +100,16 @@ def app(database_url, monkeypatch):
 def app_excludes(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
 
-    from tipg.main import app, postgres_settings
+    from tipg.main import app, db_settings, postgres_settings
 
     postgres_settings.database_url = str(database_url)
-    postgres_settings.only_spatial_tables = False
-    postgres_settings.db_exclude_tables = ["public.nongeo_data"]
-    postgres_settings.db_tables = None
-    postgres_settings.db_functions = []
 
-    assert postgres_settings.db_exclude_tables == ["public.nongeo_data"]
+    db_settings.only_spatial_tables = False
+    db_settings.exclude_tables = ["public.nongeo_data"]
+    db_settings.tables = None
+    db_settings.functions = []
+
+    assert db_settings.exclude_tables == ["public.nongeo_data"]
 
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
@@ -123,13 +125,15 @@ def app_excludes(database_url, monkeypatch):
 def app_includes(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
 
-    from tipg.main import app, postgres_settings
+    from tipg.main import app, db_settings, postgres_settings
 
     postgres_settings.database_url = str(database_url)
-    postgres_settings.only_spatial_tables = False
-    postgres_settings.db_exclude_tables = None
-    postgres_settings.db_tables = ["public.nongeo_data"]
-    postgres_settings.db_functions = []
+
+    db_settings.only_spatial_tables = False
+    db_settings.exclude_tables = None
+    db_settings.tables = ["public.nongeo_data"]
+    db_settings.functions = []
+
     # Remove middlewares https://github.com/encode/starlette/issues/472
     app.user_middleware = []
     app.middleware_stack = app.build_middleware_stack()
