@@ -1,6 +1,5 @@
 """tipg.db: database events."""
 
-import os
 import pathlib
 from typing import Any, List, Optional
 
@@ -9,13 +8,15 @@ from buildpg import asyncpg
 
 from tipg.dbmodel import get_collection_index
 from tipg.errors import FunctionDirectoryDoesNotExist
-from tipg.settings import PostgresSettings
+from tipg.settings import CustomSQLSettings, PostgresSettings
 
 from fastapi import FastAPI
 
+sql_settings = CustomSQLSettings()
+
+
 custom_sql: List[pathlib.Path] = []
-user_sql_dir = os.environ.get("TIPG_CUSTOM_SQL_DIRECTORY", None)
-if user_sql_dir:
+if user_sql_dir := sql_settings.custom_sql_directory:
     if not pathlib.Path(user_sql_dir).exists():
         raise FunctionDirectoryDoesNotExist
 
