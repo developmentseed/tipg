@@ -36,7 +36,11 @@ class Spatial(BaseModel):
 
     """
 
-    # bbox: List[BBox]
+    # Bbox
+    # One or more bounding boxes that describe the spatial extent of the dataset.
+    # The first bounding box describes the overall spatial
+    # extent of the data. All subsequent bounding boxes describe
+    # more precise bounding boxes, e.g., to identify clusters of data.
     bbox: List[List[float]]
     crs: str
 
@@ -48,7 +52,12 @@ class Temporal(BaseModel):
 
     """
 
-    # interval: List[List[Optional[str], Optional[str]]]
+    # The first time interval describes the overall
+    # temporal extent of the data. All subsequent time intervals describe
+    # more precise time intervals, e.g., to identify clusters of data.
+    # Clients only interested in the overall temporal extent will only need
+    # to access the first time interval in the array (a pair of lower and upper
+    # bound instants).
     interval: List[List[Optional[str]]]
     trs: str = "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian"
 

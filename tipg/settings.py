@@ -29,8 +29,6 @@ class TableSettings(pydantic.BaseSettings):
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
     datetime_extent: bool = True
-    includes: Optional[List[str]]
-    excludes: Optional[List[str]]
 
     class Config:
         """model config"""
@@ -45,6 +43,7 @@ class _TileSettings(pydantic.BaseSettings):
 
     tile_resolution: int = 4096
     tile_buffer: int = 256
+    tile_clip: bool = True
     max_features_per_tile: int = 10000
     default_tms: str = "WebMercatorQuad"
     default_minzoom: int = 0
@@ -71,7 +70,6 @@ class _APISettings(pydantic.BaseSettings):
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
-    functions_directory: Optional[str]
 
     @pydantic.validator("cors_origins")
     def parse_cors_origin(cls, v):
@@ -93,7 +91,7 @@ def APISettings() -> _APISettings:
 
 
 class PostgresSettings(pydantic.BaseSettings):
-    """Postgres-specific API settings.
+    """Postgres connection settings.
 
     Attributes:
         postgres_user: postgres username.
@@ -101,6 +99,7 @@ class PostgresSettings(pydantic.BaseSettings):
         postgres_host: hostname for the connection.
         postgres_port: database port.
         postgres_dbname: database name.
+
     """
 
     postgres_user: Optional[str]
@@ -115,13 +114,6 @@ class PostgresSettings(pydantic.BaseSettings):
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
     db_max_inactive_conn_lifetime: float = 300
-
-    db_schemas: List[str] = ["public"]
-    db_tables: Optional[List[str]]
-    db_function_schemas: List[str] = ["public"]
-    db_functions: Optional[List[str]]
-
-    only_spatial_tables: bool = True
 
     class Config:
         """model config"""
@@ -143,3 +135,36 @@ class PostgresSettings(pydantic.BaseSettings):
             port=values.get("postgres_port", 5432),
             path=f"/{values.get('postgres_dbname') or ''}",
         )
+
+
+class DatabaseSettings(pydantic.BaseSettings):
+    """TiPg Database settings."""
+
+    schemas: List[str] = ["public"]
+    exclude_schemas: Optional[List[str]]
+    tables: Optional[List[str]]
+    exclude_tables: Optional[List[str]]
+    function_schemas: List[str] = ["public"]
+    exclude_function_schemas: Optional[List[str]]
+    functions: Optional[List[str]]
+    exclude_functions: Optional[List[str]]
+
+    only_spatial_tables: bool = True
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_DB_"
+        env_file = ".env"
+
+
+class CustomSQLSettings(pydantic.BaseSettings):
+    """TiPg Custom SQL settings."""
+
+    custom_sql_directory: Optional[str]
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_"
+        env_file = ".env"

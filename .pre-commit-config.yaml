@@ -26,7 +26,9 @@ repos:
           - toml
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.812
+    rev: v0.991
     hooks:
       - id: mypy
         language_version: python
+        # No reason to run if only tests have changed. They intentionally break typing.
+        exclude: tests/.*

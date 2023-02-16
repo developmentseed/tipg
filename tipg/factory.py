@@ -97,7 +97,7 @@ def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
     )
 
 
-def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
+def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
     """Check if dates intersect with temporal extent."""
     if len(interval) == 1:
         start = end = parse_rfc3339(interval[0])
@@ -106,22 +106,22 @@ def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
         start = parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
         end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
 
-    for (mint, maxt) in temporal_extent:
-        min_ext = parse_rfc3339(mint) if mint is not None else None
-        max_ext = parse_rfc3339(maxt) if maxt is not None else None
+    mint, maxt = temporal_extent
+    min_ext = parse_rfc3339(mint) if mint is not None else None
+    max_ext = parse_rfc3339(maxt) if maxt is not None else None
 
-        if len(interval) == 1:
-            if start == min_ext or start == max_ext:
-                return True
+    if len(interval) == 1:
+        if start == min_ext or start == max_ext:
+            return True
 
-        if not start:
-            return max_ext <= end or min_ext <= end
+    if not start:
+        return max_ext <= end or min_ext <= end
 
-        elif not end:
-            return min_ext >= start or max_ext >= start
+    elif not end:
+        return min_ext >= start or max_ext >= start
 
-        else:
-            return min_ext >= start and max_ext <= end
+    else:
+        return min_ext >= start and max_ext <= end
 
     return False
 
@@ -453,11 +453,8 @@ class Endpoints:
                 collections_list = [
                     collection
                     for collection in collections_list
-                    if collection.extent is not None
-                    and collection.extent.temporal is not None
-                    and t_intersects(
-                        datetime_filter, collection.extent.temporal.interval
-                    )
+                    if collection.dt_bounds is not None
+                    and t_intersects(datetime_filter, collection.dt_bounds)
                 ]
 
             matched_items = len(collections_list)
@@ -594,11 +591,11 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
+
             data = model.Collection(
                 **{
-                    "id": collection.id,
+                    **collection.dict(),
                     "title": collection.id,
-                    "description": collection.description,
                     "extent": collection.extent,
                     "links": [
                         model.Link(
@@ -1164,7 +1161,7 @@ class Endpoints:
                 alias="datetime-column",
             ),
             limit: int = Query(
-                10000,
+                tilesettings.max_features_per_tile,
                 description="Limits the number of features in the response.",
             ),
         ):
@@ -1254,16 +1251,16 @@ class Endpoints:
 
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+            tj = {
+                "minzoom": minzoom,
+                "maxzoom": maxzoom,
+                "name": collection.id,
+                "tiles": [tile_endpoint],
+            }
+            if bounds := collection.bounds:
+                tj["bounds"] = bounds
 
-            return ORJSONResponse(
-                {
-                    "minzoom": minzoom,
-                    "maxzoom": maxzoom,
-                    "name": collection.id,
-                    "bounds": geom.bounds,
-                    "tiles": [tile_endpoint],
-                }
-            )
+            return ORJSONResponse(tj)
 
         @self.router.get(
             r"/tileMatrixSets",

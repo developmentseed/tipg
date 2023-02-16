@@ -1,24 +1,55 @@
 """tipg.db: database events."""
 
-from typing import Any, Optional
+import pathlib
+from typing import Any, List, Optional
 
 import orjson
 from buildpg import asyncpg
 
 from tipg.dbmodel import get_collection_index
-from tipg.settings import PostgresSettings
+from tipg.errors import FunctionDirectoryDoesNotExist
+from tipg.settings import CustomSQLSettings, PostgresSettings
 
 from fastapi import FastAPI
 
+sql_settings = CustomSQLSettings()
+
+
+custom_sql: List[pathlib.Path] = []
+if user_sql_dir := sql_settings.custom_sql_directory:
+    if not pathlib.Path(user_sql_dir).exists():
+        raise FunctionDirectoryDoesNotExist
+
+    custom_sql = list(pathlib.Path(user_sql_dir).glob("*.sql"))
+
 
 async def con_init(conn):
-    """Use json for json returns."""
+    """Use orjson encoder/decoder and register custom SQL functions."""
     await conn.set_type_codec(
         "json", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
         "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
     )
+
+    await conn.execute(
+        """
+            SELECT set_config(
+                'search_path',
+                'pg_temp,' || current_setting('search_path', false),
+                false
+                );
+            """
+    )
+
+    # Register custom SQL functions/table/views
+    if custom_sql:
+        for sqlfile in custom_sql:
+            await conn.execute(sqlfile.read_text())
+
+    # Register TiPG functions
+    dbcatalogsql = pathlib.Path(__package__) / "sql" / "dbcatalog.sql"
+    await conn.execute(dbcatalogsql.read_text())
 
 
 async def connect_to_db(
