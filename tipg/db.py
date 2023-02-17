@@ -12,6 +12,12 @@ from tipg.settings import CustomSQLSettings, PostgresSettings
 
 from fastapi import FastAPI
 
+try:
+    from importlib.resources import files as resources_files  # type: ignore
+except ImportError:
+    # Try backported to PY<39 `importlib_resources`.
+    from importlib_resources import files as resources_files  # type: ignore
+
 sql_settings = CustomSQLSettings()
 
 
@@ -48,7 +54,7 @@ async def con_init(conn):
             await conn.execute(sqlfile.read_text())
 
     # Register TiPG functions
-    dbcatalogsql = pathlib.Path(__package__) / "sql" / "dbcatalog.sql"
+    dbcatalogsql = resources_files(__package__) / "sql" / "dbcatalog.sql"
     await conn.execute(dbcatalogsql.read_text())
 
 

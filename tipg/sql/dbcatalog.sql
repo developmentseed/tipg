@@ -155,7 +155,7 @@ BEGIN
     IF format_type(p.prorettype, null) IS DISTINCT FROM 'record' THEN
         argtypes := argtypes || p.prorettype;
         argmodes := argmodes || 'o'::text;
-        proargnames := proargnames || p.proname;
+        proargnames := proargnames || p.proname::text;
     END IF;
 
     WITH t AS (
