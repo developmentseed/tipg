@@ -49,6 +49,7 @@ class _TileSettings(pydantic.BaseSettings):
     default_tms: str = "WebMercatorQuad"
     default_minzoom: int = 0
     default_maxzoom: int = 22
+    set_mvt_layername: Optional[bool]
 
     class Config:
         """model config"""

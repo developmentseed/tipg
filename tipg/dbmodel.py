@@ -769,7 +769,7 @@ class Collection(BaseModel):
             SELECT ST_AsMVT(t.*, :l) FROM t
             """,
             c=c,
-            l=self.table,
+            l=self.table if tile_settings.set_mvt_layername is True else "default",
         )
         # debug_query(q, *p)
 
