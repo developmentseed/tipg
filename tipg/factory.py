@@ -50,7 +50,7 @@ from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tilesettings = TileSettings()
@@ -1188,7 +1188,7 @@ class Endpoints:
             return Response(bytes(tile), media_type=MediaType.mvt.value)
 
         @self.router.get(
-            "/collections/{collectionId}/{TileMatrixSetId}/tilejson.json",
+            "/collections/{collectionId}/{tileMatrixSetId}/tilejson.json",
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
@@ -1251,16 +1251,71 @@ class Endpoints:
 
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+
+            bounds = [-180, -90, 180, 90]
+            if collection.extent and collection.extent.spatial:
+                bounds = collection.extent.spatial.bbox[0]
+
             tj = {
                 "minzoom": minzoom,
                 "maxzoom": maxzoom,
                 "name": collection.id,
+                "bounds": bounds,
                 "tiles": [tile_endpoint],
             }
             if bounds := collection.bounds:
                 tj["bounds"] = bounds
 
             return ORJSONResponse(tj)
+
+        @self.router.get(
+            "/collections/{collectionId}/{tileMatrixSetId}/viewer",
+            response_class=HTMLResponse,
+        )
+        @self.router.get(
+            "/collections/{collectionId}/viewer", response_class=HTMLResponse
+        )
+        def viewer_endpoint(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tileMatrixSetId: Literal["WebMercatorQuad"] = Query(  # noqa
+                "WebMercatorQuad",
+                description="Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
+            ),
+            minzoom: Optional[int] = Query(  # noqa
+                None, description="Overwrite default minzoom."
+            ),
+            maxzoom: Optional[int] = Query(  # noqa
+                None, description="Overwrite default maxzoom."
+            ),
+            geom_column: Optional[str] = Query(  # noqa
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+        ):
+            """Return TileJSON document for a dataset."""
+            tms = self.supported_tms.get(tileMatrixSetId)
+
+            tilejson_url = self.url_for(
+                request,
+                "tilejson",
+                collectionId=collection.id,
+                tileMatrixSetId=tms.identifier,
+            )
+            if request.query_params._list:
+                tilejson_url += f"?{urlencode(request.query_params._list)}"
+
+            return self.templates.TemplateResponse(
+                name="map.html",
+                context={
+                    "request": request,
+                    "tilejson_endpoint": tilejson_url,
+                    "tms": tms,
+                    "resolutions": [tms._resolution(matrix) for matrix in tms],
+                },
+                media_type="text/html",
+            )
 
         @self.router.get(
             r"/tileMatrixSets",
