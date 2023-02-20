@@ -1311,8 +1311,6 @@ class Endpoints:
                 context={
                     "request": request,
                     "tilejson_endpoint": tilejson_url,
-                    "tms": tms,
-                    "resolutions": [tms._resolution(matrix) for matrix in tms],
                 },
                 media_type="text/html",
             )
