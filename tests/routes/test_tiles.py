@@ -17,7 +17,7 @@ def test_tilejson(app):
     assert resp_json["maxzoom"] == 12
 
     np.testing.assert_almost_equal(
-        resp_json["bounds"], [-180.0, -82.6401062011719, 180.0, 82.6401062011719]
+        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]
     )
 
     response = app.get(

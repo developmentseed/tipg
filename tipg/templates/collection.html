@@ -63,20 +63,7 @@
       [bbox[3], bbox[0]]
     ]);
 
-    var layerName = "{{ response.title.split(".")[1] }}"
-    var layerStyle = {
-      weight: 1,
-      fillColor: '#9bc2c4',
-      fillOpacity: 1,
-      fill: true
-    }
-
-    map.addLayer(L.vectorGrid.protobuf('{{ baseurl }}{{ urlpath }}/tiles/{z}/{x}/{y}?{{ urlparams | safe}}', {
-      vectorTileLayerStyles: {
-        "default": layerStyle,
-  	[layerName]: layerStyle
-      }
-    }));
+    map.addLayer(bbox_polygon);
     map.fitBounds(bbox_polygon.getBounds());
   });
 </script>

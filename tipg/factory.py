@@ -50,7 +50,7 @@ from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tilesettings = TileSettings()
@@ -97,7 +97,7 @@ def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
     )
 
 
-def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
+def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
     """Check if dates intersect with temporal extent."""
     if len(interval) == 1:
         start = end = parse_rfc3339(interval[0])
@@ -106,23 +106,23 @@ def t_intersects(interval: List[str], temporal_extent: List[List[str]]) -> bool:
 
         start = parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
         end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
+        
+    mint, maxt = temporal_extent
+    min_ext = parse_rfc3339(mint) if mint is not None else None
+    max_ext = parse_rfc3339(maxt) if maxt is not None else None
 
-    for mint, maxt in temporal_extent:
-        min_ext = parse_rfc3339(mint) if mint is not None else None
-        max_ext = parse_rfc3339(maxt) if maxt is not None else None
+    if len(interval) == 1:
+        if start == min_ext or start == max_ext:
+            return True
 
-        if len(interval) == 1:
-            if start == min_ext or start == max_ext:
-                return True
+    if not start:
+        return max_ext <= end or min_ext <= end
 
-        if not start:
-            return max_ext <= end or min_ext <= end
+    elif not end:
+        return min_ext >= start or max_ext >= start
 
-        elif not end:
-            return min_ext >= start or max_ext >= start
-
-        else:
-            return min_ext >= start and max_ext <= end
+    else:
+        return min_ext >= start and max_ext <= end
 
     return False
 
@@ -454,11 +454,8 @@ class Endpoints:
                 collections_list = [
                     collection
                     for collection in collections_list
-                    if collection.extent is not None
-                    and collection.extent.temporal is not None
-                    and t_intersects(
-                        datetime_filter, collection.extent.temporal.interval
-                    )
+                    if collection.dt_bounds is not None
+                    and t_intersects(datetime_filter, collection.dt_bounds)
                 ]
 
             matched_items = len(collections_list)
@@ -595,11 +592,11 @@ class Endpoints:
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
             """Metadata for a feature collection."""
+
             data = model.Collection(
                 **{
-                    "id": collection.id,
+                    **collection.dict(),
                     "title": collection.id,
-                    "description": collection.description,
                     "extent": collection.extent,
                     "links": [
                         model.Link(
@@ -1165,7 +1162,7 @@ class Endpoints:
                 alias="datetime-column",
             ),
             limit: int = Query(
-                10000,
+                tilesettings.max_features_per_tile,
                 description="Limits the number of features in the response.",
             ),
         ):
@@ -1192,7 +1189,7 @@ class Endpoints:
             return Response(bytes(tile), media_type=MediaType.mvt.value)
 
         @self.router.get(
-            "/collections/{collectionId}/{TileMatrixSetId}/tilejson.json",
+            "/collections/{collectionId}/{tileMatrixSetId}/tilejson.json",
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
@@ -1256,14 +1253,67 @@ class Endpoints:
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
 
-            return ORJSONResponse(
-                {
-                    "minzoom": minzoom,
-                    "maxzoom": maxzoom,
-                    "name": collection.id,
-                    "bounds": geom.bounds,
-                    "tiles": [tile_endpoint],
-                }
+            bounds = [-180, -90, 180, 90]
+            if collection.extent and collection.extent.spatial:
+                bounds = collection.extent.spatial.bbox[0]
+
+            tj = {
+                "minzoom": minzoom,
+                "maxzoom": maxzoom,
+                "name": collection.id,
+                "bounds": bounds,
+                "tiles": [tile_endpoint],
+            }
+            if bounds := collection.bounds:
+                tj["bounds"] = bounds
+
+            return ORJSONResponse(tj)
+
+        @self.router.get(
+            "/collections/{collectionId}/{tileMatrixSetId}/viewer",
+            response_class=HTMLResponse,
+        )
+        @self.router.get(
+            "/collections/{collectionId}/viewer", response_class=HTMLResponse
+        )
+        def viewer_endpoint(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tileMatrixSetId: Literal["WebMercatorQuad"] = Query(  # noqa
+                "WebMercatorQuad",
+                description="Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
+            ),
+            minzoom: Optional[int] = Query(  # noqa
+                None, description="Overwrite default minzoom."
+            ),
+            maxzoom: Optional[int] = Query(  # noqa
+                None, description="Overwrite default maxzoom."
+            ),
+            geom_column: Optional[str] = Query(  # noqa
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+        ):
+            """Return TileJSON document for a dataset."""
+            tms = self.supported_tms.get(tileMatrixSetId)
+
+            tilejson_url = self.url_for(
+                request,
+                "tilejson",
+                collectionId=collection.id,
+                tileMatrixSetId=tms.identifier,
+            )
+            if request.query_params._list:
+                tilejson_url += f"?{urlencode(request.query_params._list)}"
+
+            return self.templates.TemplateResponse(
+                name="map.html",
+                context={
+                    "request": request,
+                    "tilejson_endpoint": tilejson_url,
+                },
+                media_type="text/html",
             )
 
         @self.router.get(

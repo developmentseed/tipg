@@ -62,6 +62,10 @@ class MissingFunctionParameter(TiPgError):
     """Missing Function Parameter."""
 
 
+class FunctionDirectoryDoesNotExist(TiPgError):
+    """Function Directory Is Set But Does Not Exist."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -76,6 +80,7 @@ DEFAULT_STATUS_CODES = {
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
     NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    FunctionDirectoryDoesNotExist: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 
 

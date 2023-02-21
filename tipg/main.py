@@ -9,7 +9,7 @@ from tipg.db import close_db_connection, connect_to_db, register_collection_cata
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware
-from tipg.settings import APISettings, PostgresSettings
+from tipg.settings import APISettings, DatabaseSettings, PostgresSettings
 
 from fastapi import FastAPI, Request
 
@@ -19,6 +19,8 @@ from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
 postgres_settings = PostgresSettings()
+db_settings = DatabaseSettings()
+
 
 app = FastAPI(
     title=settings.name,
@@ -66,11 +68,15 @@ async def startup_event() -> None:
     await connect_to_db(app, settings=postgres_settings)
     await register_collection_catalog(
         app,
-        schemas=postgres_settings.db_schemas,
-        tables=postgres_settings.db_tables,
-        function_schemas=postgres_settings.db_function_schemas,
-        functions=postgres_settings.db_functions,
-        spatial=postgres_settings.only_spatial_tables,
+        schemas=db_settings.schemas,
+        exclude_schemas=db_settings.exclude_schemas,
+        tables=db_settings.tables,
+        exclude_tables=db_settings.exclude_tables,
+        function_schemas=db_settings.function_schemas,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        functions=db_settings.functions,
+        exclude_functions=db_settings.exclude_functions,
+        spatial=db_settings.only_spatial_tables,
     )
 
 
