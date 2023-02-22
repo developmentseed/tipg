@@ -3,6 +3,8 @@
 import mapbox_vector_tile
 import numpy as np
 
+from tipg.settings import TileSettings
+
 
 def test_tilejson(app):
     """Test TileJSON endpoint."""
@@ -42,12 +44,16 @@ def test_tilejson(app):
 
 def test_tile(app):
     """request a tile."""
-    response = app.get("/collections/public.landsat_wrs/tiles/0/0/0")
+    TileSettings().set_mvt_layername = False
+
+    name = "landsat_wrs"
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
+    assert "default" in decoded.keys()
     assert len(decoded["default"]["features"]) == 10000
 
-    response = app.get("/collections/public.landsat_wrs/tiles/0/0/0?limit=1000")
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0?limit=1000")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 1000
@@ -56,7 +62,7 @@ def test_tile(app):
     )
 
     response = app.get(
-        "/collections/public.landsat_wrs/tiles/0/0/0?limit=1&properties=pr,row,path"
+        f"/collections/public.{name}/tiles/0/0/0?limit=1&properties=pr,row,path"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
@@ -64,27 +70,40 @@ def test_tile(app):
         list(decoded["default"]["features"][0]["properties"])
     )
 
-    response = app.get("/collections/public.landsat_wrs/tiles/0/0/0?geom-column=geom")
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=geom")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 10000
 
     # invalid geometry column name
-    response = app.get(
-        "/collections/public.landsat_wrs/tiles/0/0/0?geom-column=the_geom"
-    )
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=the_geom")
     assert response.status_code == 404
+
+
+def test_tile_custom_name(app):
+    TileSettings().set_mvt_layername = True
+
+    name = "landsat_wrs"
+    response = app.get(f"/collections/public.{name}/tiles/0/0/0")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert name in decoded.keys()
+    assert len(decoded[name]["features"]) == 10000
 
 
 def test_tile_tms(app):
     """request a tile with specific TMS."""
-    response = app.get("/collections/public.landsat_wrs/tiles/WorldCRS84Quad/0/0/0")
+    TileSettings().set_mvt_layername = False
+
+    name = "landsat_wrs"
+    response = app.get(f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
+    assert "default" in decoded.keys()
     assert len(decoded["default"]["features"]) > 1000
 
     response = app.get(
-        "/collections/public.landsat_wrs/tiles/WorldCRS84Quad/0/0/0?limit=1000"
+        f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0?limit=1000"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
@@ -94,13 +113,24 @@ def test_tile_tms(app):
     )
 
     response = app.get(
-        "/collections/public.landsat_wrs/tiles/WorldCRS84Quad/0/0/0?limit=1&properties=pr,row,path"
+        f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0?limit=1&properties=pr,row,path"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert sorted(["pr", "row", "path"]) == sorted(
         list(decoded["default"]["features"][0]["properties"])
     )
+
+
+def test_tile_tms_custom_name(app):
+    TileSettings().set_mvt_layername = True
+
+    name = "landsat_wrs"
+    response = app.get(f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert name in decoded.keys()
+    assert len(decoded[name]["features"]) > 1000
 
 
 # def test_function_tilejson(app):
@@ -131,12 +161,14 @@ def test_tile_tms(app):
 
 # def test_function_tile(app):
 #     """request a tile."""
-#     response = app.get("/collections/squares/tiles/0/0/0")
+#     name = squares
+#     response = app.get("/collections/{name}/tiles/0/0/0")
 #     assert response.status_code == 200
 #     decoded = mapbox_vector_tile.decode(response.content)
-#     assert len(decoded["default"]["features"]) == 4
+#     assert name in decoded.keys()
+#     assert len(decoded[name]["features"]) == 4
 
 #     response = app.get("/collections/squares/tiles/0/0/0?depth=4")
 #     assert response.status_code == 200
 #     decoded = mapbox_vector_tile.decode(response.content)
-#     assert len(decoded["default"]["features"]) == 16
+#     assert len(decoded[name]["features"]) == 16

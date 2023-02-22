@@ -2,14 +2,17 @@
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb bg-light">
-    {% for crumb in crumbs %}
-      {% if not loop.last %}
-    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
-      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
-      {% endif %}
-    {% endfor %}
+    {% for crumb in crumbs %} {% if not loop.last %}
+    <li class="breadcrumb-item">
+      <a href="{{ crumb.url }}/">{{ crumb.part }}</a>
+    </li>
+    {% else %}
+    <li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
+    {% endif %} {% endfor %}
 
-    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=json">JSON</a></li>
+    <li class="ml-auto json-link">
+      <a target="_blank" href="{{ url }}?f=json">JSON</a>
+    </li>
   </ol>
 </nav>
 
@@ -17,25 +20,28 @@
 
 <div class="row">
   <div class="col-sm">
-
     <p>{{ response.description or response.title or response.id }}</p>
     {% if "keywords" in response and length(response.keywords) > 0 %}
-      <div id="keywords"><p>
+    <div id="keywords">
+      <p>
         {% for keyword in response.keywords %}
-          <span class="badge badge-secondary">{{ keyword }}</span>
+        <span class="badge badge-secondary">{{ keyword }}</span>
         {% endfor %}
-      </p></div>
+      </p>
+    </div>
     {% endif %}
 
     <h2>Links</h2>
     <ul>
-    {% for link in response.links %}
-      <li> <a href="{{ link.href }}">{{ link.title or link.rel }}</a></li>
-    {% endfor %}
+      {% for link in response.links %}
+      <li><a href="{{ link.href }}">{{ link.title or link.rel }}</a></li>
+      {% endfor %}
     </ul>
   </div>
   <div class="col-sm">
-    <div id="map" class="rounded" style="width:100%;height:400px;">Loading...</div>
+    <div id="map" class="rounded" style="width: 100%; height: 400px">
+      Loading...
+    </div>
   </div>
 </div>
 

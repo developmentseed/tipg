@@ -466,7 +466,7 @@ class Endpoints:
 
             items_returned = len(collections_list)
 
-            links = [
+            links: list = [
                 model.Link(
                     href=self.url_for(request, "landing"),
                     rel="parent",
