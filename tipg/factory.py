@@ -103,10 +103,9 @@ def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
         start = end = parse_rfc3339(interval[0])
 
     else:
-
         start = parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
         end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
-        
+
     mint, maxt = temporal_extent
     min_ext = parse_rfc3339(mint) if mint is not None else None
     max_ext = parse_rfc3339(maxt) if maxt is not None else None
