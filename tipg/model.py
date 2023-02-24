@@ -76,6 +76,8 @@ class Extent(BaseModel):
 class Collection(BaseModel):
     """Collection model.
 
+    Note: `CRS` is the list of CRS supported by the service not the CRS of the collection
+
     Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/collection.yaml
 
     """

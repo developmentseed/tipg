@@ -181,7 +181,12 @@ class Collection(BaseModel):
                     *[col.bounds for col in cols],
                 ]
 
-            extent["spatial"] = {"bbox": bbox}
+            extent["spatial"] = {
+                "bbox": bbox,
+                # The extent calculated in Pg is in WGS84 LON,LAT order
+                # so we use `CRS84` as CRS
+                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            }
 
         if cols := self.datetime_columns:
             cols = [col for col in cols if col.mindt or col.maxdt]
