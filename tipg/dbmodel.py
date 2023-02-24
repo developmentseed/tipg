@@ -170,7 +170,7 @@ class Collection(BaseModel):
     @property
     def extent(self) -> Optional[Extent]:
         """Return extent."""
-        extent = {}
+        extent: Dict[str, Any] = {}
         if cols := self.geometry_columns:
             if len(cols) == 1:
                 bbox = [cols[0].bounds]
@@ -181,10 +181,7 @@ class Collection(BaseModel):
                     *[col.bounds for col in cols],
                 ]
 
-            extent["spatial"] = {
-                "bbox": bbox,
-                "crs": f"http://www.opengis.net/def/crs/EPSG/0/{cols[0].srid}",
-            }
+            extent["spatial"] = {"bbox": bbox}
 
         if cols := self.datetime_columns:
             cols = [col for col in cols if col.mindt or col.maxdt]
