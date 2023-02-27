@@ -170,7 +170,7 @@ class Collection(BaseModel):
     @property
     def extent(self) -> Optional[Extent]:
         """Return extent."""
-        extent = {}
+        extent: Dict[str, Any] = {}
         if cols := self.geometry_columns:
             if len(cols) == 1:
                 bbox = [cols[0].bounds]
@@ -183,7 +183,9 @@ class Collection(BaseModel):
 
             extent["spatial"] = {
                 "bbox": bbox,
-                "crs": f"http://www.opengis.net/def/crs/EPSG/0/{cols[0].srid}",
+                # The extent calculated in Pg is in WGS84 LON,LAT order
+                # so we use `CRS84` as CRS
+                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
             }
 
         if cols := self.datetime_columns:

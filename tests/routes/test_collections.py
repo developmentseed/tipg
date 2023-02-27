@@ -114,7 +114,12 @@ def test_collections_landsat(app):
     body = response.json()
     assert body["id"] == "public.landsat_wrs"
     assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
+    assert body["crs"] == ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
     assert ["bbox", "crs"] == list(body["extent"]["spatial"])
+    assert (
+        body["extent"]["spatial"]["crs"]
+        == "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    )
     assert not body["extent"].get("temporal")
 
     response = app.get("/collections/public.landsat_wrs?f=html")

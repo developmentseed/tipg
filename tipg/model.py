@@ -42,7 +42,7 @@ class Spatial(BaseModel):
     # extent of the data. All subsequent bounding boxes describe
     # more precise bounding boxes, e.g., to identify clusters of data.
     bbox: List[List[float]]
-    crs: str
+    crs: str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
 
 
 class Temporal(BaseModel):
@@ -76,6 +76,8 @@ class Extent(BaseModel):
 class Collection(BaseModel):
     """Collection model.
 
+    Note: `CRS` is the list of CRS supported by the service not the CRS of the collection
+
     Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/collection.yaml
 
     """
@@ -86,7 +88,7 @@ class Collection(BaseModel):
     links: List[Link]
     extent: Optional[Extent]
     itemType: str = "feature"
-    crs: List[str] = ["http://www.opengis.net/def/crs/EPSG/0/4326"]
+    crs: List[str] = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
 
     class Config:
         """Collection model configuration."""
