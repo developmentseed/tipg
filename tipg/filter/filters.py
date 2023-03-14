@@ -10,7 +10,7 @@ from buildpg import V
 from buildpg.funcs import AND as and_
 from buildpg.funcs import NOT as not_
 from buildpg.funcs import OR as or_
-from buildpg.funcs import any
+from buildpg.funcs import any, cast
 from buildpg.logic import Func
 from geojson_pydantic.geometries import Polygon, parse_geometry_obj
 
@@ -58,7 +58,11 @@ class Operator:
         "not_in": lambda f, a: ~f == any(a),
         "any": lambda f, a: f.any(a),
         "not_any": lambda f, a: f.not_(f.any(a)),
-        "INTERSECTS": lambda f, a: Func("st_intersects", f, a),
+        "INTERSECTS": lambda f, a: Func(
+            "st_intersects",
+            f,
+            Func("st_setsrid", cast(a, "geometry"), Func("st_srid", f)),
+        ),
         "DISJOINT": lambda f, a: Func("st_disjoint", f, a),
         "CONTAINS": lambda f, a: Func("st_contains", f, a),
         "WITHIN": lambda f, a: Func("st_within", f, a),
