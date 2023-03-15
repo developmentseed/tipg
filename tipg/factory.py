@@ -1396,7 +1396,7 @@ class OGCTilesFactory(EndpointsFactory):
 class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
 
-    name: str = "TiPg: OGC Features and Tiles API"
+    title: str = "TiPg: OGC Features and Tiles API"
 
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
@@ -1492,7 +1492,7 @@ class Endpoints(EndpointsFactory):
         ):
             """Get landing page."""
             data = model.Landing(
-                title=self.name,
+                title=self.title,
                 links=[
                     model.Link(
                         title="Landing Page",
