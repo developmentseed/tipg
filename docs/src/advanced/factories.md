@@ -63,13 +63,15 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 
 - **collection_dependency** (Callable[..., tipg.dbmodel.Collection]): Callable which return a Collection instance
 
-- **full** (bool, optional): Create Full OGC Features API set of endpoints (with landing `/` and conformance `/conformance` endpoints). Defaults to `True`
+- **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
 - **router** (fastapi.APIRouter, optional): FastAPI
 
 - **router_prefix** (str, optional): *prefix* for the whole set of endpoints
 
 - **templates** (starlette.templating.Jinja2Templates, optional): Templates to be used in endpoint's responses
+
+- **title** (str, optional): Title of for the endpoints (only used if `with_common=True`)
 
 #### Endpoints
 
@@ -100,13 +102,15 @@ app.include_router(endpoints.router, tags=["OGC Tiles API"])
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
-- **full** (bool, optional): Create Full OGC Tiles API set of endpoints (with landing `/` and conformance `/conformance` endpoints). Defaults to `True`
+- **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
 - **router** (fastapi.APIRouter, optional): FastAPI
 
 - **router_prefix** (str, optional): *prefix* for the whole set of endpoints
 
 - **templates** (starlette.templating.Jinja2Templates, optional): Templates to be used in endpoint's responses
+
+- **title** (str, optional): Title of for the endpoints (only used if `with_common=True`)
 
 #### Endpoints
 
@@ -136,11 +140,15 @@ app.include_router(endpoints.router)
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
+- **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
+
 - **router** (fastapi.APIRouter, optional): FastAPI
 
 - **router_prefix** (str, optional): *prefix* for the whole set of endpoints
 
 - **templates** (starlette.templating.Jinja2Templates, optional): Templates to be used in endpoint's responses
+
+- **title** (str, optional): Title of for the endpoints (only used if `with_common=True`)
 
 #### Endpoints
 

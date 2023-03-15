@@ -187,9 +187,16 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
+    # Full application with Landing and Conformance
+    with_common: bool = True
+
+    title: str = "OGC API"
+
     def __post_init__(self):
         """Post Init: register route and configure specific options."""
         self.register_routes()
+        if self.with_common:
+            self.register_common_routes()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -226,14 +233,120 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         """Endpoints conformances."""
         ...
 
+    @abc.abstractmethod
+    def links(self, request: Request) -> List[model.Link]:
+        """Register factory Routes."""
+        ...
+
+    def register_common_routes(self):
+        """Register Landing (/) and Conformance (/conformance) routes."""
+
+        @self.router.get(
+            "/conformance",
+            response_model=model.Conformance,
+            response_model_exclude_none=True,
+            response_class=ORJSONResponse,
+            responses={
+                200: {
+                    "content": {
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
+                    }
+                },
+            },
+            tags=["OGC Common"],
+        )
+        def conformance(
+            request: Request,
+            output_type: Optional[MediaType] = Depends(OutputType),
+        ):
+            """Get conformance."""
+            data = model.Conformance(
+                conformsTo=[
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
+                    *self.conforms_to,
+                ]
+            )
+
+            if output_type == MediaType.html:
+                return self._create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="conformance",
+                )
+
+            return data
+
+        @self.router.get(
+            "/",
+            response_model=model.Landing,
+            response_model_exclude_none=True,
+            response_class=ORJSONResponse,
+            responses={
+                200: {
+                    "content": {
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
+                    }
+                },
+            },
+            tags=["OGC Common"],
+        )
+        def landing(
+            request: Request,
+            output_type: Optional[MediaType] = Depends(OutputType),
+        ):
+            """Get landing page."""
+            data = model.Landing(
+                title=self.title,
+                links=[
+                    model.Link(
+                        title="Landing Page",
+                        href=self.url_for(request, "landing"),
+                        type=MediaType.json,
+                        rel="self",
+                    ),
+                    model.Link(
+                        title="the API definition (JSON)",
+                        href=str(request.url_for("openapi")),
+                        type=MediaType.openapi30_json,
+                        rel="service-desc",
+                    ),
+                    model.Link(
+                        title="the API documentation",
+                        href=str(request.url_for("swagger_ui_html")),
+                        type=MediaType.html,
+                        rel="service-doc",
+                    ),
+                    model.Link(
+                        title="Conformance",
+                        href=self.url_for(request, "conformance"),
+                        type=MediaType.json,
+                        rel="conformance",
+                    ),
+                    *self.links(request),
+                ],
+            )
+
+            if output_type == MediaType.html:
+                return self._create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="landing",
+                )
+
+            return data
+
 
 @dataclass
 class OGCFeaturesFactory(EndpointsFactory):
     """OGC Features Endpoints Factory."""
-
-    full: bool = True
-
-    tags: Optional[List[str]] = None
 
     @property
     def conforms_to(self) -> List[str]:
@@ -245,6 +358,54 @@ class OGCFeaturesFactory(EndpointsFactory):
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
             "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
             "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+        ]
+
+    def links(self, request: Request) -> List[model.Link]:
+        """OGC Features API links."""
+        return [
+            model.Link(
+                title="List of Collections",
+                href=self.url_for(request, "collections"),
+                type=MediaType.json,
+                rel="data",
+            ),
+            model.Link(
+                title="Collection metadata",
+                href=self.url_for(
+                    request,
+                    "collection",
+                    collectionId="{collectionId}",
+                ),
+                type=MediaType.json,
+                rel="data",
+            ),
+            model.Link(
+                title="Collection queryables",
+                href=self.url_for(
+                    request,
+                    "queryables",
+                    collectionId="{collectionId}",
+                ),
+                type=MediaType.schemajson,
+                rel="queryables",
+            ),
+            model.Link(
+                title="Collection Features",
+                href=self.url_for(request, "items", collectionId="{collectionId}"),
+                type=MediaType.geojson,
+                rel="data",
+            ),
+            model.Link(
+                title="Collection Feature",
+                href=self.url_for(
+                    request,
+                    "item",
+                    collectionId="{collectionId}",
+                    itemId="{itemId}",
+                ),
+                type=MediaType.geojson,
+                rel="data",
+            ),
         ]
 
     def register_routes(self):  # noqa: C901
@@ -263,7 +424,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
-            tags=self.tags,
         )
         def collections(
             request: Request,
@@ -429,7 +589,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
-            tags=self.tags,
         )
         def collection(
             request: Request,
@@ -516,7 +675,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
-            tags=self.tags,
         )
         def queryables(
             request: Request,
@@ -565,7 +723,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "model": model.Items,
                 },
             },
-            tags=self.tags,
         )
         async def items(
             request: Request,
@@ -823,7 +980,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "model": model.Item,
                 },
             },
-            tags=self.tags,
         )
         async def item(
             request: Request,
@@ -970,165 +1126,12 @@ class OGCFeaturesFactory(EndpointsFactory):
             # Default to GeoJSON Response
             return GeoJSONResponse(data)
 
-        # NOTE: The OGC Features API specification includes `/conformances` and `/` endpoints
-        # Those two endpoints are optional in the factory and only added if `full=True`.
-        if self.full:
-
-            @self.router.get(
-                "/conformance",
-                response_model=model.Conformance,
-                response_model_exclude_none=True,
-                response_class=ORJSONResponse,
-                responses={
-                    200: {
-                        "content": {
-                            MediaType.json.value: {},
-                            MediaType.html.value: {},
-                        }
-                    },
-                },
-            )
-            def conformance(
-                request: Request,
-                output_type: Optional[MediaType] = Depends(OutputType),
-            ):
-                """Get conformance."""
-                data = model.Conformance(
-                    conformsTo=[
-                        # OGC Common
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-                        "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-                        "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-                        *self.conforms_to,
-                    ]
-                )
-
-                if output_type == MediaType.html:
-                    return self._create_html_response(
-                        request,
-                        data.json(exclude_none=True),
-                        template_name="conformance",
-                    )
-
-                return data
-
-            @self.router.get(
-                "/",
-                response_model=model.Landing,
-                response_model_exclude_none=True,
-                response_class=ORJSONResponse,
-                responses={
-                    200: {
-                        "content": {
-                            MediaType.json.value: {},
-                            MediaType.html.value: {},
-                        }
-                    },
-                },
-            )
-            def landing(
-                request: Request,
-                output_type: Optional[MediaType] = Depends(OutputType),
-            ):
-                """Get landing page."""
-                data = model.Landing(
-                    title="OGC Features API",
-                    links=[
-                        model.Link(
-                            title="Landing Page",
-                            href=self.url_for(request, "landing"),
-                            type=MediaType.json,
-                            rel="self",
-                        ),
-                        model.Link(
-                            title="the API definition (JSON)",
-                            href=str(request.url_for("openapi")),
-                            type=MediaType.openapi30_json,
-                            rel="service-desc",
-                        ),
-                        model.Link(
-                            title="the API documentation",
-                            href=str(request.url_for("swagger_ui_html")),
-                            type=MediaType.html,
-                            rel="service-doc",
-                        ),
-                        model.Link(
-                            title="Conformance",
-                            href=self.url_for(request, "conformance"),
-                            type=MediaType.json,
-                            rel="conformance",
-                        ),
-                        model.Link(
-                            title="List of Collections",
-                            href=self.url_for(request, "collections"),
-                            type=MediaType.json,
-                            rel="data",
-                        ),
-                        model.Link(
-                            title="Collection metadata",
-                            href=self.url_for(
-                                request,
-                                "collection",
-                                collectionId="{collectionId}",
-                            ),
-                            type=MediaType.json,
-                            rel="data",
-                        ),
-                        model.Link(
-                            title="Collection queryables",
-                            href=self.url_for(
-                                request,
-                                "queryables",
-                                collectionId="{collectionId}",
-                            ),
-                            type=MediaType.schemajson,
-                            rel="queryables",
-                        ),
-                        model.Link(
-                            title="Collection Features",
-                            href=self.url_for(
-                                request, "items", collectionId="{collectionId}"
-                            ),
-                            type=MediaType.geojson,
-                            rel="data",
-                        ),
-                        model.Link(
-                            title="Collection Feature",
-                            href=self.url_for(
-                                request,
-                                "item",
-                                collectionId="{collectionId}",
-                                itemId="{itemId}",
-                            ),
-                            type=MediaType.geojson,
-                            rel="data",
-                        ),
-                    ],
-                )
-
-                if output_type == MediaType.html:
-                    return self._create_html_response(
-                        request,
-                        data.json(exclude_none=True),
-                        template_name="landing",
-                    )
-
-                return data
-
 
 @dataclass
 class OGCTilesFactory(EndpointsFactory):
     """OGC Tiles Endpoints Factory."""
 
     supported_tms: TileMatrixSets = default_tms
-
-    full: bool = True
-
-    tags: Optional[List[str]] = None
 
     @property
     def conforms_to(self) -> List[str]:
@@ -1139,6 +1142,43 @@ class OGCTilesFactory(EndpointsFactory):
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
         ]
 
+    def links(self, request: Request) -> List[model.Link]:
+        """OGC Tiles API links."""
+        return [
+            model.Link(
+                title="Collection Vector Tiles",
+                href=self.url_for(
+                    request,
+                    "tile",
+                    collectionId="{collectionId}",
+                    tileMatrix="{tileMatrix}",
+                    tileCol="{tileCol}",
+                    tileRow="{tileRow}",
+                ),
+                type=MediaType.mvt,
+                rel="data",
+            ),
+            model.Link(
+                title="TileMatrixSets",
+                href=self.url_for(
+                    request,
+                    "tilematrixsets",
+                ),
+                type=MediaType.json,
+                rel="data",
+            ),
+            model.Link(
+                title="TileMatrixSet",
+                href=self.url_for(
+                    request,
+                    "tilematrixset",
+                    tileMatrixSetId="{tileMatrixSetId}",
+                ),
+                type=MediaType.json,
+                rel="data",
+            ),
+        ]
+
     def register_routes(self):  # noqa: C901
         """Register OGC Features endpoints."""
 
@@ -1146,13 +1186,11 @@ class OGCTilesFactory(EndpointsFactory):
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
-            tags=self.tags,
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
-            tags=self.tags,
         )
         async def tile(
             request: Request,
@@ -1212,14 +1250,12 @@ class OGCTilesFactory(EndpointsFactory):
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
-            tags=self.tags,
         )
         @self.router.get(
             "/collections/{collectionId}/tilejson.json",
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
-            tags=self.tags,
         )
         async def tilejson(
             request: Request,
@@ -1293,12 +1329,10 @@ class OGCTilesFactory(EndpointsFactory):
         @self.router.get(
             "/collections/{collectionId}/{tileMatrixSetId}/viewer",
             response_class=HTMLResponse,
-            tags=self.tags,
         )
         @self.router.get(
             "/collections/{collectionId}/viewer",
             response_class=HTMLResponse,
-            tags=self.tags,
         )
         def viewer_endpoint(
             request: Request,
@@ -1346,7 +1380,6 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             summary="Retrieve the list of available tiling schemes (tile matrix sets).",
             operation_id="getTileMatrixSetsList",
-            tags=self.tags,
         )
         async def tilematrixsets(request: Request):
             """
@@ -1379,7 +1412,6 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
             operation_id="getTileMatrixSet",
-            tags=self.tags,
         )
         async def tilematrixset(
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
@@ -1392,148 +1424,10 @@ class OGCTilesFactory(EndpointsFactory):
             """
             return self.supported_tms.get(tileMatrixSetId)
 
-        # NOTE: The OGC Tiles API specification includes `/conformances` and `/` endpoints
-        # Those two endpoints are optional in the factory and only added if `full=True`.
-        if self.full:
-
-            @self.router.get(
-                "/conformance",
-                response_model=model.Conformance,
-                response_model_exclude_none=True,
-                response_class=ORJSONResponse,
-                responses={
-                    200: {
-                        "content": {
-                            MediaType.json.value: {},
-                            MediaType.html.value: {},
-                        }
-                    },
-                },
-            )
-            def conformance(
-                request: Request,
-                output_type: Optional[MediaType] = Depends(OutputType),
-            ):
-                """Get conformance."""
-                data = model.Conformance(
-                    conformsTo=[
-                        # OGC Common
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-                        "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-                        "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-                        "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-                        *self.conforms_to,
-                    ]
-                )
-
-                if output_type == MediaType.html:
-                    return self._create_html_response(
-                        request,
-                        data.json(exclude_none=True),
-                        template_name="conformance",
-                    )
-
-                return data
-
-            @self.router.get(
-                "/",
-                response_model=model.Landing,
-                response_model_exclude_none=True,
-                response_class=ORJSONResponse,
-                responses={
-                    200: {
-                        "content": {
-                            MediaType.json.value: {},
-                            MediaType.html.value: {},
-                        }
-                    },
-                },
-            )
-            def landing(
-                request: Request,
-                output_type: Optional[MediaType] = Depends(OutputType),
-            ):
-                """Get landing page."""
-                data = model.Landing(
-                    title="OGC Features API",
-                    links=[
-                        model.Link(
-                            title="Landing Page",
-                            href=self.url_for(request, "landing"),
-                            type=MediaType.json,
-                            rel="self",
-                        ),
-                        model.Link(
-                            title="the API definition (JSON)",
-                            href=str(request.url_for("openapi")),
-                            type=MediaType.openapi30_json,
-                            rel="service-desc",
-                        ),
-                        model.Link(
-                            title="the API documentation",
-                            href=str(request.url_for("swagger_ui_html")),
-                            type=MediaType.html,
-                            rel="service-doc",
-                        ),
-                        model.Link(
-                            title="Conformance",
-                            href=self.url_for(request, "conformance"),
-                            type=MediaType.json,
-                            rel="conformance",
-                        ),
-                        model.Link(
-                            title="Collection Vector Tiles",
-                            href=self.url_for(
-                                request,
-                                "tile",
-                                collectionId="{collectionId}",
-                                tileMatrix="{tileMatrix}",
-                                tileCol="{tileCol}",
-                                tileRow="{tileRow}",
-                            ),
-                            type=MediaType.mvt,
-                            rel="data",
-                        ),
-                        model.Link(
-                            title="TileMatrixSets",
-                            href=self.url_for(
-                                request,
-                                "tilematrixsets",
-                            ),
-                            type=MediaType.json,
-                            rel="data",
-                        ),
-                        model.Link(
-                            title="TileMatrixSet",
-                            href=self.url_for(
-                                request,
-                                "tilematrixset",
-                                tileMatrixSetId="{tileMatrixSetId}",
-                            ),
-                            type=MediaType.json,
-                            rel="data",
-                        ),
-                    ],
-                )
-
-                if output_type == MediaType.html:
-                    return self._create_html_response(
-                        request,
-                        data.json(exclude_none=True),
-                        template_name="landing",
-                    )
-
-                return data
-
 
 @dataclass
 class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
-
-    title: str = "TiPg: OGC Features and Tiles API"
 
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
@@ -1541,209 +1435,38 @@ class Endpoints(EndpointsFactory):
     ogc_features: OGCFeaturesFactory = field(init=False)
     ogc_tiles: OGCTilesFactory = field(init=False)
 
-    def __post_init__(self):
-        """Post Init: register route and configure specific options."""
+    @property
+    def conforms_to(self) -> List[str]:
+        """Endpoints conformances."""
+        return [
+            *self.ogc_features.conforms_to,
+            *self.ogc_tiles.conforms_to,
+        ]
+
+    def links(self, request: Request) -> List[model.Link]:
+        """List of available links."""
+        return [
+            *self.ogc_features.links(request),
+            *self.ogc_tiles.links(request),
+        ]
+
+    def register_routes(self):
+        """Register factory Routes."""
         self.ogc_features = OGCFeaturesFactory(
-            router=self.router,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,
             # We do not want `/` and `/conformance` from the factory
-            full=False,
-            tags=["OGC Features API"],
+            with_common=False,
         )
+        self.router.include_router(self.ogc_features.router, tags=["OGC Features API"])
+
         self.ogc_tiles = OGCTilesFactory(
-            router=self.router,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,
             supported_tms=self.supported_tms,
             # We do not want `/` and `/conformance` from the factory
-            full=False,
-            tags=["OGC Tiles API"],
+            with_common=False,
         )
-        self.register_routes()
-
-    @property
-    def conforms_to(self) -> List[str]:
-        """Endpoints conformances."""
-        return [
-            # OGC Common
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-            "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-            "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-            *self.ogc_features.conforms_to,
-            *self.ogc_tiles.conforms_to,
-        ]
-
-    def register_routes(self):
-        """Register factory Routes."""
-
-        @self.router.get(
-            "/conformance",
-            response_model=model.Conformance,
-            response_model_exclude_none=True,
-            response_class=ORJSONResponse,
-            responses={
-                200: {
-                    "content": {
-                        MediaType.json.value: {},
-                        MediaType.html.value: {},
-                    }
-                },
-            },
-        )
-        def conformance(
-            request: Request, output_type: Optional[MediaType] = Depends(OutputType)
-        ):
-            """Get conformance."""
-            data = model.Conformance(conformsTo=self.conforms_to)
-
-            if output_type == MediaType.html:
-                return create_html_response(
-                    request,
-                    data.json(exclude_none=True),
-                    templates=self.templates,
-                    template_name="conformance",
-                )
-
-            return data
-
-        @self.router.get(
-            "/",
-            response_model=model.Landing,
-            response_model_exclude_none=True,
-            response_class=ORJSONResponse,
-            responses={
-                200: {
-                    "content": {
-                        MediaType.json.value: {},
-                        MediaType.html.value: {},
-                    }
-                },
-            },
-        )
-        def landing(
-            request: Request, output_type: Optional[MediaType] = Depends(OutputType)
-        ):
-            """Get landing page."""
-            data = model.Landing(
-                title=self.title,
-                links=[
-                    model.Link(
-                        title="Landing Page",
-                        href=str(request.url_for("landing")),
-                        type=MediaType.json,
-                        rel="self",
-                    ),
-                    model.Link(
-                        title="the API definition (JSON)",
-                        href=str(request.url_for("openapi")),
-                        type=MediaType.openapi30_json,
-                        rel="service-desc",
-                    ),
-                    model.Link(
-                        title="the API documentation",
-                        href=str(request.url_for("swagger_ui_html")),
-                        type=MediaType.html,
-                        rel="service-doc",
-                    ),
-                    model.Link(
-                        title="Conformance",
-                        href=self.url_for(request, "conformance"),
-                        type=MediaType.json,
-                        rel="conformance",
-                    ),
-                    model.Link(
-                        title="List of Collections",
-                        href=self.url_for(request, "collections"),
-                        type=MediaType.json,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="Collection metadata",
-                        href=self.url_for(
-                            request,
-                            "collection",
-                            collectionId="{collectionId}",
-                        ),
-                        type=MediaType.json,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="Collection queryables",
-                        href=self.url_for(
-                            request,
-                            "queryables",
-                            collectionId="{collectionId}",
-                        ),
-                        type=MediaType.schemajson,
-                        rel="queryables",
-                    ),
-                    model.Link(
-                        title="Collection Features",
-                        href=self.url_for(
-                            request, "items", collectionId="{collectionId}"
-                        ),
-                        type=MediaType.geojson,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="Collection Vector Tiles",
-                        href=self.url_for(
-                            request,
-                            "tile",
-                            collectionId="{collectionId}",
-                            tileMatrix="{tileMatrix}",
-                            tileCol="{tileCol}",
-                            tileRow="{tileRow}",
-                        ),
-                        type=MediaType.mvt,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="Collection Feature",
-                        href=self.url_for(
-                            request,
-                            "item",
-                            collectionId="{collectionId}",
-                            itemId="{itemId}",
-                        ),
-                        type=MediaType.geojson,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="TileMatrixSets",
-                        href=self.url_for(
-                            request,
-                            "tilematrixsets",
-                        ),
-                        type=MediaType.json,
-                        rel="data",
-                    ),
-                    model.Link(
-                        title="TileMatrixSet",
-                        href=self.url_for(
-                            request,
-                            "tilematrixset",
-                            tileMatrixSetId="{tileMatrixSetId}",
-                        ),
-                        type=MediaType.json,
-                        rel="data",
-                    ),
-                ],
-            )
-
-            if output_type == MediaType.html:
-                return create_html_response(
-                    request,
-                    data.json(exclude_none=True),
-                    templates=self.templates,
-                    template_name="landing",
-                )
-
-            return data
+        self.router.include_router(self.ogc_tiles.router, tags=["OGC Tiles API"])
