@@ -199,7 +199,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         if self.router_prefix:
             base_url += self.router_prefix.lstrip("/")
 
-        return url_path.make_absolute_url(base_url=base_url)
+        return str(url_path.make_absolute_url(base_url=base_url))
 
     def _create_html_response(
         self,
@@ -1041,13 +1041,13 @@ class OGCFeaturesFactory(EndpointsFactory):
                         ),
                         model.Link(
                             title="the API definition (JSON)",
-                            href=request.url_for("openapi"),
+                            href=str(request.url_for("openapi")),
                             type=MediaType.openapi30_json,
                             rel="service-desc",
                         ),
                         model.Link(
                             title="the API documentation",
-                            href=request.url_for("swagger_ui_html"),
+                            href=str(request.url_for("swagger_ui_html")),
                             type=MediaType.html,
                             rel="service-doc",
                         ),
