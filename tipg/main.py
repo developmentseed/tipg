@@ -1,21 +1,17 @@
 """tipg app."""
 
-from typing import Any, List, Optional
+from typing import Any, List
 
 import jinja2
 
 from tipg import __version__ as tipg_version
 from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
-from tipg.dependencies import OutputType
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from tipg.factory import OGCFeaturesFactory, OGCTilesFactory, create_html_response
+from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware
-from tipg.model import Conformance, Landing, Link
-from tipg.resources.enums import MediaType
 from tipg.settings import APISettings, DatabaseSettings, PostgresSettings
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.responses import ORJSONResponse
+from fastapi import FastAPI, Request
 
 from starlette.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
@@ -47,191 +43,8 @@ templates = Jinja2Templates(
     loader=jinja2.ChoiceLoader(templates_location),
 )  # type: ignore
 
-# Register endpoints.
-ogc_features = OGCFeaturesFactory(templates=templates)
-app.include_router(ogc_features.router, tags=["OGC Features API"])
-
-ogc_tiles = OGCTilesFactory(templates=templates)
-app.include_router(ogc_tiles.router, tags=["OGC Tiles API"])
-
-
-@app.get(
-    "/conformance",
-    response_model=Conformance,
-    response_model_exclude_none=True,
-    response_class=ORJSONResponse,
-    responses={
-        200: {
-            "content": {
-                MediaType.json.value: {},
-                MediaType.html.value: {},
-            }
-        },
-    },
-)
-def conformance(
-    request: Request, output_type: Optional[MediaType] = Depends(OutputType)
-):
-    """Get conformance."""
-    data = Conformance(
-        conformsTo=[
-            # OGC Common
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-            "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-            "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-            "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-            *ogc_features.conforms_to,
-            *ogc_tiles.conforms_to,
-        ]
-    )
-
-    if output_type == MediaType.html:
-        return create_html_response(
-            request,
-            data.json(exclude_none=True),
-            templates=templates,
-            template_name="conformance",
-        )
-
-    return data
-
-
-@app.get(
-    "/",
-    response_model=Landing,
-    response_model_exclude_none=True,
-    response_class=ORJSONResponse,
-    responses={
-        200: {
-            "content": {
-                MediaType.json.value: {},
-                MediaType.html.value: {},
-            }
-        },
-    },
-)
-def landing(request: Request, output_type: Optional[MediaType] = Depends(OutputType)):
-    """Get landing page."""
-    data = Landing(
-        title=settings.name,
-        links=[
-            Link(
-                title="Landing Page",
-                href=request.url_for("landing"),
-                type=MediaType.json,
-                rel="self",
-            ),
-            Link(
-                title="the API definition (JSON)",
-                href=request.url_for("openapi"),
-                type=MediaType.openapi30_json,
-                rel="service-desc",
-            ),
-            Link(
-                title="the API documentation",
-                href=request.url_for("swagger_ui_html"),
-                type=MediaType.html,
-                rel="service-doc",
-            ),
-            Link(
-                title="Conformance",
-                href=request.url_for("conformance"),
-                type=MediaType.json,
-                rel="conformance",
-            ),
-            Link(
-                title="List of Collections",
-                href=ogc_features.url_for(request, "collections"),
-                type=MediaType.json,
-                rel="data",
-            ),
-            Link(
-                title="Collection metadata",
-                href=ogc_features.url_for(
-                    request,
-                    "collection",
-                    collectionId="{collectionId}",
-                ),
-                type=MediaType.json,
-                rel="data",
-            ),
-            Link(
-                title="Collection queryables",
-                href=ogc_features.url_for(
-                    request,
-                    "queryables",
-                    collectionId="{collectionId}",
-                ),
-                type=MediaType.schemajson,
-                rel="queryables",
-            ),
-            Link(
-                title="Collection Features",
-                href=ogc_features.url_for(
-                    request, "items", collectionId="{collectionId}"
-                ),
-                type=MediaType.geojson,
-                rel="data",
-            ),
-            Link(
-                title="Collection Vector Tiles",
-                href=ogc_tiles.url_for(
-                    request,
-                    "tile",
-                    collectionId="{collectionId}",
-                    tileMatrix="{tileMatrix}",
-                    tileCol="{tileCol}",
-                    tileRow="{tileRow}",
-                ),
-                type=MediaType.mvt,
-                rel="data",
-            ),
-            Link(
-                title="Collection Feature",
-                href=ogc_features.url_for(
-                    request,
-                    "item",
-                    collectionId="{collectionId}",
-                    itemId="{itemId}",
-                ),
-                type=MediaType.geojson,
-                rel="data",
-            ),
-            Link(
-                title="TileMatrixSets",
-                href=ogc_tiles.url_for(
-                    request,
-                    "tilematrixsets",
-                ),
-                type=MediaType.json,
-                rel="data",
-            ),
-            Link(
-                title="TileMatrixSet",
-                href=ogc_tiles.url_for(
-                    request,
-                    "tilematrixset",
-                    tileMatrixSetId="{tileMatrixSetId}",
-                ),
-                type=MediaType.json,
-                rel="data",
-            ),
-        ],
-    )
-
-    if output_type == MediaType.html:
-        return create_html_response(
-            request,
-            data.json(exclude_none=True),
-            templates=templates,
-            template_name="landing",
-        )
-
-    return data
-
+ogc_api = Endpoints(templates=templates, name=settings.name)
+app.include_router(ogc_api.router)
 
 # Set all CORS enabled origins
 if settings.cors_origins:
