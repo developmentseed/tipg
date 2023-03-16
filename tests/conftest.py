@@ -90,8 +90,6 @@ def app(database_url, monkeypatch):
     app.user_middleware = []
     app.middleware_stack = app.build_middleware_stack()
 
-    # register functions to app.state.function_catalog here
-
     with TestClient(app) as app:
         yield app
 
