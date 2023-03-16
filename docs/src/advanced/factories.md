@@ -49,7 +49,7 @@ endpoints = Factory(collection_dependency=lambda: ["collection1", "collection2"]
 app.include_router(endpoints.router)
 ```
 
-## OGC Features Factory
+## OGC Features API Factory
 
 ```python
 from tipg.factory import OGCFeaturesFactory
@@ -86,7 +86,7 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 | `GET`  | `/`                                                             | HTML / JSON                                       | landing page
 
 
-## OGC Tiles Factory
+## OGC Tiles API Factory
 
 ```python
 from tipg.factory import OGCTilesFactory
@@ -124,7 +124,7 @@ app.include_router(endpoints.router, tags=["OGC Tiles API"])
 | `GET`  | `/conformance`                                                                           | HTML / JSON                   | conformance class landing Page
 | `GET`  | `/`                                                                                      | HTML / JSON                   | landing page
 
-## OGC Features + Tile Factory
+## OGC Features + Tiles API Factory
 
 ```python
 from tipg.factory import Endpoints
