@@ -55,7 +55,7 @@ app.include_router(endpoints.router)
 from tipg.factory import OGCFeaturesFactory
 
 app = FastAPI()
-endpoints = OGCFeaturesFactory(full=True)
+endpoints = OGCFeaturesFactory(with_common=True)
 app.include_router(endpoints.router, tags=["OGC Features API"])
 ```
 
@@ -92,7 +92,7 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 from tipg.factory import OGCTilesFactory
 
 app = FastAPI()
-endpoints = OGCTilesFactory(full=True)
+endpoints = OGCTilesFactory(with_common=True)
 app.include_router(endpoints.router, tags=["OGC Tiles API"])
 ```
 
