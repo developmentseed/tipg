@@ -29,7 +29,7 @@ dependencies = [
     "morecantile>=3.1,<4.0",
     "geojson-pydantic>=0.4.3",
     "pygeofilter>=0.2.0,<0.3.0",
-    "ciso8601~=2.2.0",
+    "ciso8601~=2.3",
     "starlette-cramjam>=0.3,<0.4",
     "importlib_resources>=1.1.0; python_version < '3.9'",
     "typing_extensions; python_version < '3.9.2'",
