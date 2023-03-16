@@ -7,7 +7,6 @@ from buildpg import RawDangerous as raw
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
-from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, root_validator
 from pygeofilter.ast import AstType
@@ -24,6 +23,7 @@ from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.model import Extent
 from tipg.settings import TableSettings, TileSettings
+from tipg.utils import parse_rfc3339
 
 tile_settings = TileSettings()
 

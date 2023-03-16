@@ -18,7 +18,6 @@ from urllib.parse import urlencode
 
 import jinja2
 import orjson
-from ciso8601 import parse_rfc3339
 from morecantile import TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
@@ -45,6 +44,7 @@ from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import TileSettings
+from tipg.utils import parse_rfc3339
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
