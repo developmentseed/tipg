@@ -310,6 +310,17 @@ def test_items_geo_filter_cql2(app):
     assert body["numberMatched"] == 78
 
 
+def test_items_geo_filter_cql2_non_4326_crs(app):
+    response = app.get(
+        "/collections/public.minnesota/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-95.5389899 47.5578719,-95.5018943 46.4902864,-94.1637708 46.4891952,-94.1277889 47.5804373,-95.5389899 47.5578719)))"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 2
+    assert body["numberMatched"] == 2
+
+
 def test_items_function_filter_cql2(app):
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=left(pr,2)='13'"
