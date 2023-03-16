@@ -61,7 +61,7 @@ class Operator:
         "INTERSECTS": lambda f, a: Func(
             "st_intersects",
             f,
-            Func("st_setsrid", cast(a, "geometry"), Func("st_srid", f)),
+            Func("st_transform", cast(a, "geometry"), Func("st_srid", f)),
         ),
         "DISJOINT": lambda f, a: Func("st_disjoint", f, a),
         "CONTAINS": lambda f, a: Func("st_contains", f, a),
