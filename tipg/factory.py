@@ -1180,7 +1180,7 @@ class OGCTilesFactory(EndpointsFactory):
         ]
 
     def register_routes(self):  # noqa: C901
-        """Register OGC Features endpoints."""
+        """Register OGC Tiles endpoints."""
 
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
