@@ -188,9 +188,7 @@ class Collection(BaseModel):
                 "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
             }
 
-        if cols := self.datetime_columns:
-            cols = [col for col in cols if col.mindt or col.maxdt]
-
+        if cols := [col for col in self.datetime_columns if col.mindt or col.maxdt]:
             intervals = []
             if len(cols) == 1:
                 if cols[0].mindt or cols[0].maxdt:

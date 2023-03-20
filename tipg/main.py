@@ -43,9 +43,8 @@ templates = Jinja2Templates(
     loader=jinja2.ChoiceLoader(templates_location),
 )  # type: ignore
 
-# Register endpoints.
-endpoints = Endpoints(title=settings.name, templates=templates)
-app.include_router(endpoints.router, tags=["OGC API"])
+ogc_api = Endpoints(title=settings.name, templates=templates)
+app.include_router(ogc_api.router)
 
 # Set all CORS enabled origins
 if settings.cors_origins:
@@ -100,12 +99,12 @@ def ping():
 
 if settings.DEBUG:
 
-    @app.get("/rawcatalog")
+    @app.get("/rawcatalog", tags=["debug"])
     async def raw_catalog(request: Request):
         """Return parsed catalog data for testing."""
         return request.app.state.collection_catalog
 
-    @app.get("/refresh")
+    @app.get("/refresh", tags=["debug"])
     async def refresh(request: Request):
         """Return parsed catalog data for testing."""
         await startup_event()

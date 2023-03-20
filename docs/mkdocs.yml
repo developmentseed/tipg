@@ -19,7 +19,8 @@ extra:
 nav:
   - TiPg: "index.md"
   - User Guide:
-    - "Endpoints": endpoints.md
+    - "Endpoints documentation": endpoints.md
+    - "Endpoints Factories": advanced/factories.md
   - API:
     - db: api/tipg/db.md
     - dbmodel: api/tipg/dbmodel.md

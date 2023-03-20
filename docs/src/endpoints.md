@@ -421,6 +421,7 @@ PathParams:
 - **itemId** (str): Feature Id
 
 QueryParams:
+
 - **geom-column** * (str): Select geometry column to create geometry from.
 - **bbox-only**  * (bool): Only return the bounding box of the feature.
 - **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
@@ -430,6 +431,8 @@ QueryParams:
 HeaderParams:
 
 - **accept** (str, one of [`application/geo+json`, `text/html`, `application/json`])): Select response MediaType.
+
+\*  **Not in OGC API Features Specification**
 
 Example:
 
@@ -478,6 +481,7 @@ PathParams:
 - **tileRow** (int): TMS's row identifier (Y).
 
 QueryParams:
+
 - **limit** (int): Limits the number of features in the response. Defaults to 10000.
 - **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
 - **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
@@ -496,3 +500,5 @@ QueryParams:
 - **sortby** (str): Sort the items by a specific column (ascending (default) or descending). argument should be in form of `-/+{column}`.
 - **bbox-only**  * (bool): Only return the bounding box of the feature.
 - **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
+
+\*  **Not in OGC API Features Specification**
