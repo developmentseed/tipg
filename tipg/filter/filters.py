@@ -10,7 +10,7 @@ from buildpg import V
 from buildpg.funcs import AND as and_
 from buildpg.funcs import NOT as not_
 from buildpg.funcs import OR as or_
-from buildpg.funcs import any, cast
+from buildpg.funcs import any
 from buildpg.logic import Func
 from geojson_pydantic.geometries import Polygon, parse_geometry_obj
 
@@ -61,18 +61,44 @@ class Operator:
         "INTERSECTS": lambda f, a: Func(
             "st_intersects",
             f,
-            Func("st_transform", cast(a, "geometry"), Func("st_srid", f)),
+            Func("st_transform", a, Func("st_srid", f)),
         ),
-        "DISJOINT": lambda f, a: Func("st_disjoint", f, a),
-        "CONTAINS": lambda f, a: Func("st_contains", f, a),
-        "WITHIN": lambda f, a: Func("st_within", f, a),
-        "TOUCHES": lambda f, a: Func("st_touches", f, a),
-        "CROSSES": lambda f, a: Func("st_crosses", f, a),
-        "OVERLAPS": lambda f, a: Func("st_overlaps", f, a),
-        "EQUALS": lambda f, a: Func("st_equals", f, a),
-        "RELATE": lambda f, a, pattern: Func("st_relate", f, a, pattern),
-        "DWITHIN": lambda f, a, distance: Func("st_dwithin", f, a, distance),
-        "BEYOND": lambda f, a, distance: ~Func("st_dwithin", f, a, distance),
+        "DISJOINT": lambda f, a: Func(
+            "st_disjoint", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "CONTAINS": lambda f, a: Func(
+            "st_contains", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "WITHIN": lambda f, a: Func(
+            "st_within", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "TOUCHES": lambda f, a: Func(
+            "st_touches", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "CROSSES": lambda f, a: Func(
+            "st_crosses",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "OVERLAPS": lambda f, a: Func(
+            "st_overlaps",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "EQUALS": lambda f, a: Func(
+            "st_equals",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "RELATE": lambda f, a, pattern: Func(
+            "st_relate", f, Func("st_transform", a, Func("st_srid", f)), pattern
+        ),
+        "DWITHIN": lambda f, a, distance: Func(
+            "st_dwithin", f, Func("st_transform", a, Func("st_srid", f)), distance
+        ),
+        "BEYOND": lambda f, a, distance: ~Func(
+            "st_dwithin", f, Func("st_transform", a, Func("st_srid", f)), distance
+        ),
         "+": lambda f, a: f + a,
         "-": lambda f, a: f - a,
         "*": lambda f, a: f * a,
