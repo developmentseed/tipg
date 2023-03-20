@@ -24,7 +24,7 @@ dependencies = [
     "orjson",
     "asyncpg>=0.23.0",
     "buildpg>=0.3",
-    "fastapi>=0.87",
+    "fastapi>=0.87,<0.95",
     "jinja2>=2.11.2,<4.0.0",
     "morecantile>=3.1,<4.0",
     "geojson-pydantic>=0.4.3",
