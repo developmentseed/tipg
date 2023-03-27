@@ -8,8 +8,8 @@ def test_collections(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
-    assert body["numberMatched"] == 12
-    assert body["numberReturned"] == 12
+    assert body["numberMatched"] == 13
+    assert body["numberReturned"] == 13
 
     ids = [x["id"] for x in body["collections"]]
     assert "public.landsat_wrs" in ids
@@ -27,7 +27,7 @@ def test_collections_search(app):
     """Test /collections endpoint."""
     response = app.get("/collections", params={"limit": 1})
     body = response.json()
-    assert body["numberMatched"] == 12
+    assert body["numberMatched"] == 13
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
@@ -35,15 +35,15 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"limit": 1, "offset": 1})
     body = response.json()
-    assert body["numberMatched"] == 12
+    assert body["numberMatched"] == 13
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
     assert "prev" in rels
 
-    response = app.get("/collections", params={"limit": 1, "offset": 11})
+    response = app.get("/collections", params={"limit": 1, "offset": 12})
     body = response.json()
-    assert body["numberMatched"] == 12
+    assert body["numberMatched"] == 13
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" not in rels

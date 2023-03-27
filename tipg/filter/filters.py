@@ -58,17 +58,47 @@ class Operator:
         "not_in": lambda f, a: ~f == any(a),
         "any": lambda f, a: f.any(a),
         "not_any": lambda f, a: f.not_(f.any(a)),
-        "INTERSECTS": lambda f, a: Func("st_intersects", f, a),
-        "DISJOINT": lambda f, a: Func("st_disjoint", f, a),
-        "CONTAINS": lambda f, a: Func("st_contains", f, a),
-        "WITHIN": lambda f, a: Func("st_within", f, a),
-        "TOUCHES": lambda f, a: Func("st_touches", f, a),
-        "CROSSES": lambda f, a: Func("st_crosses", f, a),
-        "OVERLAPS": lambda f, a: Func("st_overlaps", f, a),
-        "EQUALS": lambda f, a: Func("st_equals", f, a),
-        "RELATE": lambda f, a, pattern: Func("st_relate", f, a, pattern),
-        "DWITHIN": lambda f, a, distance: Func("st_dwithin", f, a, distance),
-        "BEYOND": lambda f, a, distance: ~Func("st_dwithin", f, a, distance),
+        "INTERSECTS": lambda f, a: Func(
+            "st_intersects",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "DISJOINT": lambda f, a: Func(
+            "st_disjoint", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "CONTAINS": lambda f, a: Func(
+            "st_contains", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "WITHIN": lambda f, a: Func(
+            "st_within", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "TOUCHES": lambda f, a: Func(
+            "st_touches", f, Func("st_transform", a, Func("st_srid", f))
+        ),
+        "CROSSES": lambda f, a: Func(
+            "st_crosses",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "OVERLAPS": lambda f, a: Func(
+            "st_overlaps",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "EQUALS": lambda f, a: Func(
+            "st_equals",
+            f,
+            Func("st_transform", a, Func("st_srid", f)),
+        ),
+        "RELATE": lambda f, a, pattern: Func(
+            "st_relate", f, Func("st_transform", a, Func("st_srid", f)), pattern
+        ),
+        "DWITHIN": lambda f, a, distance: Func(
+            "st_dwithin", f, Func("st_transform", a, Func("st_srid", f)), distance
+        ),
+        "BEYOND": lambda f, a, distance: ~Func(
+            "st_dwithin", f, Func("st_transform", a, Func("st_srid", f)), distance
+        ),
         "+": lambda f, a: f + a,
         "-": lambda f, a: f - a,
         "*": lambda f, a: f * a,

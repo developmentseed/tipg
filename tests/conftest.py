@@ -49,6 +49,9 @@ def database_url(test_db):
     test_db.run_sql_file(os.path.join(DATA_DIR, "canada.sql"))
     assert test_db.has_table("canada")
 
+    test_db.run_sql_file(os.path.join(DATA_DIR, "minnesota.sql"))
+    assert test_db.has_table("minnesota")
+
     return test_db.connection.engine.url
 
 
