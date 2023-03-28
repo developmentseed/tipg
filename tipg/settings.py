@@ -158,6 +158,11 @@ class DatabaseSettings(pydantic.BaseSettings):
         env_prefix = "TIPG_DB_"
         env_file = ".env"
 
+    @property
+    def user_schemas(self) -> Optional[List[str]]:
+        """Return a set of schemas from tables/functions schemas."""
+        return list(set([*self.schemas, *self.function_schemas]))
+
 
 class CustomSQLSettings(pydantic.BaseSettings):
     """TiPg Custom SQL settings."""

@@ -197,11 +197,11 @@ $$ LANGUAGE SQL;
 
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
-    schemas text[] DEFAULT '{public}',
+    schemas text[] DEFAULT NULL,
     exclude_schemas text[] DEFAULT NULL,
     tables text[] DEFAULT NULL,
     exclude_tables text[] DEFAULT NULL,
-    function_schemas text[] DEFAULT '{public}',
+    function_schemas text[] DEFAULT NULL,
     exclude_function_schemas text[] DEFAULT NULL,
     functions text[] DEFAULT NULL,
     exclude_functions text[] DEFAULT NULL,

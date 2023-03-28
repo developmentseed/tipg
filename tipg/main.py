@@ -64,7 +64,9 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 @app.on_event("startup")
 async def startup_event() -> None:
     """Connect to database on startup."""
-    await connect_to_db(app, settings=postgres_settings)
+    await connect_to_db(
+        app, settings=postgres_settings, schemas=db_settings.user_schemas
+    )
     await register_collection_catalog(
         app,
         schemas=db_settings.schemas,
