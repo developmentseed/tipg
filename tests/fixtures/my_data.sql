@@ -17,4 +17,7 @@ ALTER TABLE public.my_data ADD COLUMN otherdt timestamptz;
 ALTER TABLE public.my_data ADD COLUMN othergeom geometry;
 UPDATE my_data SET otherdt=datetime+'1 year'::interval, othergeom=st_pointonsurface(geom);
 CREATE VIEW public.my_data_alt AS SELECT * FROM my_data;
+-- Create a copy of my_data but with geography instead of Geometry
+CREATE TABLE public.my_data_geo AS SELECT * FROM my_data;
+ALTER TABLE public.my_data_geo ALTER COLUMN geom TYPE geography(Polygon,4326) USING ST_Transform(geom,4326)::geography;
 COMMIT;
