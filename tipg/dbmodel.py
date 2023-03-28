@@ -356,7 +356,8 @@ class Collection(BaseModel):
         tile: Tile,
     ):
         """Create MVT from intersecting geometries."""
-        geom = logic.V(geometry_column.name)
+        print(geometry_column.type)
+        geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
 
         # make sure the geometries do not overflow the TMS bbox
         if not tms.is_valid(tile):
