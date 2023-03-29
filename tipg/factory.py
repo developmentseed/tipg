@@ -44,7 +44,7 @@ from tipg.dependencies import (
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
-from tipg.settings import TileSettings
+from tipg.settings import TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -54,7 +54,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
-tilesettings = TileSettings()
+tms_settings = TMSSettings()
 
 DEFAULT_TEMPLATES = Jinja2Templates(
     directory="",
@@ -1196,8 +1196,8 @@ class OGCTilesFactory(EndpointsFactory):
             request: Request,
             collection=Depends(self.collection_dependency),
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                tilesettings.default_tms,
-                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tilesettings.default_tms}')",
+                tms_settings.default_tms,
+                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
             ),
             tile=Depends(TileParams),
             ids_filter: Optional[List[str]] = Depends(ids_query),
@@ -1218,9 +1218,9 @@ class OGCTilesFactory(EndpointsFactory):
                 description="Select datetime column.",
                 alias="datetime-column",
             ),
-            limit: int = Query(
-                tilesettings.max_features_per_tile,
-                description="Limits the number of features in the response.",
+            limit: Optional[int] = Query(
+                None,
+                description="Limits the number of features in the response. Defaults to 10000 or TIPG_MAX_FEATURES_PER_TILE environment variable.",
             ),
         ):
             """Return Vector Tile."""
@@ -1261,8 +1261,8 @@ class OGCTilesFactory(EndpointsFactory):
             request: Request,
             collection=Depends(self.collection_dependency),
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                tilesettings.default_tms,
-                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tilesettings.default_tms}')",
+                tms_settings.default_tms,
+                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
             ),
             minzoom: Optional[int] = Query(
                 None, description="Overwrite default minzoom."
@@ -1303,9 +1303,9 @@ class OGCTilesFactory(EndpointsFactory):
                 tile_endpoint += f"?{urlencode(query_params)}"
 
             # Get Min/Max zoom from layer settings if tms is the default tms
-            if tms.identifier == collection.default_tms:
-                minzoom = minzoom or collection.minzoom
-                maxzoom = maxzoom or collection.maxzoom
+            if tms.identifier == tms_settings.default_tms:
+                minzoom = minzoom or tms_settings.default_minzoom
+                maxzoom = maxzoom or tms_settings.default_maxzoom
 
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom

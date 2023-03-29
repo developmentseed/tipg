@@ -3,7 +3,7 @@
 import mapbox_vector_tile
 import numpy as np
 
-from tipg.settings import TileSettings
+from tipg.dbmodel import mvt_settings
 
 
 def test_tilejson(app):
@@ -44,7 +44,8 @@ def test_tilejson(app):
 
 def test_tile(app):
     """request a tile."""
-    TileSettings().set_mvt_layername = False
+    init_value = mvt_settings.set_mvt_layername
+    mvt_settings.set_mvt_layername = False
 
     name = "landsat_wrs"
     response = app.get(f"/collections/public.{name}/tiles/0/0/0")
@@ -79,9 +80,12 @@ def test_tile(app):
     response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=the_geom")
     assert response.status_code == 404
 
+    mvt_settings.set_mvt_layername = init_value
+
 
 def test_tile_custom_name(app):
-    TileSettings().set_mvt_layername = True
+    init_value = mvt_settings.set_mvt_layername
+    mvt_settings.set_mvt_layername = True
 
     name = "landsat_wrs"
     response = app.get(f"/collections/public.{name}/tiles/0/0/0")
@@ -90,10 +94,13 @@ def test_tile_custom_name(app):
     assert name in decoded.keys()
     assert len(decoded[name]["features"]) == 10000
 
+    mvt_settings.set_mvt_layername = init_value
+
 
 def test_tile_tms(app):
     """request a tile with specific TMS."""
-    TileSettings().set_mvt_layername = False
+    init_value = mvt_settings.set_mvt_layername
+    mvt_settings.set_mvt_layername = False
 
     name = "landsat_wrs"
     response = app.get(f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0")
@@ -121,9 +128,12 @@ def test_tile_tms(app):
         list(decoded["default"]["features"][0]["properties"])
     )
 
+    mvt_settings.set_mvt_layername = init_value
+
 
 def test_tile_tms_custom_name(app):
-    TileSettings().set_mvt_layername = True
+    init_value = mvt_settings.set_mvt_layername
+    mvt_settings.set_mvt_layername = True
 
     name = "landsat_wrs"
     response = app.get(f"/collections/public.{name}/tiles/WorldCRS84Quad/0/0/0")
@@ -131,6 +141,8 @@ def test_tile_tms_custom_name(app):
     decoded = mapbox_vector_tile.decode(response.content)
     assert name in decoded.keys()
     assert len(decoded[name]["features"]) > 1000
+
+    mvt_settings.set_mvt_layername = init_value
 
 
 # def test_function_tilejson(app):

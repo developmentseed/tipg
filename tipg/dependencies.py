@@ -12,13 +12,13 @@ from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 from tipg.dbmodel import Collection
 from tipg.errors import InvalidBBox, MissingFunctionParameter
 from tipg.resources import enums
-from tipg.settings import TileSettings
+from tipg.settings import TMSSettings
 
 from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
-tile_settings = TileSettings()
+tms_settings = TMSSettings()
 
 
 def CollectionParams(
@@ -313,19 +313,23 @@ def function_parameters_query(
             v = params.get(param.name, None)
             if v:
                 function_parameters[param.name] = v
+
             elif path_params.get("tileMatrix", None):
                 z = int(path_params.get("tileMatrix"))
                 x = int(path_params.get("tileCol"))
                 y = int(path_params.get("tileRow"))
                 tilematrix = path_params.get(
-                    "tileMatrixSetId", tile_settings.default_tms
+                    "tileMatrixSetId", tms_settings.default_tms
                 )
                 if param.name == "z":
                     function_parameters["z"] = z
+
                 if param.name == "x":
                     function_parameters["x"] = x
+
                 if param.name == "y":
                     function_parameters["y"] = y
+
                 if param.name == "bounds":
                     tms = default_tms.get(tilematrix)
                     left, bottom, right, top = tms.bounds(Tile(x, y, z))
@@ -339,8 +343,10 @@ def function_parameters_query(
                         f"{left} {bottom}"
                         "))"
                     )
+
                 elif param.default:
                     function_parameters[param.name] = param.default
+
             else:
                 errors.append(f"{param.name} (expected type:{param.type}).")
 
