@@ -14,6 +14,7 @@ on:
       - 'tests/**'
       - '.pre-commit-config.yaml'
       - 'dockerfiles/**'
+      - '.github/workflows/ci.yml'
   pull_request:
 env:
   LATEST_PY_VERSION: '3.10'
@@ -95,14 +96,13 @@ jobs:
         with:
           name: TiPg Benchmarks
           tool: 'pytest'
-          output-file-git path: output.json
+          output-file-path: output.json
           alert-threshold: '130%'
           comment-on-alert: true
           fail-on-alert: true
           # GitHub API token to make a commit comment
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-pages-branch: 'gh-benchmarks'
-          benchmark-data-dir-path: ''
           # Make a commit only if main
           auto-push: ${{ github.ref == 'refs/heads/main' }}
 

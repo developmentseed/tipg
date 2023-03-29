@@ -10,6 +10,7 @@ on:
       - 'CHANGES.md'
       - 'CONTRIBUTING.md'
       - 'docs/**'
+      - '.github/workflows/deploy_mkdocs.yml'
 
 jobs:
   build:
