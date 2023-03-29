@@ -23,9 +23,9 @@ from tipg.errors import (
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.model import Extent
-from tipg.settings import TableSettings, TileSettings
+from tipg.settings import MVTSettings, TableSettings
 
-tile_settings = TileSettings()
+mvt_settings = MVTSettings()
 
 
 def debug_query(q, *p):
@@ -163,9 +163,6 @@ class Collection(BaseModel):
     geometry_column: Optional[Column]
     datetime_column: Optional[Column]
     parameters: List[Parameter] = []
-    minzoom: int = tile_settings.default_minzoom
-    maxzoom: int = tile_settings.default_maxzoom
-    default_tms: str = tile_settings.default_tms
 
     @property
     def extent(self) -> Optional[Extent]:
@@ -403,9 +400,9 @@ class Collection(BaseModel):
                     ),
                     bbox.right - bbox.left,
                 ),
-                tile_settings.tile_resolution,
-                tile_settings.tile_buffer,
-                tile_settings.tile_clip,
+                mvt_settings.tile_resolution,
+                mvt_settings.tile_buffer,
+                mvt_settings.tile_clip,
             ).as_("geom")
         )
 
@@ -740,9 +737,9 @@ class Collection(BaseModel):
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
-        if limit and limit > tile_settings.max_features_per_tile:
+        if limit and limit > mvt_settings.max_features_per_tile:
             raise InvalidLimit(
-                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {tile_settings.max_features_per_tile}"
+                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {mvt_settings.max_features_per_tile}"
             )
 
         count = await self._features_count_query(
@@ -803,13 +800,15 @@ class Collection(BaseModel):
         limit: Optional[int] = None,
     ):
         """Build query to get Vector Tile."""
+        limit = limit or mvt_settings.max_features_per_tile
+
         geometry_column = self.get_geometry_column(geom)
         if not geometry_column:
             raise InvalidGeometryColumnName(f"Invalid Geometry Column Name {geom}")
 
-        if limit and limit > tile_settings.max_features_per_tile:
+        if limit > mvt_settings.max_features_per_tile:
             raise InvalidLimit(
-                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {tile_settings.max_features_per_tile}"
+                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {mvt_settings.max_features_per_tile}"
             )
 
         c = clauses.Clauses(
@@ -831,7 +830,7 @@ class Collection(BaseModel):
                 tms=tms,
                 tile=tile,
             ),
-            clauses.Limit(limit or 10),
+            clauses.Limit(limit),
         )
 
         q, p = render(
@@ -841,7 +840,7 @@ class Collection(BaseModel):
             SELECT ST_AsMVT(t.*, :l) FROM t
             """,
             c=c,
-            l=self.table if tile_settings.set_mvt_layername is True else "default",
+            l=self.table if mvt_settings.set_mvt_layername is True else "default",
         )
         debug_query(q, *p)
 
