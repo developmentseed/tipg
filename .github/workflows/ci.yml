@@ -1,6 +1,6 @@
 name: CI
 
-# On every pull request, but only on push to master
+# On every pull request, but only on push to main
 on:
   push:
     branches:
@@ -143,7 +143,7 @@ jobs:
 
   publish-docker:
     needs: [tests]
-    if: github.ref == 'refs/heads/master' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
+    if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -167,9 +167,9 @@ jobs:
         # https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
 
-      # Push `latest` when commiting to master
+      # Push `latest` when commiting to main
       - name: Build and push
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v2
         with:
           platforms: linux/amd64,linux/arm64
