@@ -46,12 +46,12 @@ class con_init:
         await conn.set_type_codec(
             "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
         )
-        schemas = ",".join(self.schemas + ["pg_temp"]) + ","
+        schemas = ",".join(["pg_temp"] + self.schemas)
         await conn.execute(
             f"""
             SELECT set_config(
                 'search_path',
-                '{schemas}' || current_setting('search_path', false),
+                '{schemas},' || current_setting('search_path', false),
                 false
                 );
             """
