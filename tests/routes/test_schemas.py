@@ -10,8 +10,6 @@ def test_collections_myschema(app_myschema):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
-    assert body["numberMatched"] == collection_number
-    assert body["numberReturned"] == collection_number
     ids = [x["id"] for x in body["collections"]]
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
@@ -20,6 +18,8 @@ def test_collections_myschema(app_myschema):
 
     # myschema table
     assert "myschema.landsat" in ids
+
+    assert body["numberMatched"] == collection_number
 
 
 def test_collections_myschema_and_public_functions(app_myschema_public_functions):
@@ -33,8 +33,7 @@ def test_collections_myschema_and_public_functions(app_myschema_public_functions
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
-    assert body["numberMatched"] == collection_number
-    assert body["numberReturned"] == collection_number
+
     ids = [x["id"] for x in body["collections"]]
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
@@ -49,6 +48,8 @@ def test_collections_myschema_and_public_functions(app_myschema_public_functions
     # no tables from public
     assert "public.my_data" not in ids
 
+    assert body["numberMatched"] == collection_number
+
 
 def test_collections_myschema_and_public(app_myschema_public):
     """Test /collections endpoint."""
@@ -61,10 +62,8 @@ def test_collections_myschema_and_public(app_myschema_public):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
-    assert body["numberMatched"] == collection_number
-    assert body["numberReturned"] == collection_number
+
     ids = [x["id"] for x in body["collections"]]
-    print(ids)
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
     assert "pg_temp.squares" in ids
@@ -78,3 +77,5 @@ def test_collections_myschema_and_public(app_myschema_public):
 
     # no public functions
     assert "public.st_hexagongrid" not in ids
+
+    assert body["numberMatched"] == collection_number
