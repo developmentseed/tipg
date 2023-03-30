@@ -305,3 +305,27 @@ def app_only_public_functions(database_url, monkeypatch):
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture
+def app_myschema_public_order(database_url, monkeypatch):
+    """Create APP with only tables from `myschema` and `public` schema and no function schema.
+
+    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
+    """
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["public", "myschema"],
+        exclude_function_schemas=["public"],
+        only_spatial_tables=False,
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
