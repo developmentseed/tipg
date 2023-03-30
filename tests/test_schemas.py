@@ -10,6 +10,7 @@ def test_myschema(app_myschema):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     ids = [x["id"] for x in body["collections"]]
+
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
     assert "pg_temp.squares" in ids
@@ -51,7 +52,7 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
 def test_myschema_and_public(app_myschema_public):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
     collection_number = (
-        11  # 3 custom functions + 1 tables from myschema + 7 tables from public
+        12  # 3 custom functions + 1 tables from myschema + 8 tables from public
     )
 
     response = app_myschema_public.get("/collections")
@@ -69,6 +70,13 @@ def test_myschema_and_public(app_myschema_public):
 
     # tables from public
     assert "public.my_data" in ids
+    assert "public.my_data_alt" in ids
+    assert "public.minnesota" in ids
+    assert "public.canada" in ids
+    assert "public.landsat" in ids
+    assert "public.nongeo_data" in ids
+    assert "public.my_data_geo" in ids
+    assert "public.landsat_wrs" in ids
 
     # no public functions
     assert "public.st_hexagongrid" not in ids
