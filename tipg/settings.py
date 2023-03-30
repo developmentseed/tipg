@@ -1,5 +1,6 @@
 """tipg config."""
 
+import pathlib
 import sys
 from typing import Any, Dict, List, Optional
 
@@ -140,13 +141,12 @@ class DatabaseSettings(pydantic.BaseSettings):
     """TiPg Database settings."""
 
     schemas: List[str] = ["public"]
-    exclude_schemas: Optional[List[str]]
     tables: Optional[List[str]]
     exclude_tables: Optional[List[str]]
-    function_schemas: List[str] = ["public"]
-    exclude_function_schemas: Optional[List[str]]
+    exclude_table_schemas: Optional[List[str]]
     functions: Optional[List[str]]
     exclude_functions: Optional[List[str]]
+    exclude_function_schemas: Optional[List[str]]
 
     only_spatial_tables: bool = True
 
@@ -160,10 +160,18 @@ class DatabaseSettings(pydantic.BaseSettings):
 class CustomSQLSettings(pydantic.BaseSettings):
     """TiPg Custom SQL settings."""
 
-    custom_sql_directory: Optional[str]
+    custom_sql_directory: Optional[pydantic.DirectoryPath]
 
     class Config:
         """model config"""
 
         env_prefix = "TIPG_"
         env_file = ".env"
+
+    @property
+    def sql_files(self) -> Optional[List[pathlib.Path]]:
+        """return a list of SQL files within the custom sql directory."""
+        if self.custom_sql_directory:
+            return list(self.custom_sql_directory.glob("*.sql"))
+
+        return None

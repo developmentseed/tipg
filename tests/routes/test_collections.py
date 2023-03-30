@@ -66,12 +66,14 @@ def test_collections_search(app):
     body = response.json()
     assert body["numberMatched"] == 4
     ids = [x["id"] for x in body["collections"]]
-    assert [
-        "public.my_data",
-        "public.my_data_alt",
-        "public.my_data_geo",
-        "public.nongeo_data",
-    ] == ids
+    assert sorted(
+        [
+            "public.my_data",
+            "public.my_data_alt",
+            "public.my_data_geo",
+            "public.nongeo_data",
+        ]
+    ) == sorted(ids)
 
     response = app.get("/collections", params={"datetime": "2022-12-31T23:59:59Z/.."})
     body = response.json()
@@ -81,18 +83,22 @@ def test_collections_search(app):
     body = response.json()
     assert body["numberMatched"] == 4
     ids = [x["id"] for x in body["collections"]]
-    assert [
-        "public.my_data",
-        "public.my_data_alt",
-        "public.my_data_geo",
-        "public.nongeo_data",
-    ] == ids
+    assert sorted(
+        [
+            "public.my_data",
+            "public.my_data_alt",
+            "public.my_data_geo",
+            "public.nongeo_data",
+        ]
+    ) == sorted(ids)
 
     response = app.get("/collections", params={"datetime": "2004-12-31T23:59:59Z/.."})
     body = response.json()
     assert body["numberMatched"] == 3
     ids = [x["id"] for x in body["collections"]]
-    assert ["public.my_data", "public.my_data_alt", "public.my_data_geo"] == ids
+    assert sorted(
+        ["public.my_data", "public.my_data_alt", "public.my_data_geo"]
+    ) == sorted(ids)
 
     response = app.get(
         "/collections", params={"datetime": "2004-01-01T00:00:00Z/2004-12-31T23:59:59Z"}

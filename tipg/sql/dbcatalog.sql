@@ -128,7 +128,15 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_tproperties(
     SELECT pg_temp.tipg_tproperties(pg_class) FROM pg_class WHERE oid=tabl::regclass;
 $$ LANGUAGE SQL;
 
-
+CREATE OR REPLACE FUNCTION pg_temp.tipg_fun_defaults(defaults pg_node_tree) RETURNS text[] AS $$
+    WITH d AS (
+        SELECT btrim(split_part(btrim(string_to_table(
+                pg_get_expr(defaults,0::oid),
+                ','
+        )),'::',1),'''') d
+    ) SELECT array_agg(d) FROM d
+    ;
+$$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_fproperties(
     p pg_proc
@@ -144,7 +152,7 @@ BEGIN
     IF p.pronargdefaults > 0 AND p.pronargs > 0 THEN
         defaults :=
             array_fill(null::text, ARRAY[p.pronargs-p.pronargdefaults])
-            || string_to_array(pg_get_expr(p.proargdefaults, 0::OID),',')
+            || pg_temp.tipg_fun_defaults(p.proargdefaults)
         ;
     ELSE
         defaults := array_fill(null::text, ARRAY[p.pronargs]);
@@ -176,7 +184,7 @@ BEGIN
         jsonb_agg(json_strip_nulls(json_build_object(
             'name', proargname,
             'type', argtype,
-            'default', regexp_replace(def, '''([a-zA-Z0-9_\-\.]+)''::\w+', '\1', 'g')
+            'default', def
         )) ORDER BY argnum ) FILTER (WHERE argmode IN ('i','b'))
     FROM t INTO properties, parameters;
     RETURN jsonb_build_object(
@@ -195,50 +203,68 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_fproperties(
     SELECT pg_temp.tipg_fproperties(pg_proc) FROM pg_proc WHERE oid=func::regproc;
 $$ LANGUAGE SQL;
 
+CREATE OR REPLACE FUNCTION pg_temp.tipg_get_schemas(include text[] DEFAULT NULL, exclude text[] DEFAULT NULL) RETURNS SETOF oid AS $$
+DECLARE
+BEGIN
+    IF include IS NULL OR cardinality(include) = 0 THEN
+        include:=string_to_array(current_setting('search_path',false),',');
+    END IF;
+    RETURN QUERY
+        WITH schemas AS (
+            SELECT pg_my_temp_schema()::regnamespace::text AS _schema
+            UNION
+            SELECT btrim(unnest(include))
+            EXCEPT
+            SELECT btrim(unnest(exclude))
+        )
+        SELECT DISTINCT oid
+        FROM pg_namespace, schemas
+        WHERE
+            nspname::text=_schema
+            AND
+            has_schema_privilege(oid, 'usage')
+        ;
+END;
+$$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
-    schemas text[] DEFAULT '{public}',
-    exclude_schemas text[] DEFAULT NULL,
+    schemas text[] DEFAULT NULL,
     tables text[] DEFAULT NULL,
     exclude_tables text[] DEFAULT NULL,
-    function_schemas text[] DEFAULT '{public}',
-    exclude_function_schemas text[] DEFAULT NULL,
+    exclude_table_schemas text[] DEFAULT NULL,
     functions text[] DEFAULT NULL,
     exclude_functions text[] DEFAULT NULL,
+    exclude_function_schemas text[] DEFAULT NULL,
     spatial boolean DEFAULT FALSE
 ) RETURNS SETOF jsonb AS $$
     WITH a AS (
         SELECT
             pg_temp.tipg_tproperties(c) as meta
-        FROM pg_class c
+        FROM pg_class c, pg_temp.tipg_get_schemas(schemas,exclude_table_schemas) s
         WHERE
-            relkind IN ('r','v', 'm', 'f', 'p')
+            c.relnamespace=s
+            AND relkind IN ('r','v', 'm', 'f', 'p')
             AND has_table_privilege(c.oid, 'SELECT')
-            AND c.relnamespace::regnamespace::text NOT IN ('pg_catalog', 'information_schema')
             AND c.relname::text NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
-            AND (schemas IS NULL  OR c.relnamespace::regnamespace::text = ANY (schemas || pg_my_temp_schema()::regnamespace::text))
-            AND (exclude_schemas IS NULL OR c.relnamespace::regnamespace::text != ANY (exclude_schemas))
             AND (exclude_tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) != ANY (exclude_tables))
             AND (tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) = ANY (tables))
-            AND (pg_table_is_visible(oid) or relnamespace=pg_my_temp_schema())
+
         UNION ALL
         SELECT
             pg_temp.tipg_fproperties(p) as meta
         FROM
-            pg_proc p
+            pg_proc p, pg_temp.tipg_get_schemas(schemas,exclude_function_schemas) s
         WHERE
-            proretset
+            p.pronamespace=s
+            AND proretset
             AND prokind='f'
             AND proargnames is not null
             AND '' != ANY(proargnames)
-            AND (pg_function_is_visible(oid) OR pronamespace = pg_my_temp_schema())
             AND has_function_privilege(oid, 'execute')
-            AND has_schema_privilege(pronamespace, 'usage')
             AND provariadic=0
-            AND (function_schemas IS NULL  OR p.pronamespace::regnamespace::text = ANY (function_schemas  || pg_my_temp_schema()::regnamespace::text))
             AND (functions IS NULL OR concat(p.pronamespace::regnamespace::text, '.', proname::text) = ANY (functions))
-            AND (exclude_function_schemas IS NULL OR p.pronamespace::regnamespace::text != ANY (exclude_function_schemas))
             AND (exclude_functions IS NULL OR concat(p.pronamespace::regnamespace::text,'.',proname::text) != ANY (exclude_functions))
+            AND p.proname::text NOT ILIKE 'tipg_%'
     )
     SELECT meta FROM a
     WHERE
