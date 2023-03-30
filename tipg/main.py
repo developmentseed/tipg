@@ -9,7 +9,12 @@ from tipg.db import close_db_connection, connect_to_db, register_collection_cata
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware
-from tipg.settings import APISettings, DatabaseSettings, PostgresSettings
+from tipg.settings import (
+    APISettings,
+    CustomSQLSettings,
+    DatabaseSettings,
+    PostgresSettings,
+)
 
 from fastapi import FastAPI, Request
 
@@ -20,6 +25,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 settings = APISettings()
 postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
+custom_sql_settings = CustomSQLSettings()
 
 
 app = FastAPI(
@@ -65,7 +71,10 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 async def startup_event() -> None:
     """Connect to database on startup."""
     await connect_to_db(
-        app, settings=postgres_settings, schemas=db_settings.user_schemas
+        app,
+        settings=postgres_settings,
+        schemas=db_settings.user_schemas,
+        user_sql_files=custom_sql_settings.sql_files,
     )
     await register_collection_catalog(
         app,
