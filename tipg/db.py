@@ -46,7 +46,11 @@ class con_init:
         await conn.set_type_codec(
             "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
         )
-        schemas = ",".join(["pg_temp"] + self.schemas)
+
+        # Note: we add `pg_temp as the first element of the schemas list to make sure
+        # we register the custom functions and `dbcatalog` in it.
+        schemas = ",".join(["pg_temp", *self.schemas])
+
         await conn.execute(
             f"""
             SELECT set_config(
@@ -57,12 +61,12 @@ class con_init:
             """
         )
 
-        # Register custom SQL functions/table/views
+        # Register custom SQL functions/table/views in pg_temp
         if custom_sql:
             for sqlfile in custom_sql:
                 await conn.execute(sqlfile.read_text())
 
-        # Register TiPG functions
+        # Register TiPG functions in `pg_temp`
         dbcatalogsql = resources_files(__package__) / "sql" / "dbcatalog.sql"
         await conn.execute(dbcatalogsql.read_text())
 

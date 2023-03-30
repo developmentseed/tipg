@@ -162,7 +162,10 @@ def app_includes(database_url, monkeypatch):
 
 @pytest.fixture()
 def app_myschema(database_url, monkeypatch):
-    """Create app with connection to the pytest database."""
+    """Create APP with only tables from `myschema` schema and no function schema.
+
+    Available tables should come from `myschema` and functions from `pg_temp`.
+    """
 
     from tipg.main import app, db_settings, postgres_settings
 
@@ -184,7 +187,10 @@ def app_myschema(database_url, monkeypatch):
 
 @pytest.fixture()
 def app_myschema_public(database_url, monkeypatch):
-    """Create app with connection to the pytest database."""
+    """Create APP with only tables from `myschema` and `public` schema and no function schema.
+
+    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
+    """
 
     from tipg.main import app, db_settings, postgres_settings
 
@@ -206,7 +212,10 @@ def app_myschema_public(database_url, monkeypatch):
 
 @pytest.fixture()
 def app_myschema_public_functions(database_url, monkeypatch):
-    """Create app with connection to the pytest database."""
+    """Create APP with only tables from `myschema` schema and functions from `public` schema.
+
+    Available tables should come from `myschema` and functions from `pg_temp` and `public` schema.
+    """
 
     from tipg.main import app, db_settings, postgres_settings
 
@@ -215,6 +224,56 @@ def app_myschema_public_functions(database_url, monkeypatch):
     db_settings.only_spatial_tables = False
     db_settings.schemas = ["myschema"]
     db_settings.function_schemas = ["public"]
+
+    assert sorted(db_settings.user_schemas) == sorted(["public", "myschema"])
+
+    # Remove middlewares https://github.com/encode/starlette/issues/472
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+
+    with TestClient(app) as app:
+        yield app
+
+
+@pytest.fixture()
+def app_only_public_functions(database_url, monkeypatch):
+    """Create APP with only functions from `pg_temp`and `public` schemas.
+
+    Available functions from `pg_temp` and `public` schema (no tables available).
+    """
+
+    from tipg.main import app, db_settings, postgres_settings
+
+    postgres_settings.database_url = str(database_url)
+
+    db_settings.only_spatial_tables = False
+    db_settings.schemas = []
+    db_settings.function_schemas = ["public"]
+
+    assert sorted(db_settings.user_schemas) == sorted(["public"])
+
+    # Remove middlewares https://github.com/encode/starlette/issues/472
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+
+    with TestClient(app) as app:
+        yield app
+
+
+@pytest.fixture()
+def app_myschema_public_order(database_url, monkeypatch):
+    """Create APP with only tables from `myschema` and `public` schema and no function schema (different order).
+
+    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
+    """
+
+    from tipg.main import app, db_settings, postgres_settings
+
+    postgres_settings.database_url = str(database_url)
+
+    db_settings.only_spatial_tables = False
+    db_settings.schemas = ["public", "myschema"]
+    db_settings.function_schemas = []
 
     assert sorted(db_settings.user_schemas) == sorted(["public", "myschema"])
 
