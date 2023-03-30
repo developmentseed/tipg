@@ -1,4 +1,4 @@
-"""Test /collections endpoints."""
+"""Test schemas."""
 
 
 def test_myschema(app_myschema):
