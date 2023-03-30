@@ -1,7 +1,6 @@
 """tipg config."""
 
 import sys
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 import pydantic
@@ -38,16 +37,28 @@ class TableSettings(pydantic.BaseSettings):
         env_nested_delimiter = "__"
 
 
-class _TileSettings(pydantic.BaseSettings):
+class TMSSettings(pydantic.BaseSettings):
+    """TiPG TMS settings"""
+
+    default_tms: str = "WebMercatorQuad"
+    default_minzoom: int = 0
+    default_maxzoom: int = 22
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_"
+        env_file = ".env"
+
+
+class MVTSettings(pydantic.BaseSettings):
     """TiPG MVT settings"""
 
     tile_resolution: int = 4096
     tile_buffer: int = 256
     tile_clip: bool = True
     max_features_per_tile: int = 10000
-    default_tms: str = "WebMercatorQuad"
-    default_minzoom: int = 0
-    default_maxzoom: int = 22
+
     set_mvt_layername: Optional[bool]
 
     class Config:
@@ -57,13 +68,7 @@ class _TileSettings(pydantic.BaseSettings):
         env_file = ".env"
 
 
-@lru_cache()
-def TileSettings() -> _TileSettings:
-    """This function returns a cached instance of the Settings object."""
-    return _TileSettings()
-
-
-class _APISettings(pydantic.BaseSettings):
+class APISettings(pydantic.BaseSettings):
     """API settings"""
 
     name: str = "TiPg: OGC Features and Tiles API"
@@ -82,13 +87,6 @@ class _APISettings(pydantic.BaseSettings):
 
         env_prefix = "TIPG_"
         env_file = ".env"
-        env_nested_delimiter = "__"
-
-
-@lru_cache()
-def APISettings() -> _APISettings:
-    """This function returns a cached instance of the Settings object."""
-    return _APISettings()
 
 
 class PostgresSettings(pydantic.BaseSettings):

@@ -1,6 +1,6 @@
 name: CI
 
-# On every pull request, but only on push to master
+# On every pull request, but only on push to main
 on:
   push:
     branches:
@@ -14,6 +14,7 @@ on:
       - 'tests/**'
       - '.pre-commit-config.yaml'
       - 'dockerfiles/**'
+      - '.github/workflows/ci.yml'
   pull_request:
 env:
   LATEST_PY_VERSION: '3.10'
@@ -65,6 +66,7 @@ jobs:
 
   benchmark:
     needs: [tests]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
@@ -89,20 +91,20 @@ jobs:
       - name: Run Benchmark
         run: python -m pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json --asyncio-mode=strict
 
-      # - name: Store and benchmark result
-      #   uses: benchmark-action/github-action-benchmark@v1
-      #   with:
-      #     name: TiFeatures Benchmarks
-      #     tool: 'pytest'
-      #     output-file-path: output.json
-      #     alert-threshold: '130%'
-      #     comment-on-alert: true
-      #     fail-on-alert: true
-      #     # GitHub API token to make a commit comment
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     # Make a commit on `gh-pages` only if master
-      #     auto-push: ${{ github.ref == 'refs/heads/master' }}
-      #     benchmark-data-dir-path: benchmarks
+      - name: Store and benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: TiPg Benchmarks
+          tool: 'pytest'
+          output-file-path: output.json
+          alert-threshold: '130%'
+          comment-on-alert: true
+          fail-on-alert: true
+          # GitHub API token to make a commit comment
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: 'gh-benchmarks'
+          # Make a commit only if main
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
 
   publish:
     needs: [tests]
@@ -141,7 +143,7 @@ jobs:
 
   publish-docker:
     needs: [tests]
-    if: github.ref == 'refs/heads/master' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
+    if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -165,9 +167,9 @@ jobs:
         # https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
 
-      # Push `latest` when commiting to master
+      # Push `latest` when commiting to main
       - name: Build and push
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v2
         with:
           platforms: linux/amd64,linux/arm64
