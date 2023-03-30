@@ -141,13 +141,12 @@ class DatabaseSettings(pydantic.BaseSettings):
     """TiPg Database settings."""
 
     schemas: List[str] = ["public"]
-    exclude_schemas: Optional[List[str]]
     tables: Optional[List[str]]
     exclude_tables: Optional[List[str]]
-    function_schemas: List[str] = ["public"]
-    exclude_function_schemas: Optional[List[str]]
+    exclude_table_schemas: Optional[List[str]]
     functions: Optional[List[str]]
     exclude_functions: Optional[List[str]]
+    exclude_function_schemas: Optional[List[str]]
 
     only_spatial_tables: bool = True
 
@@ -156,11 +155,6 @@ class DatabaseSettings(pydantic.BaseSettings):
 
         env_prefix = "TIPG_DB_"
         env_file = ".env"
-
-    @property
-    def user_schemas(self) -> Optional[List[str]]:
-        """Return a set of schemas from tables/functions schemas."""
-        return list(set([*self.schemas, *self.function_schemas]))
 
 
 class CustomSQLSettings(pydantic.BaseSettings):

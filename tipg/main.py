@@ -73,19 +73,18 @@ async def startup_event() -> None:
     await connect_to_db(
         app,
         settings=postgres_settings,
-        schemas=db_settings.user_schemas,
+        schemas=db_settings.schemas,
         user_sql_files=custom_sql_settings.sql_files,
     )
     await register_collection_catalog(
         app,
         schemas=db_settings.schemas,
-        exclude_schemas=db_settings.exclude_schemas,
         tables=db_settings.tables,
         exclude_tables=db_settings.exclude_tables,
-        function_schemas=db_settings.function_schemas,
-        exclude_function_schemas=db_settings.exclude_function_schemas,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
         functions=db_settings.functions,
         exclude_functions=db_settings.exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
         spatial=db_settings.only_spatial_tables,
     )
 

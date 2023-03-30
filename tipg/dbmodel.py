@@ -873,13 +873,12 @@ Database = Dict[str, Collection]
 async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     schemas: Optional[List[str]] = ["public"],
-    exclude_schemas: Optional[List[str]] = None,
     tables: Optional[List[str]] = None,
     exclude_tables: Optional[List[str]] = None,
-    function_schemas: Optional[List[str]] = ["public"],
-    exclude_function_schemas: Optional[List[str]] = None,
+    exclude_table_schemas: Optional[List[str]] = None,
     functions: Optional[List[str]] = None,
     exclude_functions: Optional[List[str]] = None,
+    exclude_function_schemas: Optional[List[str]] = None,
     spatial: bool = True,
 ) -> Database:
     """Fetch Table and Functions index."""
@@ -887,13 +886,12 @@ async def get_collection_index(  # noqa: C901
     query = """
         SELECT pg_temp.tipg_catalog(
             :schemas,
-            :exclude_schemas,
             :tables,
             :exclude_tables,
-            :function_schemas,
-            :exclude_function_schemas,
+            :exclude_table_schemas,
             :functions,
             :exclude_functions,
+            :exclude_function_schemas,
             :spatial
         );
     """  # noqa: W605
@@ -902,13 +900,12 @@ async def get_collection_index(  # noqa: C901
         rows = await conn.fetch_b(
             query,
             schemas=schemas,
-            exclude_schemas=exclude_schemas,
             tables=tables,
             exclude_tables=exclude_tables,
-            function_schemas=function_schemas,
-            exclude_function_schemas=exclude_function_schemas,
+            exclude_table_schemas=exclude_table_schemas,
             functions=functions,
             exclude_functions=exclude_functions,
+            exclude_function_schemas=exclude_function_schemas,
             spatial=spatial,
         )
 

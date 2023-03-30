@@ -103,19 +103,18 @@ def create_tipg_app(
         await connect_to_db(
             app,
             settings=postgres_settings,
-            schemas=db_settings.user_schemas,
+            schemas=db_settings.schemas,
             user_sql_files=sql_settings.sql_files,
         )
         await register_collection_catalog(
             app,
             schemas=db_settings.schemas,
-            exclude_schemas=db_settings.exclude_schemas,
             tables=db_settings.tables,
             exclude_tables=db_settings.exclude_tables,
-            function_schemas=db_settings.function_schemas,
-            exclude_function_schemas=db_settings.exclude_function_schemas,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
             functions=db_settings.functions,
             exclude_functions=db_settings.exclude_functions,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
             spatial=db_settings.only_spatial_tables,
         )
 
@@ -179,7 +178,6 @@ def app_excludes(database_url, monkeypatch):
         functions=[],
         only_spatial_tables=False,
     )
-    assert db_settings.user_schemas == ["public"]
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
@@ -202,7 +200,6 @@ def app_includes(database_url, monkeypatch):
         functions=[],
         only_spatial_tables=False,
     )
-    assert db_settings.user_schemas == ["public"]
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
@@ -224,10 +221,8 @@ def app_myschema(database_url):
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
         schemas=["myschema"],
-        function_schemas=[],
         only_spatial_tables=False,
     )
-    assert db_settings.user_schemas == ["myschema"]
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
@@ -249,10 +244,9 @@ def app_myschema_public(database_url, monkeypatch):
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
         schemas=["myschema", "public"],
-        function_schemas=[],
+        exclude_function_schemas=["public"],
         only_spatial_tables=False,
     )
-    assert sorted(db_settings.user_schemas) == sorted(["public", "myschema"])
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
@@ -273,11 +267,10 @@ def app_myschema_public_functions(database_url, monkeypatch):
     """
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
-        schemas=["myschema"],
-        function_schemas=["public"],
+        schemas=["myschema", "public"],
+        exclude_table_schemas=["public"],
         only_spatial_tables=False,
     )
-    assert sorted(db_settings.user_schemas) == sorted(["public", "myschema"])
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
@@ -298,36 +291,10 @@ def app_only_public_functions(database_url, monkeypatch):
     """
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
-        schemas=[],
-        function_schemas=["public"],
+        schemas=["public"],
+        exclude_table_schemas=["public"],
         only_spatial_tables=False,
     )
-    assert sorted(db_settings.user_schemas) == sorted(["public"])
-    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
-
-    app = create_tipg_app(
-        postgres_settings=postgres_settings,
-        db_settings=db_settings,
-        sql_settings=sql_settings,
-    )
-
-    with TestClient(app) as client:
-        yield client
-
-
-@pytest.fixture
-def app_myschema_public_order(database_url, monkeypatch):
-    """Create APP with only tables from `myschema` and `public` schema and no function schema (different order).
-
-    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
-    """
-    postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
-        schemas=["public", "myschema"],
-        function_schemas=[],
-        only_spatial_tables=False,
-    )
-    assert sorted(db_settings.user_schemas) == sorted(["public", "myschema"])
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(

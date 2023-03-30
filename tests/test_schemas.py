@@ -100,31 +100,3 @@ def test_public_functions(app_only_public_functions):
     assert "public.my_data" not in ids
 
     assert body["numberMatched"] == collection_number
-
-
-def test_myschema_and_public_order(app_myschema_public_order):
-    """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
-    collection_number = (
-        11  # 3 custom functions + 7 tables from public + 1 tables from myschema
-    )
-
-    response = app_myschema_public_order.get("/collections")
-    assert response.status_code == 200
-    body = response.json()
-    ids = [x["id"] for x in body["collections"]]
-
-    # custom functions
-    assert "pg_temp.landsat_centroids" in ids
-    assert "pg_temp.squares" in ids
-    assert "pg_temp.hexagons" in ids
-
-    # myschema table
-    assert "myschema.landsat" in ids
-
-    # tables from public
-    assert "public.my_data" in ids
-
-    # no public functions
-    assert "public.st_hexagongrid" not in ids
-
-    assert body["numberMatched"] == collection_number
