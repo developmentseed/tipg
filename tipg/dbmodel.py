@@ -22,6 +22,7 @@ from tipg.errors import (
 )
 from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
+from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import MVTSettings, TableSettings
 
@@ -44,8 +45,7 @@ def debug_query(q, *p):
             return s
 
     p = [quote_str(s) for s in p]
-    print("DEBUG QUERY")
-    print(qsub.format(None, *p))
+    logger.debug(qsub.format(None, *p))
 
 
 # Links to geojson schema
@@ -353,7 +353,6 @@ class Collection(BaseModel):
         tile: Tile,
     ):
         """Create MVT from intersecting geometries."""
-        print(geometry_column.type)
         geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
 
         # make sure the geometries do not overflow the TMS bbox
