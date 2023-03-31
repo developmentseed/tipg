@@ -456,7 +456,7 @@ class Collection(BaseModel):
 
         return g
 
-    def _where(
+    def _where(  # noqa: C901
         self,
         ids: Optional[List[str]] = None,
         datetime: Optional[List[str]] = None,
@@ -577,9 +577,9 @@ class Collection(BaseModel):
 
         else:
             start = (
-                parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
+                parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
             )
-            end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
+            end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
 
             if start is None and end is None:
                 raise InvalidDatetime(
@@ -731,9 +731,11 @@ class Collection(BaseModel):
         bbox_only: Optional[bool] = None,
         simplify: Optional[float] = None,
         geom_as_wkt: bool = False,
-        function_parameters: Dict[str, str] = {},
+        function_parameters: Optional[Dict[str, str]] = None,
     ) -> Tuple[FeatureCollection, int]:
         """Build and run Pg query."""
+        function_parameters = function_parameters or {}
+
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
@@ -872,7 +874,7 @@ Database = Dict[str, Collection]
 
 async def get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
-    schemas: Optional[List[str]] = ["public"],
+    schemas: Optional[List[str]] = None,
     tables: Optional[List[str]] = None,
     exclude_tables: Optional[List[str]] = None,
     exclude_table_schemas: Optional[List[str]] = None,
@@ -882,6 +884,7 @@ async def get_collection_index(  # noqa: C901
     spatial: bool = True,
 ) -> Database:
     """Fetch Table and Functions index."""
+    schemas = schemas or ["public"]
 
     query = """
         SELECT pg_temp.tipg_catalog(

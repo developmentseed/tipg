@@ -78,7 +78,7 @@ def accept_media_type(
     # Create Preference matrix
     media_preference = {
         v: [n for (n, q) in accept_values.items() if q == v]
-        for v in sorted({q for q in accept_values.values()}, reverse=True)
+        for v in sorted(set(accept_values.values()), reverse=True)
     }
 
     # Loop through available compression and encoding preference
@@ -298,7 +298,7 @@ def TileParams(
     return Tile(tileCol, tileRow, tileMatrix)
 
 
-def function_parameters_query(
+def function_parameters_query(  # noqa: C901
     request: Request,
     collection: Collection = Depends(CollectionParams),
 ) -> Dict[str, str]:
