@@ -107,7 +107,7 @@ def ping():
     return {"ping": "pong!"}
 
 
-if settings.DEBUG:
+if settings.debug:
 
     @app.get("/rawcatalog", tags=["debug"])
     async def raw_catalog(request: Request):
