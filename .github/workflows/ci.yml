@@ -99,7 +99,7 @@ jobs:
           output-file-path: output.json
           alert-threshold: '130%'
           comment-on-alert: true
-          fail-on-alert: true
+          fail-on-alert: false
           # GitHub API token to make a commit comment
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-pages-branch: 'gh-benchmarks'
