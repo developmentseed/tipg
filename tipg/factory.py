@@ -104,8 +104,8 @@ def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
         start = end = parse_rfc3339(interval[0])
 
     else:
-        start = parse_rfc3339(interval[0]) if not interval[0] in ["..", ""] else None
-        end = parse_rfc3339(interval[1]) if not interval[1] in ["..", ""] else None
+        start = parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
+        end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
 
     mint, maxt = temporal_extent
     min_ext = parse_rfc3339(mint) if mint is not None else None
@@ -724,7 +724,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             },
         )
-        async def items(
+        async def items(  # noqa: C901
             request: Request,
             collection=Depends(self.collection_dependency),
             ids_filter: Optional[List[str]] = Depends(ids_query),
@@ -834,7 +834,7 @@ class OGCFeaturesFactory(EndpointsFactory):
 
                 # JSON Response
                 if output_type == MediaType.json:
-                    return ORJSONResponse([row for row in rows])
+                    return ORJSONResponse(list(rows))
 
                 # NDJSON Response
                 if output_type == MediaType.ndjson:

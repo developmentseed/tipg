@@ -59,7 +59,7 @@ def test_tile(app):
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 1000
     assert sorted(["id", "pr", "row", "path", "ogc_fid"]) == sorted(
-        list(decoded["default"]["features"][0]["properties"])
+        decoded["default"]["features"][0]["properties"]
     )
 
     response = app.get(
@@ -68,7 +68,7 @@ def test_tile(app):
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert sorted(["pr", "row", "path"]) == sorted(
-        list(decoded["default"]["features"][0]["properties"])
+        decoded["default"]["features"][0]["properties"]
     )
 
     response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=geom")
@@ -84,6 +84,7 @@ def test_tile(app):
 
 
 def test_tile_custom_name(app):
+    """Test custom layer name."""
     init_value = mvt_settings.set_mvt_layername
     mvt_settings.set_mvt_layername = True
 
@@ -116,7 +117,7 @@ def test_tile_tms(app):
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) <= 1000
     assert sorted(["id", "pr", "row", "path", "ogc_fid"]) == sorted(
-        list(decoded["default"]["features"][0]["properties"])
+        decoded["default"]["features"][0]["properties"]
     )
 
     response = app.get(
@@ -125,13 +126,14 @@ def test_tile_tms(app):
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert sorted(["pr", "row", "path"]) == sorted(
-        list(decoded["default"]["features"][0]["properties"])
+        decoded["default"]["features"][0]["properties"]
     )
 
     mvt_settings.set_mvt_layername = init_value
 
 
 def test_tile_tms_custom_name(app):
+    """test layername with tms."""
     init_value = mvt_settings.set_mvt_layername
     mvt_settings.set_mvt_layername = True
 

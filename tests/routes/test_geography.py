@@ -5,6 +5,7 @@ import numpy
 
 
 def test_geography_column(app):
+    """Test endpoints with table having geography column."""
     response = app.get("/collections/public.my_data_geo")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"

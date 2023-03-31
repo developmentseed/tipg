@@ -141,7 +141,7 @@ def test_items_properties(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
-    assert sorted(["path", "row"]) == sorted(list(body["features"][0]["properties"]))
+    assert sorted(["path", "row"]) == sorted(body["features"][0]["properties"])
 
     # no properties
     response = app.get("/collections/public.landsat_wrs/items?properties=")
@@ -301,6 +301,7 @@ def test_items_properties_filter_cql2(app):
 
 
 def test_items_geo_filter_cql2(app):
+    """Test CQL2 geo filter."""
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-22.2153 79.6888,-22.2153 81.8555,-8.97407 81.8555,-8.97407 79.6888,-22.2153 79.6888)))"
     )
@@ -311,6 +312,7 @@ def test_items_geo_filter_cql2(app):
 
 
 def test_items_geo_filter_cql2_non_4326_crs(app):
+    """Test CQL2 non 4326 geo filter."""
     response = app.get(
         "/collections/public.minnesota/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-95.5389899 47.5578719,-95.5018943 46.4902864,-94.1637708 46.4891952,-94.1277889 47.5804373,-95.5389899 47.5578719)))"
     )
@@ -322,6 +324,7 @@ def test_items_geo_filter_cql2_non_4326_crs(app):
 
 
 def test_items_function_filter_cql2(app):
+    """Test CQL2 filter with function."""
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=left(pr,2)='13'"
     )
@@ -654,18 +657,16 @@ def test_output_response_type(app):
     body = response.json()
     assert len(body) == 10
     feat = body[0]
-    assert set(
-        [
-            "collectionId",
-            "itemId",
-            "id",
-            "pr",
-            "row",
-            "path",
-            "ogc_fid",
-            "geometry",
-        ]
-    ) == set(feat.keys())
+    assert {
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    } == set(feat.keys())
 
     # json output no geometry
     response = app.get("/collections/public.landsat_wrs/items?f=json&geom-column=none")
@@ -692,18 +693,16 @@ def test_output_response_type(app):
     body = response.text.splitlines()
     assert len(body) == 10
     feat = json.loads(body[0])
-    assert set(
-        [
-            "collectionId",
-            "itemId",
-            "id",
-            "pr",
-            "row",
-            "path",
-            "ogc_fid",
-            "geometry",
-        ]
-    ) == set(feat.keys())
+    assert {
+        "collectionId",
+        "itemId",
+        "id",
+        "pr",
+        "row",
+        "path",
+        "ogc_fid",
+        "geometry",
+    } == set(feat.keys())
 
     response = app.get(
         "/collections/public.landsat_wrs/items",
