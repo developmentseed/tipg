@@ -83,6 +83,8 @@ Example of `.env` file can be found in [.env.example](https://github.com/develop
 DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 ```
 
+More info about configuration options in https://developmentseed.org/tipg/advanced/factories/
+
 ## Launch
 
 ```bash
