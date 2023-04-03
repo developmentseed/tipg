@@ -1,10 +1,13 @@
 """Test schemas."""
 
+public_tables = 8
+public_functions = 3
+pg_temp_functions = 3
+myschema_tables = 1
+
 
 def test_myschema(app_myschema):
     """Available tables should come from `myschema` and functions from `pg_temp`."""
-    collection_number = 4  # 3 custom functions + 1 tables from myschema
-
     response = app_myschema.get("/collections")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
@@ -19,15 +22,11 @@ def test_myschema(app_myschema):
     # myschema table
     assert "myschema.landsat" in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == pg_temp_functions + myschema_tables
 
 
 def test_myschema_and_public_functions(app_myschema_public_functions):
     """Available tables should come from `myschema` and functions from `pg_temp` and `public` schema."""
-    collection_number = (
-        7  # 3 custom functions + 1 tables from myschema + 3 functions from public
-    )
-
     response = app_myschema_public_functions.get("/collections")
     assert response.status_code == 200
     body = response.json()
@@ -46,15 +45,13 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
     # no tables from public
     assert "public.my_data" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert (
+        body["numberMatched"] == pg_temp_functions + myschema_tables + public_functions
+    )
 
 
 def test_myschema_and_public(app_myschema_public):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
-    collection_number = (
-        12  # 3 custom functions + 1 tables from myschema + 8 tables from public
-    )
-
     response = app_myschema_public.get("/collections")
     assert response.status_code == 200
     body = response.json()
@@ -81,13 +78,11 @@ def test_myschema_and_public(app_myschema_public):
     # no public functions
     assert "public.st_hexagongrid" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == pg_temp_functions + myschema_tables + public_tables
 
 
 def test_public_functions(app_only_public_functions):
     """Available functions from `pg_temp` and `public` schema (no tables available)."""
-    collection_number = 6  # 3 custom functions + 3 functions from public
-
     response = app_only_public_functions.get("/collections")
     assert response.status_code == 200
     body = response.json()
@@ -107,15 +102,11 @@ def test_public_functions(app_only_public_functions):
     # no tables from public
     assert "public.my_data" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == pg_temp_functions + public_functions
 
 
 def test_myschema_and_public_order(app_myschema_public_order):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
-    collection_number = (
-        12  # 3 custom functions + 1 tables from myschema + 8 tables from public
-    )
-
     response = app_myschema_public_order.get("/collections")
     assert response.status_code == 200
     body = response.json()
@@ -135,4 +126,4 @@ def test_myschema_and_public_order(app_myschema_public_order):
     # no public functions
     assert "public.st_hexagongrid" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == pg_temp_functions + myschema_tables + public_tables

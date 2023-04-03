@@ -38,3 +38,8 @@ def test_geography_column(app):
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"])
+
+    response = app.get("/collections/public.my_data_geo/tiles/1/1/1")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"])
