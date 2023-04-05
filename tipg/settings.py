@@ -78,6 +78,8 @@ class APISettings(pydantic.BaseSettings):
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
 
+    add_tiles_viewer: bool = True
+
     @pydantic.validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""

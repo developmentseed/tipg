@@ -141,4 +141,5 @@ prefix: **`TIPG_`**
 - **DEBUG** (bool): Default is `False`
 - **CORS_ORIGIN** (str): Default is `*`
 - **CACHECONTROL** (str): Default is `public, max-age=3600`
-- **TEMPLATE_DIRECTORY** (str):
+- **TEMPLATE_DIRECTORY** (str): Path to custom template directory to overwrite the HTML files.
+- **ADD_TILES_VIEWER** (bool): Defaults is `True`
