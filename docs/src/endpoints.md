@@ -144,6 +144,16 @@ Path: `/collections`
 
 QueryParams:
 
+- **limit** (int): Limits the number of collections in the response.
+- **offset** (int): Collection's offset.
+- **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter collection in `minx,miny,maxx,maxy` form.
+- **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
+
+    - interval-bounded            = `date-time/date-time`
+    - interval-half-bounded-start = `../date-time`
+    - interval-half-bounded-end   = `date-time/..`
+    - datetime                    = `date-time`
+
 - **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
@@ -153,25 +163,46 @@ HeaderParams:
 Example:
 
 ```json
-curl http://127.0.0.1:8081/collections | jq
+curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
 {
+  "links": [
+    {
+      "href": "http://127.0.0.1:8081/collections",
+      "rel": "self",
+      "type": "application/json"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections?limit=1&offset=4",
+      "rel": "next",
+      "type": "application/json",
+      "title": "Next page"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections?limit=1&offset=2",
+      "rel": "prev",
+      "type": "application/json",
+      "title": "Previous page"
+    }
+  ],
+  "numberMatched": 10,
+  "numberReturned": 1,
   "collections": [
     {
-      "id": "public.countries",
-      "title": "public.countries",
+      "id": "public.countries_geo",
+      "title": "public.countries_geo",
       "links": [
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries",
+          "href": "http://127.0.0.1:8081/collections/public.countries_geo",
           "rel": "collection",
           "type": "application/json"
         },
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries/items",
+          "href": "http://127.0.0.1:8081/collections/public.countries_geo/items",
           "rel": "items",
           "type": "application/geo+json"
         },
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries/queryables",
+          "href": "http://127.0.0.1:8081/collections/public.countries_geo/queryables",
           "rel": "queryables",
           "type": "application/schema+json"
         }
@@ -181,30 +212,18 @@ curl http://127.0.0.1:8081/collections | jq
           "bbox": [
             [
               -180,
-              -89.99893188476562,
+              -89.99892578125002,
               180,
               83.599609375
             ]
           ],
-          "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+          "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
         }
       },
       "itemType": "feature",
       "crs": [
-        "http://www.opengis.net/def/crs/EPSG/0/4326"
+        "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
       ]
-    }
-  ],
-  "links": [
-    {
-      "href": "http://127.0.0.1:8081/",
-      "rel": "parent",
-      "type": "application/json"
-    },
-    {
-      "href": "http://127.0.0.1:8081/collections",
-      "rel": "self",
-      "type": "application/json"
     }
   ]
 }
@@ -275,12 +294,12 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
           83.599609375
         ]
       ],
-      "crs": "http://www.opengis.net/def/crs/EPSG/0/4326"
+      "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
     }
   },
   "itemType": "feature",
   "crs": [
-    "http://www.opengis.net/def/crs/EPSG/0/4326"
+    "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
   ]
 }
 ```
@@ -385,6 +404,10 @@ HeaderParams:
     Additional query-parameters (form `PROP=VALUE`) will be considered as a **property filter**.
     Properties (`PROP`) not matching collection's column will be ignored.
 
+!!! Tricks
+
+    `geom-column=None` will return a response without geometry information
+
 Example:
 
 - `http://127.0.0.1:8081/collections/public.countries/items`
@@ -395,16 +418,19 @@ Example:
 - `http://127.0.0.1:8081/collections/public.countries/items?ids=1,2,3` *limit result to ids `1`, `2` and `3`*
 - `http://127.0.0.1:8081/collections/public.countries/items?properties=name` *only return `name` property*
 
-- **Property Filter**
+**Property Filter**
+
   - `http://127.0.0.1:8081/collections/public.countries/items?name=Zimbabwe` *only return features where property `name==Zimbabwe`*
 
-- **Datetime**
+**Datetime**
+
   - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z` *return features with datetime column with value `==2004-10-19T10:23:54Z`*.
   - `http://127.0.0.1:8081/collections/public.countries/items?datetime=../2004-10-19T10:23:54Z` *return features with datetime column with value `<=2004-10-19T10:23:54Z`*.
   - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/..` *return features with datetime column with value `>=2004-10-19T10:23:54Z`*.
   - `http://127.0.0.1:8081/collections/public.countries/items?datetime=2004-10-19T10:23:54Z/2004-10-20T10:23:54Z` *return features with datetime column with value between `2004-10-19T10:23:54Z` and `2004-10-20T10:23:54Z`*.
 
-- **CQL2**
+**CQL2**
+
   - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-json&filter={"op":"=","args":[{"property":"ogc_fid"},1]}`
   - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-text&filter=ogc_fid=1`
 
@@ -466,9 +492,10 @@ Example:
 
 Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_
 
-## Tiles
+## Vector Tiles
 
 Path:
+
 - `/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}`
 - `/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}`
 
@@ -502,3 +529,72 @@ QueryParams:
 - **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
 
 \*  **Not in OGC API Features Specification**
+
+## TileJSON
+
+Return a TileJSON document.
+
+Path:
+
+- `/collections/{collectionId}/tilejson.json`
+- `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+
+QueryParams:
+
+  - **minzoom** (int): Set TileJSON document minzoom (default is the setting default or TMS default)
+  - **maxzoom** (int): Set TileJSON document maxzoom (default is the setting default or TMS default)
+  - **geom-column** * (str): Select the geometry column to retrieve collection's bounds from.
+
+!!! Important
+    Additional query-parameters will be forwarded to the tiles endpoint.
+
+\*  **Not in OGC API Tiles Specification**
+
+## Viewer
+
+Simple Map viewer [NOT IN OGC API SPECIFICATION].
+
+Path:
+
+- `/collections/{collectionId}/viewer`
+- `/collections/{collectionId}/{tileMatrixSetId}/viewer`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+
+QueryParams:
+
+  - **minzoom** (int): Set TileJSON document minzoom (default is the setting default or TMS default)
+  - **maxzoom** (int): Set TileJSON document maxzoom (default is the setting default or TMS default)
+  - **geom-column** * (str): Select the geometry column to retrieve collection's bounds from.
+
+!!! Important
+    Additional query-parameters will be forwarded to the tiles endpoint.
+
+## TileMatrixSets
+
+List Available TileMatrixSets
+
+Path:
+
+- `/tileMatrixSets`
+
+
+## TileMatrixSet
+
+Return TileMatrixSet document
+
+Path:
+
+- `/tileMatrixSets/{tileMatrixSetId}`
+
+PathParams:
+
+- **tileMatrixSetId** (str): TileMatrixSet identifier

@@ -494,7 +494,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     model.Link(
                         href=url,
                         rel="next",
-                        type=MediaType.geojson,
+                        type=MediaType.json,
                         title="Next page",
                     ).dict(exclude_none=True),
                 )
@@ -516,7 +516,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     model.Link(
                         href=url,
                         rel="prev",
-                        type=MediaType.geojson,
+                        type=MediaType.json,
                         title="Previous page",
                     ).dict(exclude_none=True),
                 )
@@ -1353,7 +1353,7 @@ class OGCTilesFactory(EndpointsFactory):
                 alias="geom-column",
             ),
         ):
-            """Return TileJSON document for a dataset."""
+            """Return Simple HTML Viewer for a collection."""
             tms = self.supported_tms.get(tileMatrixSetId)
 
             tilejson_url = self.url_for(
