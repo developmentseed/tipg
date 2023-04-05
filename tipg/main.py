@@ -49,7 +49,11 @@ templates = Jinja2Templates(
     loader=jinja2.ChoiceLoader(templates_location),
 )  # type: ignore
 
-ogc_api = Endpoints(title=settings.name, templates=templates)
+ogc_api = Endpoints(
+    title=settings.name,
+    templates=templates,
+    with_tiles_viewer=settings.add_tiles_viewer,
+)
 app.include_router(ogc_api.router)
 
 # Set all CORS enabled origins

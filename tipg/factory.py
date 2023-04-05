@@ -1132,6 +1132,7 @@ class OGCTilesFactory(EndpointsFactory):
     """OGC Tiles Endpoints Factory."""
 
     supported_tms: TileMatrixSets = default_tms
+    with_viewer: bool = True
 
     @property
     def conforms_to(self) -> List[str]:
@@ -1327,54 +1328,6 @@ class OGCTilesFactory(EndpointsFactory):
             return ORJSONResponse(tj)
 
         @self.router.get(
-            "/collections/{collectionId}/{tileMatrixSetId}/viewer",
-            response_class=HTMLResponse,
-        )
-        @self.router.get(
-            "/collections/{collectionId}/viewer",
-            response_class=HTMLResponse,
-        )
-        def viewer_endpoint(
-            request: Request,
-            collection=Depends(self.collection_dependency),
-            tileMatrixSetId: Literal["WebMercatorQuad"] = Query(  # noqa
-                "WebMercatorQuad",
-                description="Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
-            ),
-            minzoom: Optional[int] = Query(  # noqa
-                None, description="Overwrite default minzoom."
-            ),
-            maxzoom: Optional[int] = Query(  # noqa
-                None, description="Overwrite default maxzoom."
-            ),
-            geom_column: Optional[str] = Query(  # noqa
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
-        ):
-            """Return Simple HTML Viewer for a collection."""
-            tms = self.supported_tms.get(tileMatrixSetId)
-
-            tilejson_url = self.url_for(
-                request,
-                "tilejson",
-                collectionId=collection.id,
-                tileMatrixSetId=tms.identifier,
-            )
-            if request.query_params._list:
-                tilejson_url += f"?{urlencode(request.query_params._list)}"
-
-            return self.templates.TemplateResponse(
-                name="map.html",
-                context={
-                    "request": request,
-                    "tilejson_endpoint": tilejson_url,
-                },
-                media_type="text/html",
-            )
-
-        @self.router.get(
             r"/tileMatrixSets",
             response_model=model.TileMatrixSetList,
             response_model_exclude_none=True,
@@ -1424,6 +1377,56 @@ class OGCTilesFactory(EndpointsFactory):
             """
             return self.supported_tms.get(tileMatrixSetId)
 
+        if self.with_viewer:
+
+            @self.router.get(
+                "/collections/{collectionId}/{tileMatrixSetId}/viewer",
+                response_class=HTMLResponse,
+            )
+            @self.router.get(
+                "/collections/{collectionId}/viewer",
+                response_class=HTMLResponse,
+            )
+            def viewer_endpoint(
+                request: Request,
+                collection=Depends(self.collection_dependency),
+                tileMatrixSetId: Literal["WebMercatorQuad"] = Query(  # noqa
+                    "WebMercatorQuad",
+                    description="Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
+                ),
+                minzoom: Optional[int] = Query(  # noqa
+                    None, description="Overwrite default minzoom."
+                ),
+                maxzoom: Optional[int] = Query(  # noqa
+                    None, description="Overwrite default maxzoom."
+                ),
+                geom_column: Optional[str] = Query(  # noqa
+                    None,
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ):
+                """Return Simple HTML Viewer for a collection."""
+                tms = self.supported_tms.get(tileMatrixSetId)
+
+                tilejson_url = self.url_for(
+                    request,
+                    "tilejson",
+                    collectionId=collection.id,
+                    tileMatrixSetId=tms.identifier,
+                )
+                if request.query_params._list:
+                    tilejson_url += f"?{urlencode(request.query_params._list)}"
+
+                return self.templates.TemplateResponse(
+                    name="map.html",
+                    context={
+                        "request": request,
+                        "tilejson_endpoint": tilejson_url,
+                    },
+                    media_type="text/html",
+                )
+
 
 @dataclass
 class Endpoints(EndpointsFactory):
@@ -1431,6 +1434,7 @@ class Endpoints(EndpointsFactory):
 
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
+    with_tiles_viewer: bool = True
 
     ogc_features: OGCFeaturesFactory = field(init=False)
     ogc_tiles: OGCTilesFactory = field(init=False)
@@ -1466,6 +1470,7 @@ class Endpoints(EndpointsFactory):
             router_prefix=self.router_prefix,
             templates=self.templates,
             supported_tms=self.supported_tms,
+            with_viewer=self.with_tiles_viewer,
             # We do not want `/` and `/conformance` from the factory
             with_common=False,
         )
