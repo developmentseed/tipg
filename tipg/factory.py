@@ -44,7 +44,7 @@ from tipg.dependencies import (
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
-from tipg.settings import TMSSettings
+from tipg.settings import FeaturesSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -55,6 +55,7 @@ from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tms_settings = TMSSettings()
+features_settings = FeaturesSettings()
 
 DEFAULT_TEMPLATES = Jinja2Templates(
     directory="",
@@ -746,7 +747,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 alias="datetime-column",
             ),
             limit: int = Query(
-                10,
+                features_settings.default_features_limit,
+                ge=0,
+                lt=features_settings.max_features_per_query,
                 description="Limits the number of features in the response.",
             ),
             offset: Optional[int] = Query(
