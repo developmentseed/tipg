@@ -72,6 +72,7 @@ services:
   #   - database
 
   # martin:
+  #   platform: linux/amd64
   #   image: maplibre/martin
   #   environment:
   #     - DATABASE_URL=postgresql://username:password@database:5432/postgis

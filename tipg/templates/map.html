@@ -74,6 +74,7 @@
           // update tile url for Maplibre
           data.tiles[0] = data.tiles[0].replace('{tileMatrix}', '{z}').replace('{tileCol}', '{x}').replace('{tileRow}', '{y}')
 
+          const layername = Object.values(data.vector_layers)[0].id;
           map.addSource('table', {
             type: 'vector',
             ...data
@@ -82,9 +83,9 @@
           map.addLayer({
             id: 'view-polygon',
             source: 'table',
-            'source-layer': 'default',
+            'source-layer': layername,
             type: 'fill',
-            'filter': ["==", "$type", "Polygon"],
+            filter: ["==", "$type", "Polygon"],
             paint: {
               'fill-color': 'rgba(200, 100, 240, 0.4)',
               'fill-outline-color': '#000'
@@ -94,9 +95,9 @@
           map.addLayer({
             id: 'view-polygon-outline',
             source: 'table',
-            'source-layer': 'default',
+            'source-layer': layername,
             type: 'line',
-            'filter': ["==", "$type", "Polygon"],
+            filter: ["==", "$type", "Polygon"],
             paint: {
               'line-color': '#000',
               'line-width': 1,
@@ -107,20 +108,20 @@
           map.addLayer({
             id: 'view-point',
             source: 'table',
-            'source-layer': 'default',
+            'source-layer': layername,
             filter: ["==", "$type", "Point"],
             type: 'circle',
             paint: {
-              'circle-color': '#000',
+              'circle-color': 'rgba(200, 100, 240, 1)',
               'circle-radius': 2.5,
-              'circle-opacity': 0.75
+              'circle-opacity': 1
             }
           })
 
           map.addLayer({
             id: 'view-line',
             source: 'table',
-            'source-layer': 'default',
+            'source-layer': layername,
             filter: ["==", "$type", "LineString"],
             type: 'line',
             paint: {
