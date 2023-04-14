@@ -1384,6 +1384,7 @@ class OGCTilesFactory(EndpointsFactory):
 
             path_params: Dict[str, Any] = {
                 "collectionId": collection.id,
+                "tileMatrixSetId": tms.identifier,
                 "tileMatrix": "{tileMatrix}",
                 "tileCol": "{tileCol}",
                 "tileRow": "{tileRow}",
