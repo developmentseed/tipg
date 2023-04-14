@@ -95,7 +95,7 @@ curl http://127.0.0.1:8081 | jq
 }
 ```
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_api_landing_page
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_api_landing_page](https://docs.ogc.org/is/17-069r4/17-069r4.html#_api_landing_page)
 
 ## Conformance declaration
 
@@ -136,7 +136,7 @@ curl http://127.0.0.1:8081/conformance | jq
 }
 ```
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_declaration_of_conformance_classes
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_declaration_of_conformance_classes](https://docs.ogc.org/is/17-069r4/17-069r4.html#_declaration_of_conformance_classes)
 
 ## List Feature Collections
 
@@ -229,7 +229,7 @@ curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
 }
 ```
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_collections_
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_collections_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_collections_)
 
 ## Feature Collection's Metadata
 
@@ -304,7 +304,7 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
 }
 ```
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_)
 
 
 ## Feature Collection's Queryables
@@ -360,7 +360,7 @@ curl http://127.0.0.1:8081/collections/public.landsat_wrs/queryables | jq
 }
 ```
 
-Ref: http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables
+Ref: [http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables](http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables)
 
 ## Features
 
@@ -434,7 +434,7 @@ Example:
   - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-json&filter={"op":"=","args":[{"property":"ogc_fid"},1]}`
   - `http://127.0.0.1:8081/collections/public.countries/items?filter-lang=cql2-text&filter=ogc_fid=1`
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_ and https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_) and [https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param](https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param)
 
 
 ## Feature
@@ -490,7 +490,7 @@ Example:
 }
 ```
 
-Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_
+Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_)
 
 ## Vector Tiles
 
@@ -502,7 +502,7 @@ Path:
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
 - **tileMatrix** (int): TMS's scale identifier (Z).
 - **tileCol** (int): TMS's column identifier (X).
 - **tileRow** (int): TMS's row identifier (Y).
@@ -532,7 +532,7 @@ QueryParams:
 
 ## TileJSON
 
-Return a TileJSON document.
+Return a TileJSON document. **Not in OGC Tile API specification**
 
 Path:
 
@@ -542,7 +542,7 @@ Path:
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
 
 QueryParams:
 
@@ -555,9 +555,160 @@ QueryParams:
 
 \*  **Not in OGC API Tiles Specification**
 
+Example:
+```json
+// http://127.0.0.1:8080/collections/public.landsat/tilejson.json
+{
+  "tilejson": "3.0.0",
+  "name": "public.landsat",
+  "version": "1.0.0",
+  "scheme": "xyz",
+  "tiles": [
+    "http://127.0.0.1:8080/collections/public.landsat/tiles/WebMercatorQuad/{tileMatrix}/{tileCol}/{tileRow}"
+  ],
+  "vector_layers": [
+    {
+      "id": "default",
+      "fields": {
+        "id": "string",
+        "ogc_fid": "number",
+        "path": "number",
+        "pr": "string",
+        "row": "number"
+      },
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  ],
+  "minzoom": 0,
+  "maxzoom": 22,
+  "bounds": [
+    -181.8000030517578,
+    -83.46650695800781,
+    181.8000030517578,
+    83.46650695800781
+  ],
+  "center": [
+    0,
+    0,
+    0
+  ]
+}
+```
+
+## StyleJSON
+
+Return a mapbox/maplibre StyleJSON document. **Not in OGC Tile API specification**
+
+Path:
+
+- `/collections/{collectionId}/style.json`
+- `/collections/{collectionId}/{tileMatrixSetId}/style.json`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
+
+QueryParams:
+
+  - **minzoom** (int): Set TileJSON document minzoom (default is the setting default or TMS default)
+  - **maxzoom** (int): Set TileJSON document maxzoom (default is the setting default or TMS default)
+  - **geom-column** * (str): Select the geometry column to retrieve collection's bounds from.
+
+!!! Important
+    Additional query-parameters will be forwarded to the tiles endpoint.
+
+\*  **Not in OGC API Tiles Specification**
+
+```json
+// http://127.0.0.1:8080/collections/public.landsat/style.json
+{
+  "version": 8,
+  "name": "TiPg",
+  "layers": [
+    {
+      "id": "public.landsat_fill",
+      "source": "public.landsat",
+      "source-layer": "default",
+      "type": "fill",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "rgba(200, 100, 240, 0.4)",
+        "fill-outline-color": "#000"
+      }
+    },
+    {
+      "id": "public.landsat_stroke",
+      "source": "public.landsat",
+      "source-layer": "default",
+      "type": "line",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "LineString"
+      ],
+      "paint": {
+        "line-color": "#000",
+        "line-width": 1,
+        "line-opacity": 0.75
+      }
+    },
+    {
+      "id": "public.landsat_point",
+      "source": "public.landsat",
+      "source-layer": "default",
+      "type": "circle",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
+      "paint": {
+        "circle-color": "#000",
+        "circle-radius": 2.5,
+        "circle-opacity": 0.75
+      }
+    }
+  ],
+  "sources": {
+    "public.landsat": {
+      "type": "vector",
+      "scheme": "xyz",
+      "tiles": [
+        "http://127.0.0.1:8080/collections/public.landsat/tiles/WebMercatorQuad/{tileMatrix}/{tileCol}/{tileRow}"
+      ],
+      "bounds": [
+        -181.8000030517578,
+        -83.46650695800781,
+        181.8000030517578,
+        83.46650695800781
+      ],
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0
+}
+```
+
 ## Viewer
 
-Simple Map viewer [NOT IN OGC API SPECIFICATION].
+Simple Map viewer. **Not in OGC Tile API specification**
 
 Path:
 
