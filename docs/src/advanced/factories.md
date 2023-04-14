@@ -116,7 +116,7 @@ app.include_router(endpoints.router, tags=["OGC Tiles API"])
 
 | Method | Path                                                                                     | Output                        | Description
 | ------ | ---------------------------------------------------------------------------------------- |------------------------------ |--------------
-| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{tileMatrix}/{tileCol}/{tileRow}` | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
+| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
@@ -159,7 +159,7 @@ app.include_router(endpoints.router)
 | `GET`  | `/collections/{collectionId}/queryables`                                                 | HTML / SchemaJSON                                 | available queryable for a collection
 | `GET`  | `/collections/{collectionId}/items`                                                      | HTML / JSON / NDJSON / GeoJSON/ GeoJSONSeq / CSV  | a set of items for a collection
 | `GET`  | `/collections/{collectionId}/items/{itemId}`                                             | HTML / JSON/GeoJSON                               | one collection's item
-| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{tileMatrix}/{tileCol}/{tileRow}` | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
+| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets

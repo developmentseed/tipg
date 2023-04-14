@@ -279,23 +279,23 @@ def sortby_query(
 
 
 def TileParams(
-    tileMatrix: int = Path(
+    z: int = Path(
         ...,
         ge=0,
         le=30,
         description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
     ),
-    tileCol: int = Path(
+    x: int = Path(
         ...,
         description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
     ),
-    tileRow: int = Path(
+    y: int = Path(
         ...,
         description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
     ),
 ) -> Tile:
     """Tile parameters."""
-    return Tile(tileCol, tileRow, tileMatrix)
+    return Tile(x, y, z)
 
 
 def function_parameters_query(  # noqa: C901
@@ -315,9 +315,9 @@ def function_parameters_query(  # noqa: C901
                 function_parameters[param.name] = v
 
             elif path_params.get("tileMatrix", None):
-                z = int(path_params.get("tileMatrix"))
-                x = int(path_params.get("tileCol"))
-                y = int(path_params.get("tileRow"))
+                z = int(path_params.get("z"))
+                x = int(path_params.get("x"))
+                y = int(path_params.get("y"))
                 tilematrix = path_params.get(
                     "tileMatrixSetId", tms_settings.default_tms
                 )
