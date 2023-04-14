@@ -52,6 +52,29 @@ class TMSSettings(pydantic.BaseSettings):
         env_file = ".env"
 
 
+class FeaturesSettings(pydantic.BaseSettings):
+    """TiPG Items settings"""
+
+    default_features_limit: int = pydantic.Field(10, ge=0)
+    max_features_per_query: int = pydantic.Field(10000, ge=0)
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_"
+        env_file = ".env"
+
+    @pydantic.root_validator(pre=False)
+    def max_default(cls, values):
+        """Set default bounds and srid when this is a function."""
+        if values.get("default_features_limit") > values.get("max_features_per_query"):
+            raise ValueError(
+                f"Invalid combination of `limit` ({values.get('default_features_limit')}) and `max features per query` ({values.get('max_features_per_query')}) values"
+            )
+
+        return values
+
+
 class MVTSettings(pydantic.BaseSettings):
     """TiPG MVT settings"""
 

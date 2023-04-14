@@ -12,9 +12,11 @@ def test_tilejson(app):
     assert response.status_code == 200
 
     resp_json = response.json()
+    assert resp_json["tilejson"] == "3.0.0"
     assert resp_json["name"] == "public.landsat_wrs"
     assert resp_json["minzoom"] == 5
     assert resp_json["maxzoom"] == 12
+    assert resp_json["vector_layers"]
 
     np.testing.assert_almost_equal(
         resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]

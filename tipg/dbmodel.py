@@ -24,9 +24,10 @@ from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
-from tipg.settings import MVTSettings, TableSettings
+from tipg.settings import FeaturesSettings, MVTSettings, TableSettings
 
 mvt_settings = MVTSettings()
+features_settings = FeaturesSettings()
 
 
 def debug_query(q, *p):
@@ -648,6 +649,9 @@ class Collection(BaseModel):
         function_parameters: Optional[Dict[str, str]],
     ):
         """Build Features query."""
+        limit = limit or features_settings.default_features_limit
+        offset = offset or 0
+
         c = clauses.Clauses(
             self._select(
                 properties=properties,
@@ -667,8 +671,8 @@ class Collection(BaseModel):
                 dt=dt,
             ),
             self._sortby(sortby),
-            clauses.Limit(limit or 10),
-            clauses.Offset(offset or 0),
+            clauses.Limit(limit),
+            clauses.Offset(offset),
         )
 
         q, p = render(":c", c=c)
@@ -739,9 +743,9 @@ class Collection(BaseModel):
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
             raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
 
-        if limit and limit > mvt_settings.max_features_per_tile:
+        if limit and limit > features_settings.max_features_per_query:
             raise InvalidLimit(
-                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {mvt_settings.max_features_per_tile}"
+                f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
             )
 
         count = await self._features_count_query(
@@ -810,7 +814,7 @@ class Collection(BaseModel):
 
         if limit > mvt_settings.max_features_per_tile:
             raise InvalidLimit(
-                f"Limit can not be set higher than the tipg_max_features_per_tile setting of {mvt_settings.max_features_per_tile}"
+                f"Limit can not be set higher than the `tipg_max_features_per_tile` setting of {mvt_settings.max_features_per_tile}"
             )
 
         c = clauses.Clauses(
