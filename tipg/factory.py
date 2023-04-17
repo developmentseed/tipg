@@ -1156,9 +1156,9 @@ class OGCTilesFactory(EndpointsFactory):
                     request,
                     "tile",
                     collectionId="{collectionId}",
-                    tileMatrix="{tileMatrix}",
-                    tileCol="{tileCol}",
-                    tileRow="{tileRow}",
+                    z="{z}",
+                    x="{x}",
+                    y="{y}",
                 ),
                 type=MediaType.mvt,
                 rel="data",
@@ -1188,12 +1188,12 @@ class OGCTilesFactory(EndpointsFactory):
         """Register OGC Tiles endpoints."""
 
         @self.router.get(
-            "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}",
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
         )
         @self.router.get(
-            "/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
+            "/collections/{collectionId}/tiles/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
         )
@@ -1293,9 +1293,9 @@ class OGCTilesFactory(EndpointsFactory):
             path_params: Dict[str, Any] = {
                 "tileMatrixSetId": tms.identifier,
                 "collectionId": collection.id,
-                "tileMatrix": "{tileMatrix}",
-                "tileCol": "{tileCol}",
-                "tileRow": "{tileRow}",
+                "z": "{z}",
+                "x": "{x}",
+                "y": "{y}",
             }
             tile_endpoint = self.url_for(request, "tile", **path_params)
 
