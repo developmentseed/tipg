@@ -12,9 +12,26 @@ def test_tilejson(app):
     assert response.status_code == 200
 
     resp_json = response.json()
+    assert resp_json["tilejson"] == "3.0.0"
     assert resp_json["name"] == "public.landsat_wrs"
     assert resp_json["minzoom"] == 5
     assert resp_json["maxzoom"] == 12
+    assert resp_json["vector_layers"]
+
+    np.testing.assert_almost_equal(
+        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]
+    )
+
+    response = app.get("/collections/public.landsat_wrs/WGS1984Quad/tilejson.json")
+    assert response.status_code == 200
+
+    resp_json = response.json()
+    assert resp_json["tilejson"] == "3.0.0"
+    assert resp_json["name"] == "public.landsat_wrs"
+    assert resp_json["minzoom"] == 0
+    assert resp_json["maxzoom"] == 17
+    assert resp_json["vector_layers"]
+    assert "WGS1984Quad" in resp_json["tiles"][0]
 
     np.testing.assert_almost_equal(
         resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]
@@ -145,6 +162,57 @@ def test_tile_tms_custom_name(app):
     assert len(decoded[name]["features"]) > 1000
 
     mvt_settings.set_mvt_layername = init_value
+
+
+def test_stylejson(app):
+    """Test StyleJSON endpoint."""
+    response = app.get("/collections/public.landsat_wrs/style.json")
+    assert response.status_code == 200
+
+    resp_json = response.json()
+    assert resp_json["version"] == 8
+    assert resp_json["name"] == "TiPg"
+    assert "sources" in resp_json
+    assert "layers" in resp_json
+    assert "center" in resp_json
+    assert "zoom" in resp_json
+
+    source = resp_json["sources"]["public.landsat_wrs"]
+    assert source["minzoom"] == 5
+    assert source["maxzoom"] == 12
+
+    np.testing.assert_almost_equal(source["bounds"], [-180.0, -82.6401, 180.0, 82.6401])
+
+    response = app.get("/collections/public.landsat_wrs/WGS1984Quad/style.json")
+    assert response.status_code == 200
+
+    resp_json = response.json()
+    assert resp_json["version"] == 8
+    assert resp_json["name"] == "TiPg"
+    assert "sources" in resp_json
+    assert "layers" in resp_json
+    assert "center" in resp_json
+    assert "zoom" in resp_json
+
+    source = resp_json["sources"]["public.landsat_wrs"]
+    assert source["minzoom"] == 0
+    assert source["maxzoom"] == 17
+    assert "WGS1984Quad" in source["tiles"][0]
+
+    np.testing.assert_almost_equal(source["bounds"], [-180.0, -82.6401, 180.0, 82.6401])
+
+    response = app.get("/collections/public.landsat_wrs/style.json?minzoom=1&maxzoom=2")
+    assert response.status_code == 200
+
+    resp_json = response.json()
+    source = resp_json["sources"]["public.landsat_wrs"]
+    assert source["minzoom"] == 1
+    assert source["maxzoom"] == 2
+    assert "minzoom" not in source["tiles"][0]
+    assert "maxzoom" not in source["tiles"][0]
+
+    response = app.get("/collections/public.landsat/style.json?geom-column=centroid")
+    assert response.status_code == 200
 
 
 # def test_function_tilejson(app):

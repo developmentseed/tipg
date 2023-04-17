@@ -44,7 +44,7 @@ from tipg.dependencies import (
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
-from tipg.settings import FeaturesSettings, TMSSettings
+from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -55,6 +55,7 @@ from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tms_settings = TMSSettings()
+mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
 DEFAULT_TEMPLATES = Jinja2Templates(
@@ -1254,12 +1255,14 @@ class OGCTilesFactory(EndpointsFactory):
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
+            response_class=ORJSONResponse,
         )
         @self.router.get(
             "/collections/{collectionId}/tilejson.json",
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
+            response_class=ORJSONResponse,
         )
         async def tilejson(
             request: Request,
@@ -1314,21 +1317,164 @@ class OGCTilesFactory(EndpointsFactory):
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
 
-            bounds = [-180, -90, 180, 90]
-            if collection.extent and collection.extent.spatial:
-                bounds = collection.extent.spatial.bbox[0]
-
-            tj = {
+            tile_json = {
                 "minzoom": minzoom,
                 "maxzoom": maxzoom,
                 "name": collection.id,
-                "bounds": bounds,
                 "tiles": [tile_endpoint],
             }
-            if bounds := collection.bounds:
-                tj["bounds"] = bounds
+            if collection.bounds:
+                tile_json["bounds"] = collection.bounds
 
-            return ORJSONResponse(tj)
+            layername = collection.id if mvt_settings.set_mvt_layername else "default"
+            tile_json["vector_layers"] = [
+                {
+                    "id": layername,
+                    "fields": {
+                        col.name: col.json_type
+                        for col in collection.properties
+                        if col.type not in ["geometry", "geography"]
+                    },
+                    "minzoom": minzoom,
+                    "maxzoom": maxzoom,
+                }
+            ]
+
+            return tile_json
+
+        @self.router.get(
+            "/collections/{collectionId}/{tileMatrixSetId}/style.json",
+            response_model=model.StyleJSON,
+            responses={200: {"description": "Return a tilejson"}},
+            response_model_exclude_none=True,
+            response_class=ORJSONResponse,
+        )
+        @self.router.get(
+            "/collections/{collectionId}/style.json",
+            response_model=model.StyleJSON,
+            responses={200: {"description": "Return a StyleJSON"}},
+            response_model_exclude_none=True,
+            response_class=ORJSONResponse,
+        )
+        async def stylejson(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
+                tms_settings.default_tms,
+                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
+            ),
+            geom_column: Optional[str] = Query(
+                None,
+                description="Select geometry column.",
+                alias="geom-column",
+            ),
+            minzoom: Optional[int] = Query(
+                None, description="Overwrite default minzoom."
+            ),
+            maxzoom: Optional[int] = Query(
+                None, description="Overwrite default maxzoom."
+            ),
+        ):
+            """Return Mapbox/Maplibre StyleJSON document."""
+            tms = self.supported_tms.get(tileMatrixSetId)
+
+            geom = collection.get_geometry_column(geom_column)
+            if not geom:
+                raise MissingGeometryColumn
+
+            path_params: Dict[str, Any] = {
+                "collectionId": collection.id,
+                "tileMatrixSetId": tms.identifier,
+                "z": "{z}",
+                "x": "{x}",
+                "y": "{y}",
+            }
+            tiles_endpoint = self.url_for(request, "tile", **path_params)
+
+            qs_key_to_remove = ["tilematrixsetid", "minzoom", "maxzoom"]
+            query_params = [
+                (key, value)
+                for (key, value) in request.query_params._list
+                if key.lower() not in qs_key_to_remove
+            ]
+            if query_params:
+                tiles_endpoint += f"?{urlencode(query_params)}"
+
+            # Get Min/Max zoom from layer settings if tms is the default tms
+            if tms.identifier == tms_settings.default_tms:
+                minzoom = minzoom or tms_settings.default_minzoom
+                maxzoom = maxzoom or tms_settings.default_maxzoom
+
+            minzoom = minzoom if minzoom is not None else tms.minzoom
+            maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
+
+            bounds = collection.bounds or [
+                180,
+                -85.05112877980659,
+                180,
+                85.0511287798066,
+            ]
+
+            style_json = {
+                "name": "TiPg",
+                "sources": {
+                    collection.id: {
+                        "type": "vector",
+                        "scheme": "xyz",
+                        "tiles": [tiles_endpoint],
+                        "bounds": bounds,
+                        "minzoom": minzoom,
+                        "maxzoom": maxzoom,
+                    }
+                },
+                "layers": [],
+                "center": [
+                    (bounds[0] + bounds[2]) / 2,
+                    (bounds[1] + bounds[3]) / 2,
+                ],
+                "zoom": minzoom,
+            }
+
+            layername = collection.id if mvt_settings.set_mvt_layername else "default"
+            style_json["layers"] = [
+                {
+                    "id": f"{collection.id}_fill",
+                    "source": collection.id,
+                    "source-layer": layername,
+                    "type": "fill",
+                    "filter": ["==", ["geometry-type"], "Polygon"],
+                    "paint": {
+                        "fill-color": "rgba(200, 100, 240, 0.4)",
+                        "fill-outline-color": "#000",
+                    },
+                },
+                {
+                    "id": f"{collection.id}_stroke",
+                    "source": collection.id,
+                    "source-layer": layername,
+                    "type": "line",
+                    "filter": ["==", ["geometry-type"], "LineString"],
+                    "paint": {
+                        "line-color": "#000",
+                        "line-width": 1,
+                        "line-opacity": 0.75,
+                    },
+                },
+                {
+                    "id": f"{collection.id}_point",
+                    "source": collection.id,
+                    "source-layer": layername,
+                    "type": "circle",
+                    "filter": ["==", ["geometry-type"], "Point"],
+                    "paint": {
+                        "circle-color": "#000",
+                        "circle-radius": 2.5,
+                        "circle-opacity": 0.75,
+                    },
+                },
+            ]
+
+            return style_json
 
         @self.router.get(
             r"/tileMatrixSets",

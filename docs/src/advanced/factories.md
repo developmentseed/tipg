@@ -118,6 +118,7 @@ app.include_router(endpoints.router, tags=["OGC Tiles API"])
 | ------ | ---------------------------------------------------------------------------------------- |------------------------------ |--------------
 | `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/style.json`                             | JSON                          | Mapbox/Maplibre StyleJSON document
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
 | `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                          | TileMatrixSet document
@@ -161,6 +162,7 @@ app.include_router(endpoints.router)
 | `GET`  | `/collections/{collectionId}/items/{itemId}`                                             | HTML / JSON/GeoJSON                               | one collection's item
 | `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/style.json`                             | JSON                          | Mapbox/Maplibre StyleJSON document
 | `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
 | `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                          | TileMatrixSet document

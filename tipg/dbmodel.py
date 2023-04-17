@@ -932,7 +932,7 @@ async def get_collection_index(  # noqa: C901
             table_conf = table_confs.get(confid, {})
 
             # Make sure that any properties set in conf exist in table
-            properties = table.get("properties", [])
+            properties = sorted(table.get("properties", []), key=lambda d: d["name"])
             properties_setting = table_conf.get("properties", [])
             if properties_setting:
                 properties = [p for p in properties if p["name"] in properties_setting]
