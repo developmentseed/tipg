@@ -71,9 +71,6 @@
         .then(data => {
           console.log(data)
 
-          // update tile url for Maplibre
-          data.tiles[0] = data.tiles[0].replace('{tileMatrix}', '{z}').replace('{tileCol}', '{x}').replace('{tileRow}', '{y}')
-
           map.addSource('table', {
             type: 'vector',
             ...data

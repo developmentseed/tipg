@@ -68,7 +68,7 @@ curl http://127.0.0.1:8081 | jq
       "title": "Collection Features"
     },
     {
-      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}",
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{z}/{x}/{y}",
       "rel": "data",
       "type": "application/vnd.mapbox-vector-tile",
       "title": "Collection Vector Tiles"
@@ -496,16 +496,16 @@ Ref: https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_
 
 Path:
 
-- `/collections/{collectionId}/tiles/{tileMatrix}/{tileCol}/{tileRow}`
-- `/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileCol}/{tileRow}`
+- `/collections/{collectionId}/tiles/{z}/{x}/{y}`
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`
 
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
 - **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
-- **tileMatrix** (int): TMS's scale identifier (Z).
-- **tileCol** (int): TMS's column identifier (X).
-- **tileRow** (int): TMS's row identifier (Y).
+- **z** (int): TMS's scale (tileMatrix) identifier
+- **x** (int): TMS's column (tileCol) identifier
+- **y** (int): TMS's row (tileRow) identifier
 
 QueryParams:
 
