@@ -265,13 +265,11 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             """Get conformance."""
             data = model.Conformance(
                 conformsTo=[
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/landing-page",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/oas30",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/html",
+                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/json"
                     *self.conforms_to,
                 ]
             )
@@ -358,8 +356,6 @@ class OGCFeaturesFactory(EndpointsFactory):
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-            "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
-            "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
         ]
 
     def links(self, request: Request) -> List[model.Link]:
