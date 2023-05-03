@@ -1,6 +1,7 @@
 """tipg.dbmodel: database events."""
 
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
@@ -25,6 +26,8 @@ from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings, MVTSettings, TableSettings
+
+from fastapi import FastAPI
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
@@ -164,6 +167,7 @@ class Collection(BaseModel):
     geometry_column: Optional[Column]
     datetime_column: Optional[Column]
     parameters: List[Parameter] = []
+    last_catalog_update: datetime = datetime.now()
 
     @property
     def extent(self) -> Optional[Extent]:
@@ -877,18 +881,38 @@ Database = Dict[str, Collection]
 
 
 async def get_collection_index(  # noqa: C901
-    db_pool: asyncpg.BuildPgPool,
-    schemas: Optional[List[str]] = None,
-    tables: Optional[List[str]] = None,
-    exclude_tables: Optional[List[str]] = None,
-    exclude_table_schemas: Optional[List[str]] = None,
-    functions: Optional[List[str]] = None,
-    exclude_functions: Optional[List[str]] = None,
-    exclude_function_schemas: Optional[List[str]] = None,
-    spatial: bool = True,
+    app: FastAPI,
+    collection: Optional[str] = None,
 ) -> Database:
     """Fetch Table and Functions index."""
-    schemas = schemas or ["public"]
+    db_pool = app.state.pool
+    db_settings = app.state.db_settings
+    schemas = db_settings.schemas or ["public"]
+    if collection is not None:
+        tables = [collection]
+        functions = [collection]
+    else:
+        tables = db_settings.tables
+        functions = db_settings.functions
+
+    exclude_tables = db_settings.exclude_tables or []
+    exclude_functions = db_settings.exclude_functions or []
+
+    if getattr(app.state, "collection_catalog", None) is None:
+        app.state.collection_catalog = {}
+    else:
+        ttltime: datetime = datetime.now() - db_settings.catalog_ttl
+        for c in app.state.collection_catalog.values():
+            if c.last_catalog_update > ttltime:
+                if c.type == "Table":
+                    exclude_tables.append(c.id)
+                if c.type == "Function":
+                    exclude_functions.append(c.id)
+
+    if exclude_tables == []:
+        exclude_tables = None
+    if exclude_functions == []:
+        exclude_functions = None
 
     query = """
         SELECT pg_temp.tipg_catalog(
@@ -903,20 +927,32 @@ async def get_collection_index(  # noqa: C901
         );
     """  # noqa: W605
 
+    q, p = render(
+        query,
+        schemas=schemas,
+        tables=tables,
+        exclude_tables=exclude_tables,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
+        functions=functions,
+        exclude_functions=exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        spatial=db_settings.only_spatial_tables,
+    )
+    logger.debug(f"{q} {p}")
+
     async with db_pool.acquire() as conn:
         rows = await conn.fetch_b(
             query,
             schemas=schemas,
             tables=tables,
             exclude_tables=exclude_tables,
-            exclude_table_schemas=exclude_table_schemas,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
             functions=functions,
             exclude_functions=exclude_functions,
-            exclude_function_schemas=exclude_function_schemas,
-            spatial=spatial,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
+            spatial=db_settings.only_spatial_tables,
         )
 
-        catalog = {}
         table_settings = TableSettings()
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
@@ -963,7 +999,7 @@ async def get_collection_index(  # noqa: C901
                     ):
                         geometry_column = c
 
-            catalog[table_id] = Collection(
+            app.state.collection_catalog[table_id] = Collection(
                 type=table["entity"],
                 id=table_id,
                 table=table["name"],
@@ -974,6 +1010,7 @@ async def get_collection_index(  # noqa: C901
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
                 parameters=table.get("parameters", []),
+                last_catalog_update=datetime.now(),
             )
 
-        return catalog
+        return app.state.collection_catalog or {}

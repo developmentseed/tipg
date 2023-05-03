@@ -1,6 +1,7 @@
 """tipg dependencies."""
 
 import re
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from morecantile import Tile
@@ -9,8 +10,9 @@ from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
-from tipg.dbmodel import Collection
+from tipg.dbmodel import Collection, get_collection_index
 from tipg.errors import InvalidBBox, MissingFunctionParameter
+from tipg.logger import logger
 from tipg.resources import enums
 from tipg.settings import TMSSettings
 
@@ -21,7 +23,7 @@ from starlette.requests import Request
 tms_settings = TMSSettings()
 
 
-def CollectionParams(
+async def CollectionParams(
     request: Request,
     collectionId: str = Path(..., description="Collection identifier"),
 ) -> Collection:
@@ -39,7 +41,21 @@ def CollectionParams(
 
     collection_catalog = getattr(request.app.state, "collection_catalog", {})
     if collectionId in collection_catalog:
+        ttltime: datetime = datetime.now() - request.app.state.db_settings.catalog_ttl
+        logger.info(
+            f"Collection {collectionId}. ttltime: {ttltime}, lastupdated:{collection_catalog[collectionId].last_catalog_update}"
+        )
+        if collection_catalog[collectionId].last_catalog_update < ttltime:
+            logger.info(f"Collection {collectionId} needs to be updated.")
+            collection_catalog = await get_collection_index(request.app, collectionId)
+        else:
+            logger.info(f"Collection {collectionId} getting fetched from cache.")
         return collection_catalog[collectionId]
+    else:
+        logger.info(f"Collection {collectionId} is not in catalog. Refetching Catalog.")
+        collection_catalog = await get_collection_index(request.app, collectionId)
+        if collectionId in collection_catalog:
+            return collection_catalog[collectionId]
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."

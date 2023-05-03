@@ -2,6 +2,7 @@
 
 import pathlib
 import sys
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 import pydantic
@@ -174,6 +175,8 @@ class DatabaseSettings(pydantic.BaseSettings):
     exclude_function_schemas: Optional[List[str]]
 
     only_spatial_tables: bool = True
+
+    catalog_ttl: timedelta = timedelta(hours=1)
 
     class Config:
         """model config"""

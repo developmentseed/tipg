@@ -8,6 +8,7 @@ from tipg import __version__ as tipg_version
 from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
+from tipg.logger import logger
 from tipg.middleware import CacheControlMiddleware
 from tipg.settings import (
     APISettings,
@@ -74,6 +75,8 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 @app.on_event("startup")
 async def startup_event() -> None:
     """Connect to database on startup."""
+    logger.debug("In Startup Event.")
+    app.state.db_settings = db_settings
     await connect_to_db(
         app,
         settings=postgres_settings,
@@ -82,14 +85,6 @@ async def startup_event() -> None:
     )
     await register_collection_catalog(
         app,
-        schemas=db_settings.schemas,
-        tables=db_settings.tables,
-        exclude_tables=db_settings.exclude_tables,
-        exclude_table_schemas=db_settings.exclude_table_schemas,
-        functions=db_settings.functions,
-        exclude_functions=db_settings.exclude_functions,
-        exclude_function_schemas=db_settings.exclude_function_schemas,
-        spatial=db_settings.only_spatial_tables,
     )
 
 
