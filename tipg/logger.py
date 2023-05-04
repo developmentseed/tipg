@@ -2,4 +2,5 @@
 
 import logging
 
-logger = logging.getLogger("tipg")
+logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)

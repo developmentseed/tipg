@@ -8,7 +8,7 @@ from tipg import __version__ as tipg_version
 from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
-from tipg.middleware import CacheControlMiddleware
+from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import (
     APISettings,
     CustomSQLSettings,
@@ -68,12 +68,14 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
+app.add_middleware(CatalogUpdateMiddleware)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
 @app.on_event("startup")
 async def startup_event() -> None:
     """Connect to database on startup."""
+    app.state.db_settings = db_settings
     await connect_to_db(
         app,
         settings=postgres_settings,

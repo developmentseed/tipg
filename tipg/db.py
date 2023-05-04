@@ -1,6 +1,7 @@
 """tipg.db: database events."""
 
 import pathlib
+from datetime import datetime
 from typing import Any, List, Optional
 
 import orjson
@@ -95,6 +96,7 @@ async def connect_to_db(
 async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
     """Register Table catalog."""
     app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)
+    app.state.catalog_expire = datetime.now() + app.state.db_settings.catalog_ttl
 
 
 async def close_db_connection(app: FastAPI) -> None:
