@@ -34,6 +34,7 @@ app = FastAPI(
     openapi_url="/api",
     docs_url="/api.html",
 )
+app.state.db_settings = db_settings
 
 # custom template directory
 templates_location: List[Any] = (
@@ -75,7 +76,6 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 @app.on_event("startup")
 async def startup_event() -> None:
     """Connect to database on startup."""
-    app.state.db_settings = db_settings
     await connect_to_db(
         app,
         settings=postgres_settings,
