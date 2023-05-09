@@ -25,7 +25,7 @@ from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
-from tipg.dbmodel import Collection
+from tipg.dbmodel import Collection, Database
 from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -46,7 +46,7 @@ from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
@@ -445,8 +445,13 @@ class OGCFeaturesFactory(EndpointsFactory):
             ),
         ):
             """List of collections."""
-            collection_catalog = getattr(request.app.state, "collection_catalog", {})
-            collections_list = list(collection_catalog.values())
+            collection_catalog: Database = request.app.state.collection_catalog
+            if not collection_catalog:
+                raise HTTPException(
+                    status_code=500, detail="Could not find collections."
+                )
+
+            collections_list = list(collection_catalog["collections"].values())
 
             limit = limit or 0
             offset = offset or 0
@@ -527,6 +532,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 links=links,
                 numberMatched=matched_items,
                 numberReturned=items_returned,
+                lastUpdated=str(collection_catalog["last_updated"]),
                 collections=[
                     model.Collection(
                         **{

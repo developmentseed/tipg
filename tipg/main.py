@@ -69,7 +69,7 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
-app.add_middleware(CatalogUpdateMiddleware)
+app.add_middleware(CatalogUpdateMiddleware, ttl=settings.catalog_ttl)
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
