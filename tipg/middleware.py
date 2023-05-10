@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Set
+from typing import Any, Optional, Set
 
 from tipg.db import register_collection_catalog
 from tipg.logger import logger
@@ -55,21 +55,23 @@ class CatalogUpdateMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         ttl: int = 300,
+        **kwargs: Any,
     ) -> None:
         """Init Middleware.
 
         Args:
             app (ASGIApp): starlette/FastAPI application.
             ttl (int): time-to-live value in seconds. Defaults to 300.
+            kwargs (any): additional argument to pass to the `register_collection_catalog` method
 
         """
         super().__init__(app)
         self.ttl = ttl
+        self.kwargs = kwargs
 
     async def dispatch(self, request: Request, call_next):
         """Fetch Catalog either immediately or in background."""
         response = await call_next(request)
-
         collection_catalog = getattr(request.app.state, "collection_catalog", {})
         last_updated = collection_catalog.get("last_updated")
         if not last_updated or datetime.now() > (
@@ -79,7 +81,9 @@ class CatalogUpdateMiddleware(BaseHTTPMiddleware):
                 f"Running catalog refresh in background. Last Updated: {last_updated}"
             )
             response.background = BackgroundTask(
-                register_collection_catalog, request.app
+                register_collection_catalog,
+                request.app,
+                **self.kwargs,
             )
 
         return response

@@ -6,3 +6,9 @@ def test_health(app):
     response = app.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"ping": "pong!"}
+
+    response = app.get("/rawcatalog")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["collections"]
+    assert body["last_updated"]

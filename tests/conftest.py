@@ -9,6 +9,7 @@ from tipg.settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
 
 from fastapi import FastAPI
 
+from starlette.requests import Request
 from starlette.testclient import TestClient
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -150,6 +151,8 @@ def app(database_url, monkeypatch):
     # OGC Tiles Settings
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
+
+    monkeypatch.setenv("TIPG_DEBUG", "TRUE")
 
     from tipg.main import app, db_settings, postgres_settings
 
@@ -326,6 +329,69 @@ def app_myschema_public_order(database_url, monkeypatch):
         db_settings=db_settings,
         sql_settings=sql_settings,
     )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_middleware_refresh(database_url, monkeypatch):
+    """Create APP with CatalogUpdateMiddleware middleware."""
+
+    from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
+    from tipg.middleware import CatalogUpdateMiddleware
+
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["public"],
+        exclude_function_schemas=["public"],
+    )
+
+    app = FastAPI()
+
+    @app.get("/rawcatalog", tags=["debug"])
+    async def raw_catalog(request: Request):
+        """Return parsed catalog data for testing."""
+        return request.app.state.collection_catalog
+
+    # refresh every 2 seconds
+    app.add_middleware(
+        CatalogUpdateMiddleware,
+        ttl=2,
+        schemas=db_settings.schemas,
+        tables=db_settings.tables,
+        exclude_tables=db_settings.exclude_tables,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
+        functions=db_settings.functions,
+        exclude_functions=db_settings.exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        spatial=db_settings.only_spatial_tables,
+    )
+
+    @app.on_event("startup")
+    async def startup_event() -> None:
+        """Connect to database on startup."""
+        await connect_to_db(
+            app,
+            settings=postgres_settings,
+            schemas=db_settings.schemas,
+        )
+        await register_collection_catalog(
+            app,
+            schemas=db_settings.schemas,
+            tables=db_settings.tables,
+            exclude_tables=db_settings.exclude_tables,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
+            functions=db_settings.functions,
+            exclude_functions=db_settings.exclude_functions,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
+            spatial=db_settings.only_spatial_tables,
+        )
+
+    @app.on_event("shutdown")
+    async def shutdown_event() -> None:
+        """Close database connection."""
+        await close_db_connection(app)
 
     with TestClient(app) as client:
         yield client
