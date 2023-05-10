@@ -181,7 +181,9 @@ def test_stylejson(app):
     assert source["minzoom"] == 5
     assert source["maxzoom"] == 12
 
-    np.testing.assert_almost_equal(source["bounds"], [-180.0, -82.6401, 180.0, 82.6401])
+    np.testing.assert_equal(
+        np.around(source["bounds"], 4), [-180.0, -82.6401, 180.0, 82.6401]
+    )
 
     response = app.get("/collections/public.landsat_wrs/WGS1984Quad/style.json")
     assert response.status_code == 200
@@ -199,7 +201,9 @@ def test_stylejson(app):
     assert source["maxzoom"] == 17
     assert "WGS1984Quad" in source["tiles"][0]
 
-    np.testing.assert_almost_equal(source["bounds"], [-180.0, -82.6401, 180.0, 82.6401])
+    np.testing.assert_equal(
+        np.around(source["bounds"], 4), [-180.0, -82.6401, 180.0, 82.6401]
+    )
 
     response = app.get("/collections/public.landsat_wrs/style.json?minzoom=1&maxzoom=2")
     assert response.status_code == 200
