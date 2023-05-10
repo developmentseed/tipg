@@ -25,7 +25,7 @@ from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
-from tipg.dbmodel import Collection
+from tipg.dbmodel import Collection, Database
 from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -41,7 +41,12 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
+from tipg.errors import (
+    MissingCollectionCatalog,
+    MissingGeometryColumn,
+    NoPrimaryKey,
+    NotFound,
+)
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
@@ -445,8 +450,13 @@ class OGCFeaturesFactory(EndpointsFactory):
             ),
         ):
             """List of collections."""
-            collection_catalog = getattr(request.app.state, "collection_catalog", {})
-            collections_list = list(collection_catalog.values())
+            collection_catalog: Database = getattr(
+                request.app.state, "collection_catalog", None
+            )
+            if not collection_catalog:
+                raise MissingCollectionCatalog("Could not find collections catalog.")
+
+            collections_list = list(collection_catalog["collections"].values())
 
             limit = limit or 0
             offset = offset or 0

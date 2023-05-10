@@ -8,7 +8,7 @@ from tipg import __version__ as tipg_version
 from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
-from tipg.middleware import CacheControlMiddleware
+from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import (
     APISettings,
     CustomSQLSettings,
@@ -34,6 +34,7 @@ app = FastAPI(
     openapi_url="/api",
     docs_url="/api.html",
 )
+app.state.db_settings = db_settings
 
 # custom template directory
 templates_location: List[Any] = (
@@ -68,6 +69,21 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
+
+if settings.catalog_ttl:
+    app.add_middleware(
+        CatalogUpdateMiddleware,
+        ttl=settings.catalog_ttl,
+        schemas=db_settings.schemas,
+        tables=db_settings.tables,
+        exclude_tables=db_settings.exclude_tables,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
+        functions=db_settings.functions,
+        exclude_functions=db_settings.exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        spatial=db_settings.only_spatial_tables,
+    )
+
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 

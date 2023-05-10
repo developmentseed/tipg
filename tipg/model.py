@@ -110,6 +110,11 @@ class Collections(BaseModel):
     numberReturned: Optional[int]
     collections: List[Collection]
 
+    class Config:
+        """Collection model configuration."""
+
+        extra = "allow"
+
 
 class Item(Feature):
     """Item model

@@ -1,8 +1,13 @@
 """tipg middlewares."""
 
 import re
-from typing import Optional, Set
+from datetime import datetime, timedelta
+from typing import Any, Optional, Set
 
+from tipg.db import register_collection_catalog
+from tipg.logger import logger
+
+from starlette.background import BackgroundTask
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
@@ -39,5 +44,46 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 
             if request.method in ["HEAD", "GET"] and response.status_code < 500:
                 response.headers["Cache-Control"] = self.cachecontrol
+
+        return response
+
+
+class CatalogUpdateMiddleware(BaseHTTPMiddleware):
+    """Middleware to update the catalog cache."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        ttl: int = 300,
+        **kwargs: Any,
+    ) -> None:
+        """Init Middleware.
+
+        Args:
+            app (ASGIApp): starlette/FastAPI application.
+            ttl (int): time-to-live value in seconds. Defaults to 300.
+            kwargs (any): additional argument to pass to the `register_collection_catalog` method
+
+        """
+        super().__init__(app)
+        self.ttl = ttl
+        self.kwargs = kwargs
+
+    async def dispatch(self, request: Request, call_next):
+        """Fetch Catalog either immediately or in background."""
+        response = await call_next(request)
+        collection_catalog = getattr(request.app.state, "collection_catalog", {})
+        last_updated = collection_catalog.get("last_updated")
+        if not last_updated or datetime.now() > (
+            last_updated + timedelta(seconds=self.ttl)
+        ):
+            logger.debug(
+                f"Running catalog refresh in background. Last Updated: {last_updated}"
+            )
+            response.background = BackgroundTask(
+                register_collection_catalog,
+                request.app,
+                **self.kwargs,
+            )
 
         return response
