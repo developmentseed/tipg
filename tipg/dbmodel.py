@@ -1,5 +1,6 @@
 """tipg.dbmodel: database events."""
 
+import datetime
 import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
@@ -873,7 +874,11 @@ class Collection(BaseModel):
         return {**geoms, **props}
 
 
-Database = Dict[str, Collection]
+class Database(TypedDict):
+    """Database."""
+
+    collections: Dict[str, Collection]
+    last_updated: datetime.datetime
 
 
 async def get_collection_index(  # noqa: C901
@@ -916,7 +921,7 @@ async def get_collection_index(  # noqa: C901
             spatial=spatial,
         )
 
-        catalog = {}
+        catalog: Dict[str, Collection] = {}
         table_settings = TableSettings()
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
@@ -976,4 +981,4 @@ async def get_collection_index(  # noqa: C901
                 parameters=table.get("parameters", []),
             )
 
-        return catalog
+        return Database(collections=catalog, last_updated=datetime.datetime.now())

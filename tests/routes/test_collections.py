@@ -9,7 +9,12 @@ def test_collections(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert ["links", "numberMatched", "numberReturned", "collections"] == list(body)
+    assert [
+        "links",
+        "numberMatched",
+        "numberReturned",
+        "collections",
+    ] == list(body)
     assert body["numberMatched"] == collection_number
     assert body["numberReturned"] == collection_number
 

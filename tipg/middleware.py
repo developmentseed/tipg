@@ -1,8 +1,8 @@
 """tipg middlewares."""
 
 import re
-from datetime import datetime
-from typing import Optional, Set
+from datetime import datetime, timedelta
+from typing import Any, Optional, Set
 
 from tipg.db import register_collection_catalog
 from tipg.logger import logger
@@ -51,19 +51,39 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 class CatalogUpdateMiddleware(BaseHTTPMiddleware):
     """Middleware to update the catalog cache."""
 
+    def __init__(
+        self,
+        app: ASGIApp,
+        ttl: int = 300,
+        **kwargs: Any,
+    ) -> None:
+        """Init Middleware.
+
+        Args:
+            app (ASGIApp): starlette/FastAPI application.
+            ttl (int): time-to-live value in seconds. Defaults to 300.
+            kwargs (any): additional argument to pass to the `register_collection_catalog` method
+
+        """
+        super().__init__(app)
+        self.ttl = ttl
+        self.kwargs = kwargs
+
     async def dispatch(self, request: Request, call_next):
         """Fetch Catalog either immediately or in background."""
-        if request.query_params.get("refresh"):
-            logger.debug("Forcing catalog refresh.")
-            await register_collection_catalog(request.app)
-            response = await call_next(request)
-        elif datetime.now() > request.app.state.catalog_expire:
-            logger.debug("Running catalog refresh in background.")
-            response = await call_next(request)
-            response.background = BackgroundTask(
-                register_collection_catalog, request.app
+        response = await call_next(request)
+        collection_catalog = getattr(request.app.state, "collection_catalog", {})
+        last_updated = collection_catalog.get("last_updated")
+        if not last_updated or datetime.now() > (
+            last_updated + timedelta(seconds=self.ttl)
+        ):
+            logger.debug(
+                f"Running catalog refresh in background. Last Updated: {last_updated}"
             )
-        else:
-            logger.debug("No need to refresh catalog.")
-            response = await call_next(request)
+            response.background = BackgroundTask(
+                register_collection_catalog,
+                request.app,
+                **self.kwargs,
+            )
+
         return response

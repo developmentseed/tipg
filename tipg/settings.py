@@ -2,7 +2,6 @@
 
 import pathlib
 import sys
-from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 import pydantic
@@ -104,6 +103,8 @@ class APISettings(pydantic.BaseSettings):
 
     add_tiles_viewer: bool = True
 
+    catalog_ttl: int = 300
+
     @pydantic.validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
@@ -175,8 +176,6 @@ class DatabaseSettings(pydantic.BaseSettings):
     exclude_function_schemas: Optional[List[str]]
 
     only_spatial_tables: bool = True
-
-    catalog_ttl: timedelta = timedelta(minutes=5)
 
     class Config:
         """model config"""

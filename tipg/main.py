@@ -69,7 +69,21 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
-app.add_middleware(CatalogUpdateMiddleware)
+
+if settings.catalog_ttl:
+    app.add_middleware(
+        CatalogUpdateMiddleware,
+        ttl=settings.catalog_ttl,
+        schemas=db_settings.schemas,
+        tables=db_settings.tables,
+        exclude_tables=db_settings.exclude_tables,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
+        functions=db_settings.functions,
+        exclude_functions=db_settings.exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        spatial=db_settings.only_spatial_tables,
+    )
+
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
