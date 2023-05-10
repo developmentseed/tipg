@@ -14,7 +14,6 @@ def test_collections(app):
         "numberMatched",
         "numberReturned",
         "collections",
-        "lastUpdated",
     ] == list(body)
     assert body["numberMatched"] == collection_number
     assert body["numberReturned"] == collection_number

@@ -41,12 +41,17 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
+from tipg.errors import (
+    MissingCollectionCatalog,
+    MissingGeometryColumn,
+    NoPrimaryKey,
+    NotFound,
+)
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from starlette.datastructures import QueryParams
@@ -445,11 +450,11 @@ class OGCFeaturesFactory(EndpointsFactory):
             ),
         ):
             """List of collections."""
-            collection_catalog: Database = request.app.state.collection_catalog
+            collection_catalog: Database = getattr(
+                request.app.state, "collection_catalog", None
+            )
             if not collection_catalog:
-                raise HTTPException(
-                    status_code=500, detail="Could not find collections."
-                )
+                raise MissingCollectionCatalog("Could not find collections catalog.")
 
             collections_list = list(collection_catalog["collections"].values())
 
@@ -532,7 +537,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                 links=links,
                 numberMatched=matched_items,
                 numberReturned=items_returned,
-                lastUpdated=str(collection_catalog["last_updated"]),
                 collections=[
                     model.Collection(
                         **{

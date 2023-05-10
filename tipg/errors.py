@@ -66,6 +66,10 @@ class FunctionDirectoryDoesNotExist(TiPgError):
     """Function Directory Is Set But Does Not Exist."""
 
 
+class MissingCollectionCatalog(TiPgError):
+    """`collection_catalog` not registered in the application state."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -81,6 +85,7 @@ DEFAULT_STATUS_CODES = {
     NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_ENTITY,
     MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_ENTITY,
     FunctionDirectoryDoesNotExist: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    MissingCollectionCatalog: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
 
 

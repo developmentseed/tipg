@@ -68,21 +68,18 @@ class CatalogUpdateMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Fetch Catalog either immediately or in background."""
-        collection_catalog = getattr(request.app.state, "collection_catalog", {})
-        collections = collection_catalog.get("collections")
-        last_updated = collection_catalog.get("last_updated")
+        response = await call_next(request)
 
-        if not collections or datetime.now() > (
+        collection_catalog = getattr(request.app.state, "collection_catalog", {})
+        last_updated = collection_catalog.get("last_updated")
+        if not last_updated or datetime.now() > (
             last_updated + timedelta(seconds=self.ttl)
         ):
-            logger.debug("Running catalog refresh in background.")
-            response = await call_next(request)
+            logger.debug(
+                f"Running catalog refresh in background. Last Updated: {last_updated}"
+            )
             response.background = BackgroundTask(
                 register_collection_catalog, request.app
             )
-
-        else:
-            logger.debug("No need to refresh catalog.")
-            response = await call_next(request)
 
         return response

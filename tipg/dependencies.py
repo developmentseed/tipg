@@ -10,7 +10,7 @@ from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tipg.dbmodel import Collection, Database
-from tipg.errors import InvalidBBox, MissingFunctionParameter
+from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
 from tipg.resources import enums
 from tipg.settings import TMSSettings
 
@@ -37,9 +37,11 @@ def CollectionParams(
     assert collection_pattern.groupdict()["schema"]
     assert collection_pattern.groupdict()["collection"]
 
-    collection_catalog: Database = request.app.state.collection_catalog
+    collection_catalog: Database = getattr(
+        request.app.state, "collection_catalog", None
+    )
     if not collection_catalog:
-        raise HTTPException(status_code=500, detail="Could not find collections.")
+        raise MissingCollectionCatalog("Could not find collections catalog.")
 
     if collectionId in collection_catalog["collections"]:
         return collection_catalog["collections"][collectionId]
