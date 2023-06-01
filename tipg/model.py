@@ -483,7 +483,6 @@ class PropertiesSchema(BaseModel):
 
     type: Literal["object"]
     required: Optional[List[str]] = Field(
-        None,
         description="Implements 'multiplicity' by citing property 'name' defined as 'additionalProperties'",
         min_items=1,
     )
@@ -582,7 +581,7 @@ class GeospatialData(BaseModel):
     geoDataClasses: Optional[List[str]] = Field(
         description="URI identifying a class of data contained in this layer (useful to determine compatibility with styles or processes)",
     )
-    propertiesSchema: Optional[PropertiesSchema] = None
+    propertiesSchema: Optional[PropertiesSchema]
     links: Optional[List[Link]] = Field(
         description="Links related to this layer. Possible link 'rel' values are: 'geodata' for a URL pointing to the collection of geospatial data.",
         min_items=1,
@@ -649,33 +648,29 @@ class TileSet(BaseModel):
     epoch: Optional[Union[float, int]] = Field(
         description="Epoch of the Coordinate Reference System (CRS)"
     )
-    layers: Optional[List[GeospatialData]] = Field(None, min_items=1)
+    layers: Optional[List[GeospatialData]] = Field(min_items=1)
     boundingBox: Optional[BoundingBox]
-    centerPoint: Optional[TilePoint] = None
-    style: Optional[Style] = None
+    centerPoint: Optional[TilePoint]
+    style: Optional[Style]
     attribution: Optional[str] = Field(
-        None, description="Short reference to recognize the author or provider"
+        description="Short reference to recognize the author or provider"
     )
-    license: Optional[str] = Field(None, description="License applicable to the tiles")
+    license: Optional[str] = Field(description="License applicable to the tiles")
     accessConstraints: Optional[AccessConstraints] = Field(
         "unclassified",
         description="Restrictions on the availability of the Tile Set that the user needs to be aware of before using or redistributing the Tile Set",
     )
-    keywords: Optional[List[str]] = Field(
-        None, description="keywords about this tileset"
-    )
+    keywords: Optional[List[str]] = Field(description="keywords about this tileset")
     version: Optional[str] = Field(
-        None,
         description="Version of the Tile Set. Changes if the data behind the tiles has been changed",
     )
-    created: Optional[TimeStamp] = None
-    updated: Optional[TimeStamp] = None
+    created: Optional[TimeStamp]
+    updated: Optional[TimeStamp]
     pointOfContact: Optional[str] = Field(
-        None,
         description="Useful information to contact the authors or custodians for the Tile Set",
     )
     mediaTypes: Optional[List[str]] = Field(
-        None, description="Media types available for the tiles"
+        description="Media types available for the tiles"
     )
 
 
