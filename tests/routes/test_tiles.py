@@ -29,7 +29,7 @@ def test_tilejson(app):
     assert resp_json["tilejson"] == "3.0.0"
     assert resp_json["name"] == "public.landsat_wrs"
     assert resp_json["minzoom"] == 0
-    assert resp_json["maxzoom"] == 17
+    assert resp_json["maxzoom"] == 23
     assert resp_json["vector_layers"]
     assert "WGS1984Quad" in resp_json["tiles"][0]
 
@@ -198,7 +198,7 @@ def test_stylejson(app):
 
     source = resp_json["sources"]["public.landsat_wrs"]
     assert source["minzoom"] == 0
-    assert source["maxzoom"] == 17
+    assert source["maxzoom"] == 23
     assert "WGS1984Quad" in source["tiles"][0]
 
     np.testing.assert_equal(

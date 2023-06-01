@@ -24,5 +24,6 @@ def test_tilematrixInfo(app):
     response = app.get("/tileMatrixSets/WebMercatorQuad")
     assert response.status_code == 200
     body = response.json()
-    assert body["type"] == "TileMatrixSetType"
-    assert body["identifier"] == "WebMercatorQuad"
+    assert body["id"] == "WebMercatorQuad"
+    assert body["crs"]
+    assert body["tileMatrices"]

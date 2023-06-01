@@ -1,10 +1,11 @@
 """tipg models."""
 
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from geojson_pydantic.features import Feature, FeatureCollection
-from pydantic import AnyHttpUrl, BaseModel, Field, root_validator
+from pydantic import AnyHttpUrl, AnyUrl, BaseModel, Field, conint, root_validator
 
 from tipg.resources.enums import MediaType
 
@@ -12,15 +13,38 @@ from tipg.resources.enums import MediaType
 class Link(BaseModel):
     """Link model.
 
-    Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/link.yaml
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-core/link.yaml
 
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    href: str
-    rel: Optional[str]
-    type: Optional[MediaType]
-    hreflang: Optional[str]
-    title: Optional[str]
+    href: str = Field(
+        ...,
+        description="Supplies the URI to a remote resource (or resource fragment).",
+        example="http://data.example.com/buildings/123",
+    )
+    rel: str = Field(
+        ..., description="The type or semantics of the relation.", example="alternate"
+    )
+    type: Optional[MediaType] = Field(
+        description="A hint indicating what the media type of the result of dereferencing the link should be.",
+        example="application/geo+json",
+    )
+    templated: Optional[bool] = Field(
+        description="This flag set to true if the link is a URL template."
+    )
+    varBase: Optional[str] = Field(
+        description="A base path to retrieve semantic information about the variables used in URL template.",
+        example="/ogcapi/vars/",
+    )
+    hreflang: Optional[str] = Field(
+        description="A hint indicating what the language of the result of dereferencing the link should be.",
+        example="en",
+    )
+    title: Optional[str] = Field(
+        description="Used to label the destination of a link such that it can be used as a human-readable identifier.",
+        example="Trierer Strasse 70, 53115 Bonn",
+    )
     length: Optional[int]
 
     class Config:
@@ -220,7 +244,7 @@ class TileMatrixSetRef(BaseModel):
     """
 
     id: str
-    title: str
+    title: Optional[str]
     links: List[TileMatrixSetLink]
 
 
@@ -309,3 +333,357 @@ class StyleJSON(BaseModel):
     sources: Dict
     center: List[float] = [0, 0]
     zoom: int = 1
+
+
+class TimeStamp(BaseModel):
+    """TimeStamp model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-geodata/timeStamp.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    __root__: datetime = Field(
+        ...,
+        description="This property indicates the time and date when the response was generated using RFC 3339 notation.",
+        example="2017-08-17T08:05:32Z",
+    )
+
+
+class CRSUri(BaseModel):
+    """CRS from URI."""
+
+    uri: AnyUrl = Field(
+        ..., description="Reference to one coordinate reference system (CRS)"
+    )
+
+
+class CRSWKT(BaseModel):
+    """CRS from WKT."""
+
+    wkt: str
+
+
+class CRSRef(BaseModel):
+    """CRS from referenceSystem."""
+
+    referenceSystem: Dict[str, Any] = Field(
+        ...,
+        description="A reference system data structure as defined in the MD_ReferenceSystem of the ISO 19115",
+    )
+
+
+class CRS(BaseModel):
+    """CRS model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-geodata/crs.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    __root__: Union[str, Union[CRSUri, CRSWKT, CRSRef]] = Field(..., title="CRS")
+
+
+class BoundingBox(BaseModel):
+    """BoundingBox model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/2DBoundingBox.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    lowerLeft: List[float] = Field(
+        ...,
+        max_items=2,
+        min_items=2,
+        description="A 2D Point in the CRS indicated elsewhere",
+    )
+    upperRight: List[float] = Field(
+        ...,
+        max_items=2,
+        min_items=2,
+        description="A 2D Point in the CRS indicated elsewhere",
+    )
+    crs: Optional[CRS]
+    orderedAxes: Optional[List[str]] = Field(max_items=2, min_items=2)
+
+
+class Type(Enum):
+    """Type enum.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    array = "array"
+    boolean = "boolean"
+    integer = "integer"
+    null = "null"
+    number = "number"
+    object = "object"
+    string = "string"
+
+
+class AccessConstraints(Enum):
+    """AccessConstraints enum.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    unclassified = "unclassified"
+    restricted = "restricted"
+    confidential = "confidential"
+    secret = "secret"
+    topSecret = "topSecret"
+
+
+class Properties(BaseModel):
+    """Properties model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    title: Optional[str]
+    description: Optional[str] = Field(description="Implements 'description'")
+    type: Optional[Type]
+    enum: Optional[List] = Field(
+        description="Implements 'acceptedValues'", min_items=1, unique_items=True
+    )
+    format: Optional[str] = Field(description="Complements implementation of 'type'")
+    contentMediaType: Optional[str] = Field(description="Implements 'mediaType'")
+    maximum: Optional[float] = Field(description="Implements 'range'")
+    exclusiveMaximum: Optional[float] = Field(description="Implements 'range'")
+    minimum: Optional[float] = Field(description="Implements 'range'")
+    exclusiveMinimum: Optional[float] = Field(description="Implements 'range'")
+    pattern: Optional[str]
+    maxItems: Optional[conint(ge=0)] = Field(  # type: ignore
+        description="Implements 'upperMultiplicity'"
+    )
+    minItems: Optional[conint(ge=0)] = Field(  # type: ignore
+        0, description="Implements 'lowerMultiplicity'"
+    )
+    observedProperty: Optional[str]
+    observedPropertyURI: Optional[AnyUrl]
+    uom: Optional[str]
+    uomURI: Optional[AnyUrl]
+
+
+class PropertiesSchema(BaseModel):
+    """PropertiesSchema model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    type: Literal["object"]
+    required: Optional[List[str]] = Field(
+        None,
+        description="Implements 'multiplicity' by citing property 'name' defined as 'additionalProperties'",
+        min_items=1,
+    )
+    properties: Dict[str, Properties]
+
+
+class Style(BaseModel):
+    """Style model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/style.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    id: str = Field(
+        ..., description="An identifier for this style. Implementation of 'identifier'"
+    )
+    title: Optional[str] = Field(description="A title for this style")
+    description: Optional[str] = Field(
+        description="Brief narrative description of this style"
+    )
+    keywords: Optional[List[str]] = Field(description="keywords about this style")
+    links: Optional[List[Link]] = Field(
+        description="Links to style related resources. Possible link 'rel' values are: 'style' for a URL pointing to the style description, 'styleSpec' for a URL pointing to the specification or standard used to define the style.",
+        min_items=1,
+    )
+
+
+class GeospatialData(BaseModel):
+    """Geospatial model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/geospatialData.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    title: Optional[str] = Field(
+        description="Title of this tile matrix set, normally used for display to a human",
+    )
+    description: Optional[str] = Field(
+        description="Brief narrative description of this tile matrix set, normally available for display to a human",
+    )
+    keywords: Optional[str] = Field(
+        description="Unordered list of one or more commonly used or formalized word(s) or phrase(s) used to describe this layer",
+    )
+    id: str = Field(
+        ...,
+        description="Unique identifier of the Layer. Implementation of 'identifier'",
+    )
+    dataType: Literal["map", "vector", "coverage"] = Field(
+        ..., description="Type of data represented in the tileset"
+    )
+    geometryDimension: Optional[conint(ge=0, le=3)] = Field(  # type: ignore
+        description="The geometry dimension of the features shown in this layer (0: points, 1: curves, 2: surfaces, 3: solids), unspecified: mixed or unknown",
+    )
+    featureType: Optional[str] = Field(
+        description="Feature type identifier. Only applicable to layers of datatype 'geometries'",
+    )
+    attribution: Optional[str] = Field(
+        description="Short reference to recognize the author or provider"
+    )
+    license: Optional[str] = Field(description="License applicable to the tiles")
+    pointOfContact: Optional[str] = Field(
+        description="Useful information to contact the authors or custodians for the layer (e.g. e-mail address, a physical address,  phone numbers, etc)",
+    )
+    publisher: Optional[str] = Field(
+        description="Organization or individual responsible for making the layer available",
+    )
+    theme: Optional[str] = Field(description="Category where the layer can be grouped")
+    crs: Optional[CRS]
+    epoch: Optional[float] = Field(
+        description="Epoch of the Coordinate Reference System (CRS)"
+    )
+    minScaleDenominator: Optional[float] = Field(
+        description="Minimum scale denominator for usage of the layer"
+    )
+    maxScaleDenominator: Optional[float] = Field(
+        description="Maximum scale denominator for usage of the layer"
+    )
+    minCellSize: Optional[float] = Field(
+        description="Minimum cell size for usage of the layer"
+    )
+    maxCellSize: Optional[float] = Field(
+        description="Maximum cell size for usage of the layer"
+    )
+    maxTileMatrix: Optional[str] = Field(
+        description="TileMatrix identifier associated with the minScaleDenominator",
+    )
+    minTileMatrix: Optional[str] = Field(
+        description="TileMatrix identifier associated with the maxScaleDenominator",
+    )
+    boundingBox: Optional[BoundingBox]
+    created: Optional[TimeStamp]
+    updated: Optional[TimeStamp]
+    style: Optional[Style]
+    geoDataClasses: Optional[List[str]] = Field(
+        description="URI identifying a class of data contained in this layer (useful to determine compatibility with styles or processes)",
+    )
+    propertiesSchema: Optional[PropertiesSchema] = None
+    links: Optional[List[Link]] = Field(
+        description="Links related to this layer. Possible link 'rel' values are: 'geodata' for a URL pointing to the collection of geospatial data.",
+        min_items=1,
+    )
+
+
+class TilePoint(BaseModel):
+    """TilePoint model.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/tilePoint.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    coordinates: List[float] = Field(..., max_items=2, min_items=2)
+    crs: Optional[CRS]
+    tileMatrix: Optional[str] = Field(
+        description="TileMatrix identifier associated with the scaleDenominator"
+    )
+    scaleDenominator: Optional[float] = Field(
+        description="Scale denominator of the tile matrix selected"
+    )
+    cellSize: Optional[float] = Field(
+        description="Cell size of the tile matrix selected"
+    )
+
+
+class TileMatrixLimits(BaseModel):
+    """
+    The limits for an individual tile matrix of a TileSet's TileMatrixSet, as defined in the OGC 2D TileMatrixSet and TileSet Metadata Standard
+
+    Based on https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/tileMatrixLimits.yaml
+    """
+
+    tileMatrix: str
+    minTileRow: int = Field(ge=0)
+    maxTileRow: int = Field(ge=0)
+    minTileCol: int = Field(ge=0)
+    maxTileCol: int = Field(ge=0)
+
+
+class TileSet(BaseModel):
+    """
+    TileSet model.
+
+    Based on https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/tileSet.yaml
+    """
+
+    title: Optional[str] = Field(description="A title for this tileset")
+    description: Optional[str] = Field(
+        description="Brief narrative description of this tile set"
+    )
+    dataType: Literal["map", "vector", "coverage"] = Field(
+        ..., description="Type of data represented in the tileset"
+    )
+    crs: CRS = Field(description="Coordinate Reference System (CRS)")
+    tileMatrixSetURI: Optional[AnyUrl] = Field(
+        description="Reference to a Tile Matrix Set on an official source for Tile Matrix Sets"
+    )
+    links: List[Link] = Field(description="Links to related resources")
+    tileMatrixSetLimits: Optional[List[TileMatrixLimits]] = Field(
+        description="Limits for the TileRow and TileCol values for each TileMatrix in the tileMatrixSet. If missing, there are no limits other that the ones imposed by the TileMatrixSet. If present the TileMatrices listed are limited and the rest not available at all",
+    )
+    epoch: Optional[Union[float, int]] = Field(
+        description="Epoch of the Coordinate Reference System (CRS)"
+    )
+    layers: Optional[List[GeospatialData]] = Field(None, min_items=1)
+    boundingBox: Optional[BoundingBox]
+    centerPoint: Optional[TilePoint] = None
+    style: Optional[Style] = None
+    attribution: Optional[str] = Field(
+        None, description="Short reference to recognize the author or provider"
+    )
+    license: Optional[str] = Field(None, description="License applicable to the tiles")
+    accessConstraints: Optional[AccessConstraints] = Field(
+        "unclassified",
+        description="Restrictions on the availability of the Tile Set that the user needs to be aware of before using or redistributing the Tile Set",
+    )
+    keywords: Optional[List[str]] = Field(
+        None, description="keywords about this tileset"
+    )
+    version: Optional[str] = Field(
+        None,
+        description="Version of the Tile Set. Changes if the data behind the tiles has been changed",
+    )
+    created: Optional[TimeStamp] = None
+    updated: Optional[TimeStamp] = None
+    pointOfContact: Optional[str] = Field(
+        None,
+        description="Useful information to contact the authors or custodians for the Tile Set",
+    )
+    mediaTypes: Optional[List[str]] = Field(
+        None, description="Media types available for the tiles"
+    )
+
+
+class TileSetList(BaseModel):
+    """
+    TileSetList model.
+
+    Based on https://docs.ogc.org/is/20-057/20-057.html#toc34
+    """
+
+    tilesets: List[TileSet]

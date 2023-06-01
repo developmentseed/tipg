@@ -1155,6 +1155,7 @@ class OGCTilesFactory(EndpointsFactory):
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
+            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/tileset",
         ]
 
     def links(self, request: Request) -> List[model.Link]:
@@ -1164,7 +1165,7 @@ class OGCTilesFactory(EndpointsFactory):
                 title="Collection Vector Tiles",
                 href=self.url_for(
                     request,
-                    "tile",
+                    "collection_get_tile",
                     collectionId="{collectionId}",
                     z="{z}",
                     x="{x}",
@@ -1198,16 +1199,96 @@ class OGCTilesFactory(EndpointsFactory):
         """Register OGC Tiles endpoints."""
 
         @self.router.get(
+            r"/tileMatrixSets",
+            response_model=model.TileMatrixSetList,
+            response_model_exclude_none=True,
+            summary="Retrieve the list of available tiling schemes (tile matrix sets).",
+            operation_id="getTileMatrixSetsList",
+        )
+        async def tilematrixsets(request: Request):
+            """
+            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
+            """
+            return {
+                "tileMatrixSets": [
+                    {
+                        "id": tms_id,
+                        "links": [
+                            {
+                                "href": self.url_for(
+                                    request,
+                                    "tilematrixset",
+                                    tileMatrixSetId=tms_id,
+                                ),
+                                "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                                "type": "application/json",
+                                "title": "List of tileMatrixSets implemented by this API",
+                            }
+                        ],
+                    }
+                    for tms_id in self.supported_tms.list()
+                ]
+            }
+
+        @self.router.get(
+            r"/tileMatrixSets/{tileMatrixSetId}",
+            response_model=TileMatrixSet,
+            response_model_exclude_none=True,
+            summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
+            operation_id="getTileMatrixSet",
+        )
+        async def tilematrixset(
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
+                ...,
+                description="Identifier for a supported TileMatrixSet.",
+            ),
+        ):
+            """
+            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
+            """
+            return self.supported_tms.get(tileMatrixSetId)
+
+        @self.router.get(
+            "/collections/{collectionId}/tiles",
+            response_class=ORJSONResponse,
+            responses={200: {"content": {MediaType.json.value: {}}}},
+            summary="Retrieve a list of available vector tilesets for the specified collection.",
+            operation_id=".collection.vector.getTileSetsList",
+        )
+        async def collection_tileset_list(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+        ):
+            ...
+
+        @self.router.get(
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}",
+            response_class=ORJSONResponse,
+            responses={200: {"content": {MediaType.json.value: {}}}},
+            summary="Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set).",
+            operation_id=".collection.vector.getTileSet",
+        )
+        async def collection_tileset(
+            request: Request,
+            collection=Depends(self.collection_dependency),
+            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
+                description="Identifier for a supported TileMatrixSet.",
+            ),
+        ):
+            ...
+
+        @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
+            operation_id=".collection.vector.getTile",
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
         )
-        async def tile(
+        async def collection_get_tile(
             request: Request,
             collection=Depends(self.collection_dependency),
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
@@ -1260,6 +1341,9 @@ class OGCTilesFactory(EndpointsFactory):
 
             return Response(bytes(tile), media_type=MediaType.mvt.value)
 
+        ############################################################################
+        # ADDITIONAL ENDPOINTS NOT IN OGC Tiles API (tilejson, style.json, viewer) #
+        ############################################################################
         @self.router.get(
             "/collections/{collectionId}/{tileMatrixSetId}/tilejson.json",
             response_model=model.TileJSON,
@@ -1274,7 +1358,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
         )
-        async def tilejson(
+        async def collection_tilejson(
             request: Request,
             collection=Depends(self.collection_dependency),
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
@@ -1301,13 +1385,13 @@ class OGCTilesFactory(EndpointsFactory):
                 raise MissingGeometryColumn
 
             path_params: Dict[str, Any] = {
-                "tileMatrixSetId": tms.identifier,
+                "tileMatrixSetId": tileMatrixSetId,
                 "collectionId": collection.id,
                 "z": "{z}",
                 "x": "{x}",
                 "y": "{y}",
             }
-            tile_endpoint = self.url_for(request, "tile", **path_params)
+            tile_endpoint = self.url_for(request, "collection_get_tile", **path_params)
 
             qs_key_to_remove = ["tilematrixsetid", "minzoom", "maxzoom"]
             query_params = [
@@ -1320,7 +1404,7 @@ class OGCTilesFactory(EndpointsFactory):
                 tile_endpoint += f"?{urlencode(query_params)}"
 
             # Get Min/Max zoom from layer settings if tms is the default tms
-            if tms.identifier == tms_settings.default_tms:
+            if tileMatrixSetId == tms_settings.default_tms:
                 minzoom = minzoom or tms_settings.default_minzoom
                 maxzoom = maxzoom or tms_settings.default_maxzoom
 
@@ -1366,7 +1450,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
         )
-        async def stylejson(
+        async def collection_stylejson(
             request: Request,
             collection=Depends(self.collection_dependency),
             tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
@@ -1394,12 +1478,12 @@ class OGCTilesFactory(EndpointsFactory):
 
             path_params: Dict[str, Any] = {
                 "collectionId": collection.id,
-                "tileMatrixSetId": tms.identifier,
+                "tileMatrixSetId": tileMatrixSetId,
                 "z": "{z}",
                 "x": "{x}",
                 "y": "{y}",
             }
-            tiles_endpoint = self.url_for(request, "tile", **path_params)
+            tiles_endpoint = self.url_for(request, "collection_get_tile", **path_params)
 
             qs_key_to_remove = ["tilematrixsetid", "minzoom", "maxzoom"]
             query_params = [
@@ -1411,7 +1495,7 @@ class OGCTilesFactory(EndpointsFactory):
                 tiles_endpoint += f"?{urlencode(query_params)}"
 
             # Get Min/Max zoom from layer settings if tms is the default tms
-            if tms.identifier == tms_settings.default_tms:
+            if tileMatrixSetId == tms_settings.default_tms:
                 minzoom = minzoom or tms_settings.default_minzoom
                 maxzoom = maxzoom or tms_settings.default_maxzoom
 
@@ -1486,56 +1570,6 @@ class OGCTilesFactory(EndpointsFactory):
 
             return style_json
 
-        @self.router.get(
-            r"/tileMatrixSets",
-            response_model=model.TileMatrixSetList,
-            response_model_exclude_none=True,
-            summary="Retrieve the list of available tiling schemes (tile matrix sets).",
-            operation_id="getTileMatrixSetsList",
-        )
-        async def tilematrixsets(request: Request):
-            """
-            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
-            """
-            return {
-                "tileMatrixSets": [
-                    {
-                        "id": tms,
-                        "title": tms,
-                        "links": [
-                            {
-                                "href": self.url_for(
-                                    request,
-                                    "tilematrixset",
-                                    tileMatrixSetId=tms,
-                                ),
-                                "rel": "item",
-                                "type": "application/json",
-                            }
-                        ],
-                    }
-                    for tms in self.supported_tms.list()
-                ]
-            }
-
-        @self.router.get(
-            r"/tileMatrixSets/{tileMatrixSetId}",
-            response_model=TileMatrixSet,
-            response_model_exclude_none=True,
-            summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
-            operation_id="getTileMatrixSet",
-        )
-        async def tilematrixset(
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
-                ...,
-                description="Identifier for a supported TileMatrixSet.",
-            ),
-        ):
-            """
-            OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
-            """
-            return self.supported_tms.get(tileMatrixSetId)
-
         if self.with_viewer:
 
             @self.router.get(
@@ -1566,13 +1600,13 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
             ):
                 """Return Simple HTML Viewer for a collection."""
-                tms = self.supported_tms.get(tileMatrixSetId)
+                self.supported_tms.get(tileMatrixSetId)
 
                 tilejson_url = self.url_for(
                     request,
-                    "tilejson",
+                    "collection_tilejson",
                     collectionId=collection.id,
-                    tileMatrixSetId=tms.identifier,
+                    tileMatrixSetId=tileMatrixSetId,
                 )
                 if request.query_params._list:
                     tilejson_url += f"?{urlencode(request.query_params._list)}"
