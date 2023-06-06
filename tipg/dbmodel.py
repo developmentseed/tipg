@@ -370,7 +370,7 @@ class Collection(BaseModel):
             )
 
         # Transform the geometries to TMS CRS using EPSG code
-        if tms_srid := tms.crs.to_epsg():
+        if tms_srid := tms._crs.to_epsg():
             transform_logic = logic.Func(
                 "ST_Transform",
                 geom,
@@ -379,7 +379,7 @@ class Collection(BaseModel):
 
         # Transform the geometries to TMS CRS using PROJ String
         else:
-            tms_proj = str(tms.crs.to_proj4())
+            tms_proj = tms._crs.to_proj4()
             transform_logic = logic.Func(
                 "ST_Transform",
                 geom,

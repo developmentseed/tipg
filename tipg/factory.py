@@ -1250,6 +1250,7 @@ class OGCTilesFactory(EndpointsFactory):
 
         @self.router.get(
             "/collections/{collectionId}/tiles",
+            response_model=model.TileSetList,
             response_class=ORJSONResponse,
             responses={200: {"content": {MediaType.json.value: {}}}},
             summary="Retrieve a list of available vector tilesets for the specified collection.",
@@ -1263,6 +1264,7 @@ class OGCTilesFactory(EndpointsFactory):
 
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}",
+            response_model=model.TileSet,
             response_class=ORJSONResponse,
             responses={200: {"content": {MediaType.json.value: {}}}},
             summary="Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set).",

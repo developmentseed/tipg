@@ -2,9 +2,10 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from geojson_pydantic.features import Feature, FeatureCollection
+from morecantile.models import CRSType
 from pydantic import AnyHttpUrl, AnyUrl, BaseModel, Field, conint, root_validator
 
 from tipg.resources.enums import MediaType
@@ -350,40 +351,6 @@ class TimeStamp(BaseModel):
     )
 
 
-class CRSUri(BaseModel):
-    """CRS from URI."""
-
-    uri: AnyUrl = Field(
-        ..., description="Reference to one coordinate reference system (CRS)"
-    )
-
-
-class CRSWKT(BaseModel):
-    """CRS from WKT."""
-
-    wkt: str
-
-
-class CRSRef(BaseModel):
-    """CRS from referenceSystem."""
-
-    referenceSystem: Dict[str, Any] = Field(
-        ...,
-        description="A reference system data structure as defined in the MD_ReferenceSystem of the ISO 19115",
-    )
-
-
-class CRS(BaseModel):
-    """CRS model.
-
-    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-geodata/crs.yaml
-
-    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
-    """
-
-    __root__: Union[str, Union[CRSUri, CRSWKT, CRSRef]] = Field(..., title="CRS")
-
-
 class BoundingBox(BaseModel):
     """BoundingBox model.
 
@@ -404,7 +371,7 @@ class BoundingBox(BaseModel):
         min_items=2,
         description="A 2D Point in the CRS indicated elsewhere",
     )
-    crs: Optional[CRS]
+    crs: Optional[CRSType] = Field(name="CRS")
     orderedAxes: Optional[List[str]] = Field(max_items=2, min_items=2)
 
 
@@ -552,7 +519,7 @@ class GeospatialData(BaseModel):
         description="Organization or individual responsible for making the layer available",
     )
     theme: Optional[str] = Field(description="Category where the layer can be grouped")
-    crs: Optional[CRS]
+    crs: Optional[CRSType] = Field(name="CRS")
     epoch: Optional[float] = Field(
         description="Epoch of the Coordinate Reference System (CRS)"
     )
@@ -597,7 +564,7 @@ class TilePoint(BaseModel):
     """
 
     coordinates: List[float] = Field(..., max_items=2, min_items=2)
-    crs: Optional[CRS]
+    crs: Optional[CRSType] = Field(name="CRS")
     tileMatrix: Optional[str] = Field(
         description="TileMatrix identifier associated with the scaleDenominator"
     )
@@ -637,7 +604,7 @@ class TileSet(BaseModel):
     dataType: Literal["map", "vector", "coverage"] = Field(
         ..., description="Type of data represented in the tileset"
     )
-    crs: CRS = Field(description="Coordinate Reference System (CRS)")
+    crs: CRSType = Field(..., name="CRS")
     tileMatrixSetURI: Optional[AnyUrl] = Field(
         description="Reference to a Tile Matrix Set on an official source for Tile Matrix Sets"
     )
