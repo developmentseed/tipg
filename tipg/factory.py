@@ -1156,7 +1156,8 @@ class OGCTilesFactory(EndpointsFactory):
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
             "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/tileset",
+            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tileset",
+            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tilesets-list",
         ]
 
     def links(self, request: Request) -> List[model.Link]:
@@ -1173,6 +1174,27 @@ class OGCTilesFactory(EndpointsFactory):
                     y="{y}",
                 ),
                 type=MediaType.mvt,
+                rel="data",
+            ),
+            model.Link(
+                title="Collection TileSets",
+                href=self.url_for(
+                    request,
+                    "collection_tileset_list",
+                    collectionId="{collectionId}",
+                ),
+                type=MediaType.json,
+                rel="data",
+            ),
+            model.Link(
+                title="Collection TileSet",
+                href=self.url_for(
+                    request,
+                    "collection_tileset",
+                    collectionId="{collectionId}",
+                    tileMatrixSetId="{tileMatrixSetId}",
+                ),
+                type=MediaType.json,
                 rel="data",
             ),
             model.Link(
@@ -1234,7 +1256,7 @@ class OGCTilesFactory(EndpointsFactory):
                                 ),
                                 "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
                                 "type": "application/json",
-                                "title": "List of tileMatrixSets implemented by this API",
+                                "title": f"Definition of {tms_id} tileMatrixSets",
                             }
                         ],
                     }
@@ -1290,44 +1312,11 @@ class OGCTilesFactory(EndpointsFactory):
 
             return data
 
-        # NOT IMPLEMENTED
-        # @self.router.get(
-        #     "/tiles",
-        #     response_model=model.TileSetList,
-        #     response_class=ORJSONResponse,
-        #     responses={200: {"content": {MediaType.json.value: {}}}},
-        #     summary="Retrieve a list of available vector tilesets for the dataset.",
-        #     operation_id=".dataset.vector.getTileSetsList",
-        # )
-        # async def multi_collections_tileset_list(
-        #     request: Request,
-        #     output_type: Optional[MediaType] = Depends(OutputType),
-        # ):
-        #     ...
-
-        # NOT IMPLEMENTED
-        # @self.router.get(
-        #     "/tiles/{tileMatrixSetId}",
-        #     response_model=model.TileSet,
-        #     response_class=ORJSONResponse,
-        #     responses={200: {"content": {MediaType.json.value: {}}}},
-        #     summary="Retrieve the vector tileset metadata for the whole dataset and the specified tiling scheme (tile matrix set).",
-        #     operation_id=".dataset.vector.getTileSet",
-        # )
-        # async def multi_collections_tileset(
-        #     request: Request,
-        #     tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
-        #         description="Identifier for a supported TileMatrixSet.",
-        #     ),
-        #     collections: Optional[str] = Query(None, description="The collections that should be included in the response. The parameter value is a comma-separated list of collection identifiers."),
-        #     output_type: Optional[MediaType] = Depends(OutputType),
-        # ):
-        #     ...
-
         @self.router.get(
             "/collections/{collectionId}/tiles",
             response_model=model.TileSetList,
             response_class=ORJSONResponse,
+            response_model_exclude_none=True,
             responses={200: {"content": {MediaType.json.value: {}}}},
             summary="Retrieve a list of available vector tilesets for the specified collection.",
             operation_id=".collection.vector.getTileSetsList",
@@ -1337,12 +1326,78 @@ class OGCTilesFactory(EndpointsFactory):
             collection=Depends(self.collection_dependency),
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
-            ...
+            """Retrieve a list of available vector tilesets for the specified collection."""
+            collection_bbox = None
+            if bounds := collection.bounds:
+                collection_bbox = {
+                    "lowerLeft": [bounds[0], bounds[1]],
+                    "upperRight": [bounds[2], bounds[3]],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                }
+
+            data = model.TileSetList(
+                tilesets=[
+                    model.TileSet(
+                        title=f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
+                        dataType="vector",
+                        crs=self.supported_tms.get(tms).crs,
+                        boundingBox=collection_bbox,
+                        links=[
+                            {
+                                "href": self.url_for(
+                                    request,
+                                    "collection_tileset",
+                                    collectionId=collection.id,
+                                    tileMatrixSetId=tms,
+                                ),
+                                "rel": "self",
+                                "type": MediaType.json,
+                                "title": f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
+                            },
+                            {
+                                "href": self.url_for(
+                                    request,
+                                    "tilematrixset",
+                                    tileMatrixSetId=tms,
+                                ),
+                                "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                                "type": MediaType.json,
+                                "title": f"Definition of '{tms}' tileMatrixSet",
+                            },
+                            {
+                                "href": self.url_for(
+                                    request,
+                                    "collection_get_tile",
+                                    tileMatrixSetId=tms,
+                                    collectionId=collection.id,
+                                    z="{z}",
+                                    x="{x}",
+                                    y="{y}",
+                                ),
+                                "rel": "tile",
+                                "type": MediaType.mvt,
+                                "title": "Templated link for retrieving Vector tiles",
+                            },
+                        ],
+                    )
+                    for tms in self.supported_tms.list()
+                ]
+            )
+
+            if output_type == MediaType.html:
+                return self._create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="tilesets",
+                )
+
+            return data
 
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}",
             response_model=model.TileSet,
             response_class=ORJSONResponse,
+            response_model_exclude_none=True,
             responses={200: {"content": {MediaType.json.value: {}}}},
             summary="Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set).",
             operation_id=".collection.vector.getTileSet",
@@ -1355,62 +1410,97 @@ class OGCTilesFactory(EndpointsFactory):
             ),
             output_type: Optional[MediaType] = Depends(OutputType),
         ):
-            ...
-            # data = model.TileSet(
-            #     # title=self.title,
-            #     # links=[
-            #     #     model.Link(
-            #     #         title="Landing Page",
-            #     #         href=self.url_for(request, "landing"),
-            #     #         type=MediaType.json,
-            #     #         rel="self",
-            #     #     ),
-            #     #     model.Link(
-            #     #         title="the API definition (JSON)",
-            #     #         href=str(request.url_for("openapi")),
-            #     #         type=MediaType.openapi30_json,
-            #     #         rel="service-desc",
-            #     #     ),
-            #     #     model.Link(
-            #     #         title="the API documentation",
-            #     #         href=str(request.url_for("swagger_ui_html")),
-            #     #         type=MediaType.html,
-            #     #         rel="service-doc",
-            #     #     ),
-            #     #     model.Link(
-            #     #         title="Conformance",
-            #     #         href=self.url_for(request, "conformance"),
-            #     #         type=MediaType.json,
-            #     #         rel="conformance",
-            #     #     ),
-            #     #     *self.links(request),
-            #     # ],
-            # )
+            """Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set)."""
+            tms = self.supported_tms.get(tileMatrixSetId)
 
-        #             if output_type == MediaType.html:
-        #                 return self._create_html_response(
-        #                     request,
-        #                     data.json(exclude_none=True),
-        #                     template_name="tileset",
-        #                 )
+            if bounds := collection.bounds:
+                collection_bbox = {
+                    "lowerLeft": [bounds[0], bounds[1]],
+                    "upperRight": [bounds[2], bounds[3]],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                }
+                tilematrix_limit = []
+                for matrix in tms:
+                    ulTile = tms.tile(bounds[0], bounds[3], int(matrix.id))
+                    lrTile = tms.tile(bounds[2], bounds[1], int(matrix.id))
+                    minx, maxx = (min(ulTile.x, lrTile.x), max(ulTile.x, lrTile.x))
+                    miny, maxy = (min(ulTile.y, lrTile.y), max(ulTile.y, lrTile.y))
+                    tilematrix_limit.append(
+                        {
+                            "tileMatrix": matrix.id,
+                            "minTileRow": max(miny, 0),
+                            "maxTileRow": min(maxy, matrix.matrixHeight),
+                            "minTileCol": max(minx, 0),
+                            "maxTileCol": min(maxx, matrix.matrixWidth),
+                        }
+                    )
 
-        #             return data
+            else:
+                collection_bbox = None
+                tilematrix_limit = [
+                    {
+                        "tileMatrix": matrix.id,
+                        "minTileRow": 0,
+                        "maxTileRow": matrix.matrixHeight,
+                        "minTileCol": 0,
+                        "maxTileCol": matrix.matrixWidth,
+                    }
+                    for matrix in tms
+                ]
 
-        # A link to the definition of the TileMatrixSet (either one registered in the OGC TileMatrixSet register that is controlled by the OGC Naming Authority (OGC-NA) SubCommittee (SC), or to a custom TileMatrixSet definition).
-        # A TileMatrixSet URI in the case of a TileMatrixSet registered with an authority (e.g. the OGC TileMatrixSet register).
-        # A Coordinate Reference System (usually provided as a URI).
-        # A templated link (URI) to individual tiles.
-        # A data type (indicating whether the tileset consists of vector, coverage or map tiles).
-        # Metadata may optionally also provide additional information, such as:
+            data = model.TileSet(
+                title=f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
+                dataType="vector",
+                crs=tms.crs,
+                boundingBox=collection_bbox,
+                links=[
+                    {
+                        "href": self.url_for(
+                            request,
+                            "collection_tileset",
+                            collectionId=collection.id,
+                            tileMatrixSetId=tileMatrixSetId,
+                        ),
+                        "rel": "self",
+                        "type": MediaType.json,
+                        "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
+                    },
+                    {
+                        "href": self.url_for(
+                            request,
+                            "tilematrixset",
+                            tileMatrixSetId=tileMatrixSetId,
+                        ),
+                        "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                        "type": MediaType.json,
+                        "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
+                    },
+                    {
+                        "href": self.url_for(
+                            request,
+                            "collection_get_tile",
+                            tileMatrixSetId=tileMatrixSetId,
+                            collectionId=collection.id,
+                            z="{z}",
+                            x="{x}",
+                            y="{y}",
+                        ),
+                        "rel": "tile",
+                        "type": MediaType.mvt,
+                        "title": "Templated link for retrieving Vector tiles",
+                    },
+                ],
+                tileMatrixSetLimits=tilematrix_limit,
+            )
 
-        # A title.
-        # A description.
-        # The limits of the tileset if it does not span the full extent of the TileMatrixSet.
-        # The geospatial data resources involved in the creation of the tiles (potentially including links to OGC API collections).
-        # A schema of the available properties contained within the tiles.
-        # Styles used to create the tiles.
-        # A central point on which a viewer may initially focus.
-        # Attribution.
+            if output_type == MediaType.html:
+                return self._create_html_response(
+                    request,
+                    data.json(exclude_none=True),
+                    template_name="tileset",
+                )
+
+            return data
 
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
