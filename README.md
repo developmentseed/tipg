@@ -96,7 +96,7 @@ $ uvicorn tipg.main:app
 
 # or using Docker
 
-$ docker-compose up
+$ docker-compose up app
 ```
 
 <p align="center">

@@ -145,6 +145,12 @@ jobs:
     needs: [tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image-version:
+        - 'uvicorn'
+        - 'gunicorn'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -164,8 +170,17 @@ jobs:
 
       - name: Set tag version
         id: tag
-        # https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
-        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+        run: |
+          echo "version=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+
+      - name: Image name
+        id: image
+        run: |
+          if [ ${{ matrix.image-version }} = 'uvicorn' ]; then
+            echo "name=${{ github.repository }}:uvicorn-" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.repository }}:" >> $GITHUB_OUTPUT
+          fi
 
       # Push `latest` when commiting to main
       - name: Build and push
@@ -174,10 +189,10 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           context: .
-          file: dockerfiles/Dockerfile
+          file: dockerfiles/Dockerfile.${{ matrix.image-version }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ steps.image.outputs.name }}latest
 
       # Push `{VERSION}` when pushing a new tag
       - name: Build and push
@@ -186,7 +201,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           context: .
-          file: dockerfiles/Dockerfile
+          file: dockerfiles/Dockerfile.${{ matrix.image-version }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.tag }}
+            ghcr.io/${{ steps.image.outputs.name }}${{ steps.tag.outputs.tag }}
