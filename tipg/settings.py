@@ -14,6 +14,31 @@ else:
     from typing import TypedDict
 
 
+class APISettings(pydantic.BaseSettings):
+    """API settings"""
+
+    name: str = "TiPg: OGC Features and Tiles API"
+    debug: bool = False
+    cors_origins: str = "*"
+    cachecontrol: str = "public, max-age=3600"
+    template_directory: Optional[str] = None
+
+    add_tiles_viewer: bool = True
+
+    catalog_ttl: int = 300
+
+    @pydantic.validator("cors_origins")
+    def parse_cors_origin(cls, v):
+        """Parse CORS origins."""
+        return [origin.strip() for origin in v.split(",")]
+
+    class Config:
+        """model config"""
+
+        env_prefix = "TIPG_"
+        env_file = ".env"
+
+
 class TableConfig(TypedDict, total=False):
     """Configuration to add table options with env variables."""
 
@@ -84,31 +109,6 @@ class MVTSettings(pydantic.BaseSettings):
     max_features_per_tile: int = 10000
 
     set_mvt_layername: Optional[bool]
-
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_"
-        env_file = ".env"
-
-
-class APISettings(pydantic.BaseSettings):
-    """API settings"""
-
-    name: str = "TiPg: OGC Features and Tiles API"
-    debug: bool = False
-    cors_origins: str = "*"
-    cachecontrol: str = "public, max-age=3600"
-    template_directory: Optional[str] = None
-
-    add_tiles_viewer: bool = True
-
-    catalog_ttl: int = 300
-
-    @pydantic.validator("cors_origins")
-    def parse_cors_origin(cls, v):
-        """Parse CORS origins."""
-        return [origin.strip() for origin in v.split(",")]
 
     class Config:
         """model config"""

@@ -21,6 +21,7 @@ nav:
   - User Guide:
     - "Endpoints documentation": endpoints.md
     - "Endpoints Factories": advanced/factories.md
+    - "Customization": advanced/customization.md
     - "Configuration": advanced/configuration.md
   - API:
     - db: api/tipg/db.md
