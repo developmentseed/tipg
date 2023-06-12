@@ -1,6 +1,7 @@
 
+## OGC Common
 
-## Landing page
+### Landing page
 
 Path: `/`
 
@@ -97,7 +98,7 @@ curl http://127.0.0.1:8081 | jq
 
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_api_landing_page](https://docs.ogc.org/is/17-069r4/17-069r4.html#_api_landing_page)
 
-## Conformance declaration
+### Conformance declaration
 
 Path: `/conformance`
 
@@ -138,7 +139,11 @@ curl http://127.0.0.1:8081/conformance | jq
 
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_declaration_of_conformance_classes](https://docs.ogc.org/is/17-069r4/17-069r4.html#_declaration_of_conformance_classes)
 
-## List Feature Collections
+---
+
+## OGC Features API
+
+### List Feature Collections
 
 Path: `/collections`
 
@@ -231,7 +236,7 @@ curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
 
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_collections_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_collections_)
 
-## Feature Collection's Metadata
+### Feature Collection's Metadata
 
 Path: `/collections/{collectionId}`
 
@@ -307,7 +312,7 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_collection_)
 
 
-## Feature Collection's Queryables
+### Feature Collection's Queryables
 
 Path: `/collections/{collectionId}/queryables`
 
@@ -362,7 +367,7 @@ curl http://127.0.0.1:8081/collections/public.landsat_wrs/queryables | jq
 
 Ref: [http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables](http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables)
 
-## Features
+### Features
 
 Path: `/collections/{collectionId}/items`
 
@@ -437,7 +442,7 @@ Example:
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_items_) and [https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param](https://docs.ogc.org/DRAFTS/19-079r1.html#filter-param)
 
 
-## Feature
+### Feature
 
 Path: `/collections/{collectionId}/items/{itemId}`
 
@@ -492,7 +497,11 @@ Example:
 
 Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_](https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_)
 
-## Vector Tiles
+---
+
+## OGC Tiles API
+
+### Vector Tiles
 
 Path:
 
@@ -530,7 +539,50 @@ QueryParams:
 
 \*  **Not in OGC API Features Specification**
 
-## TileJSON
+
+### Tileset list
+
+Path:
+
+- `/collections/{collectionId}/tiles`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+
+### Tileset metadata
+
+Path:
+
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}`
+
+PathParams:
+
+- **collectionId** (str): Feature Collection Id
+- **tileMatrixSetId** (str): TileMatrixSet identifier
+
+### TileMatrixSets
+
+List Available TileMatrixSets
+
+Path:
+
+- `/tileMatrixSets`
+
+
+### TileMatrixSet
+
+Return TileMatrixSet document
+
+Path:
+
+- `/tileMatrixSets/{tileMatrixSetId}`
+
+PathParams:
+
+- **tileMatrixSetId** (str): TileMatrixSet identifier
+
+### TileJSON
 
 Return a TileJSON document. **Not in OGC Tile API specification**
 
@@ -596,7 +648,7 @@ Example:
 }
 ```
 
-## StyleJSON
+### StyleJSON
 
 Return a mapbox/maplibre StyleJSON document. **Not in OGC Tile API specification**
 
@@ -706,7 +758,7 @@ QueryParams:
 }
 ```
 
-## Viewer
+### Viewer
 
 Simple Map viewer. **Not in OGC Tile API specification**
 
@@ -728,24 +780,3 @@ QueryParams:
 
 !!! Important
     Additional query-parameters will be forwarded to the tiles endpoint.
-
-## TileMatrixSets
-
-List Available TileMatrixSets
-
-Path:
-
-- `/tileMatrixSets`
-
-
-## TileMatrixSet
-
-Return TileMatrixSet document
-
-Path:
-
-- `/tileMatrixSets/{tileMatrixSetId}`
-
-PathParams:
-
-- **tileMatrixSetId** (str): TileMatrixSet identifier

@@ -17,7 +17,7 @@ extra:
       link: "https://medium.com/devseed"
 
 nav:
-  - TiPg: "index.md"
+  - Intro: "index.md"
   - User Guide:
     - "Endpoints documentation": endpoints.md
     - "Endpoints Factories": advanced/factories.md
