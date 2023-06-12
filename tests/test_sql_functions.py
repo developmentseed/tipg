@@ -151,12 +151,12 @@ def test_tiles_functions(app_functions):
     )
 
     # tiles
-    response = app_functions.get("/collections/pg_temp.squares/tiles/0/0/0")
+    response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 648
+    assert len(decoded["default"]["features"]) == 25
 
-    response = app_functions.get("/collections/pg_temp.squares/tiles/0/0/0?size=2")
+    response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3?size=2")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 10000
+    assert len(decoded["default"]["features"]) == 483
