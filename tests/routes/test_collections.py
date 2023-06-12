@@ -24,6 +24,16 @@ def test_collections(app):
     assert "public.nongeo_data" in ids
     assert "public.landsat" in ids
 
+    # Custom function
+    assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.hexagons" in ids
+    assert "pg_temp.squares" in ids
+
+    # Public functions
+    assert "public.st_squaregrid" in ids
+    assert "public.st_hexagongrid" in ids
+    assert "public.st_subdivide" in ids
+
     response = app.get("/?f=html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]

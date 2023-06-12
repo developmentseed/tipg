@@ -349,8 +349,8 @@ def function_parameters_query(  # noqa: C901
                         "))"
                     )
 
-                elif param.default:
-                    function_parameters[param.name] = param.default
+            elif param.default:
+                function_parameters[param.name] = param.default
 
             else:
                 errors.append(f"{param.name} (expected type:{param.type}).")

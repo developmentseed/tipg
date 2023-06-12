@@ -395,3 +395,20 @@ def app_middleware_refresh(database_url, monkeypatch):
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture
+def app_functions(database_url, monkeypatch):
+    """Create APP with only custom functions."""
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(schemas=["badschema"], only_spatial_tables=False)
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
