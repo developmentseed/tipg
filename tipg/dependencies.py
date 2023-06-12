@@ -122,7 +122,7 @@ def QueryablesOutputType(
         description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
     ),
 ) -> Optional[enums.MediaType]:
-    """Output MediaType: json or html."""
+    """Output MediaType: schemajson or html."""
     if f:
         return enums.MediaType[f.name]
 
@@ -139,7 +139,7 @@ def ItemsOutputType(
         description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
     ),
 ) -> Optional[enums.MediaType]:
-    """Output MediaType: json or html."""
+    """Output MediaType: geojson, html, json, csv, geojsonseq, ndjson."""
     if f:
         return enums.MediaType[f.name]
 
@@ -154,7 +154,7 @@ def ItemOutputType(
         description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
     ),
 ) -> Optional[enums.MediaType]:
-    """Output MediaType: json or html."""
+    """Output MediaType: geojson, json or html."""
     if f:
         return enums.MediaType[f.name]
 

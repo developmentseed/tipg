@@ -112,8 +112,8 @@ def test_tiles_factory():
     endpoints = OGCTilesFactory()
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
-    assert len(endpoints.router.routes) == 12
-    assert len(endpoints.conforms_to) == 3
+    assert len(endpoints.router.routes) == 14
+    assert len(endpoints.conforms_to) == 5
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -123,7 +123,7 @@ def test_tiles_factory():
         assert response.headers["content-type"] == "application/json"
         assert response.json()["title"] == "OGC API"
         links = response.json()["links"]
-        assert len(links) == 7  # 3 from tiles + 4 from common
+        assert len(links) == 9  # 5 from tiles + 4 from common
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/"
         tms_link = [link for link in links if link["title"] == "TileMatrixSets"][0]
@@ -146,7 +146,7 @@ def test_tiles_factory():
     assert endpoints.router_prefix == "/map"
     assert endpoints.with_common
     assert endpoints.title == "OGC Tiles API"
-    assert len(endpoints.router.routes) == 12
+    assert len(endpoints.router.routes) == 14
 
     app = FastAPI()
     app.include_router(endpoints.router, prefix="/map")
@@ -156,7 +156,7 @@ def test_tiles_factory():
         assert response.headers["content-type"] == "application/json"
         assert response.json()["title"] == "OGC Tiles API"
         links = response.json()["links"]
-        assert len(links) == 7
+        assert len(links) == 9
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/map/"
         tms_link = [link for link in links if link["title"] == "TileMatrixSets"][0]
@@ -176,8 +176,8 @@ def test_tiles_factory():
     endpoints = OGCTilesFactory(title="OGC Tiles API", with_common=False)
     assert not endpoints.with_common
     assert endpoints.title == "OGC Tiles API"
-    assert len(endpoints.router.routes) == 10
-    assert len(endpoints.conforms_to) == 3
+    assert len(endpoints.router.routes) == 12
+    assert len(endpoints.conforms_to) == 5
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -199,8 +199,8 @@ def test_endpoints_factory():
     endpoints = Endpoints()
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
-    assert len(endpoints.router.routes) == 17
-    assert len(endpoints.conforms_to) == 9  # 3 from tiles + 6 from features
+    assert len(endpoints.router.routes) == 19
+    assert len(endpoints.conforms_to) == 11  # 5 from tiles + 6 from features
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -210,7 +210,7 @@ def test_endpoints_factory():
         assert response.headers["content-type"] == "application/json"
         assert response.json()["title"] == "OGC API"
         links = response.json()["links"]
-        assert len(links) == 12  # 3 from tiles + 5 from features + 4 from common
+        assert len(links) == 14  # 5 from tiles + 5 from features + 4 from common
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/"
         queryables_link = [
@@ -231,14 +231,14 @@ def test_endpoints_factory():
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/json"
         body = response.json()["conformsTo"]
-        assert len(body) > 9  # 3 from tiles + 6 from features
+        assert len(body) > 10  # 4 from tiles + 6 from features
         assert "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core" in body
 
     endpoints = Endpoints(router_prefix="/ogc", title="OGC Full API", with_common=True)
     assert endpoints.router_prefix == "/ogc"
     assert endpoints.with_common
     assert endpoints.title == "OGC Full API"
-    assert len(endpoints.router.routes) == 17
+    assert len(endpoints.router.routes) == 19
     assert not endpoints.ogc_features.with_common
     assert endpoints.ogc_features.router_prefix == "/ogc"
     assert not endpoints.ogc_tiles.with_common
@@ -252,7 +252,7 @@ def test_endpoints_factory():
         assert response.headers["content-type"] == "application/json"
         assert response.json()["title"] == "OGC Full API"
         links = response.json()["links"]
-        assert len(links) == 12
+        assert len(links) == 14
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/ogc/"
         queryables_link = [
@@ -280,8 +280,8 @@ def test_endpoints_factory():
     endpoints = Endpoints(title="Tiles and Features API", with_common=False)
     assert not endpoints.with_common
     assert endpoints.title == "Tiles and Features API"
-    assert len(endpoints.router.routes) == 15  # 8 from tiles + 5 from features
-    assert len(endpoints.conforms_to) == 9  # 3 from tiles + 6 from features
+    assert len(endpoints.router.routes) == 17  # 10 from tiles + 5 from features
+    assert len(endpoints.conforms_to) == 11  # 4 from tiles + 6 from features
 
     app = FastAPI()
     app.include_router(endpoints.router)

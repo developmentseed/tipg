@@ -36,6 +36,13 @@ class ItemResponseType(str, Enum):
     json = "json"
 
 
+class VectorResponseType(str, Enum):
+    """Vector Type Enums."""
+
+    geojson = "geojson"
+    mvt = "mvt"
+
+
 class VectorType(str, Enum):
     """Vector Type Enums."""
 
