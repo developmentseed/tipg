@@ -22,7 +22,9 @@ def test_collections_function(app_functions):
 
     # Custom function
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
     assert "pg_temp.squares" in ids
 
     response = app_functions.get("/collections/pg_temp.landsat_centroids")
@@ -39,6 +41,23 @@ def test_collections_function(app_functions):
     assert body["extent"]["spatial"]["bbox"][0] == [-180.0, -90.0, 180.0, 90.0]
 
 
+def test_queryables_function(app_functions):
+    """Test /queryables endpoint."""
+    response = app_functions.get("/collections/pg_temp.landsat_centroids/queryables")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/schema+json"
+    body = response.json()
+    assert {"geom", "ogc_fid", "path", "pr", "row"}.issubset(body["properties"].keys())
+
+    response = app_functions.get("/collections/pg_temp.landsat/queryables")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/schema+json"
+    body = response.json()
+    assert {"geom", "grid_path", "grid_row", "path_row"}.issubset(
+        body["properties"].keys()
+    )
+
+
 def test_items_function(app_functions):
     """Test /items endpoint."""
     response = app_functions.get("/collections/pg_temp.landsat_centroids/items")
@@ -50,6 +69,28 @@ def test_items_function(app_functions):
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 10
+
+    response = app_functions.get("/collections/pg_temp.landsat_centroids/items?path=0")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 0
+    assert body["numberReturned"] == 0
+
+    response = app_functions.get("/collections/pg_temp.landsat_centroids/items?path=13")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 104
+    assert body["numberReturned"] == 10
+
+    # Check functions that take x/y/z input
+    response = app_functions.get("/collections/pg_temp.landsat/items?p=13&x=0&y=0&z=0")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["numberMatched"] == 104
     assert body["numberReturned"] == 10
 
     response = app_functions.get("/collections/pg_temp.hexagons/items")
@@ -151,12 +192,44 @@ def test_tiles_functions(app_functions):
     )
 
     # tiles
+    # Check default's function are used
     response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 25
 
+    # Check default's function are used
     response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3?size=2")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 483
+
+    # Check any geometry input column will work
+    response = app_functions.get("/collections/pg_temp.hexagons/tiles/3/3/3")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"]) == 12
+
+    response = app_functions.get("/collections/pg_temp.hexagons_g/tiles/3/3/3")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"]) == 12
+
+    # Check function with x/y/z input
+    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0?p=13")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"]) == 104
+    assert decoded["default"]["features"][0]["properties"]["grid_path"] == 13
+
+    # No features with p=0
+    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0?p=0")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert not decoded
+
+    # default p=0 so it should return nothing
+    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert not decoded

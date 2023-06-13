@@ -310,50 +310,52 @@ def function_parameters_query(  # noqa: C901
     """Get parameters for function layers."""
     function_parameters = {}
     errors = []
-    params = request.query_params
-    path_params = request.path_params
+
+    is_tile_request = False
+    if {"x", "y", "z"}.issubset(request.path_params):
+        is_tile_request = True
 
     if collection.type == "Function" and collection.parameters:
-        for param in collection.parameters:
-            v = params.get(param.name, None)
+        for col_param in collection.parameters:
+            v = request.query_params.get(col_param.name, None)
             if v:
-                function_parameters[param.name] = v
+                function_parameters[col_param.name] = v
 
-            elif path_params.get("tileMatrix", None):
-                z = int(path_params.get("z"))
-                x = int(path_params.get("x"))
-                y = int(path_params.get("y"))
-                tilematrix = path_params.get(
+            elif col_param.name == "z" and is_tile_request:
+                function_parameters["z"] = request.path_params.get("z")
+
+            elif col_param.name == "x" and is_tile_request:
+                function_parameters["x"] = request.path_params.get("x")
+
+            elif col_param.name == "y" and is_tile_request:
+                function_parameters["y"] = request.path_params.get("y")
+
+            elif col_param.type == "geometry" and is_tile_request:
+                z = int(request.path_params.get("z"))
+                x = int(request.path_params.get("x"))
+                y = int(request.path_params.get("y"))
+                tms_id = request.path_params.get(
                     "tileMatrixSetId", tms_settings.default_tms
                 )
-                if param.name == "z":
-                    function_parameters["z"] = z
+                tms = default_tms.get(tms_id)
+                left, bottom, right, top = tms.bounds(x, y, z)
 
-                if param.name == "x":
-                    function_parameters["x"] = x
+                function_parameters[col_param.name] = (
+                    "srid=4326;"
+                    "POLYGON(("
+                    f"{left} {bottom},"
+                    f"{left} {top},"
+                    f"{right} {top},"
+                    f"{right} {bottom},"
+                    f"{left} {bottom}"
+                    "))"
+                )
 
-                if param.name == "y":
-                    function_parameters["y"] = y
-
-                if param.name == "bounds":
-                    tms = default_tms.get(tilematrix)
-                    left, bottom, right, top = tms.bounds(Tile(x, y, z))
-                    function_parameters["bounds"] = (
-                        "srid=4326;"
-                        "POLYGON(("
-                        f"{left} {bottom},"
-                        f"{left} {top},"
-                        f"{right} {top},"
-                        f"{right} {bottom},"
-                        f"{left} {bottom}"
-                        "))"
-                    )
-
-            elif param.default:
-                function_parameters[param.name] = param.default
+            elif col_param.default is not None:
+                function_parameters[col_param.name] = col_param.default
 
             else:
-                errors.append(f"{param.name} (expected type:{param.type}).")
+                errors.append(f"{col_param.name} (expected type:{col_param.type}).")
 
     if errors:
         raise MissingFunctionParameter(
