@@ -1,6 +1,6 @@
 """Test /collections endpoints."""
 
-collection_number = 14
+collection_number = 16
 
 
 def test_collections(app):
