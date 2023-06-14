@@ -1,13 +1,33 @@
 
-`tipg` supports custom Function layers which can be SQL [`VIEWS`](https://www.postgresql.org/docs/current/tutorial-views.html) or [`FUNCTION`](https://www.postgresql.org/docs/current/typeconv-func.html).
 
-
-If provided (see [customization](https://developmentseed.org/tipg/advanced/customization/#sql-functions)), when starting `tipg` will look for the functions with a [suitable signature](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/sql/dbcatalog.sql#L258-L267).
-
-Functions can be used in both OGC Tiles and OGC Features APIs.
+`TiPG` also accepts externally defined `SQL Functions` that are defined by .sql files in a directory defined by the `TIPG_CUSTOM_SQL_DIRECTORY` configuration setting.
 
 !!! important
     The SQL functions won't be `hardcoded` within the database but stored in the [`pg_temp` schema](https://www.postgresql.org/docs/current/runtime-config-client.html). This configuration enables `functions version control` and also avoid needing `write` permission on the database.
+
+`SQL Functions` are any procedural functions defined in the database that match the following criteria.
+  - Must be defined to return "SETOF"
+  - Functions defined to return "RECORD" must include typed OUT definitions in the function signature
+  - All arguments (IN and OUT) must be named
+  - Functions that return a geometry will be usable as Features and Vector Tiles, those that do not will be available to return json/csv
+  - Functions that match these qualifications will be found based on the DB visibility settings
+
+`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter. If a function is defined to have z, x, or y parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a bounds parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
+
+
+### Example
+```SQL
+CREATE FUNCTION hexagons(
+    IN size int DEFAULT 10,
+    IN bounds geometry DEFAULT 'srid=4326;POLYGON((-180 -90,-180 90,180 90,180 -90,-180 -90))'::geometry,
+    OUT geom geometry,
+    OUT i integer,
+    OUT j integer
+) RETURNS SETOF RECORD AS $$
+    SELECT * FROM st_hexagongrid(size, bounds);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+```
+
 
 ```bash
 curl -s http://127.0.0.1:8081/collections\?f\=json | jq -r '.collections[].id' | grep "pg_temp"
@@ -19,7 +39,35 @@ pg_temp.landsat
 ```
 
 
-### FUNCTION example
+### FUNCTION examples
+
+With `geometry` input:
+
+```SQL
+CREATE FUNCTION hexagons(
+    IN size int DEFAULT 10,
+    IN bounds geometry DEFAULT 'srid=4326;POLYGON((-180 -90,-180 90,180 90,180 -90,-180 -90))'::geometry,
+    OUT geom geometry,
+    OUT i integer,
+    OUT j integer
+) RETURNS SETOF RECORD AS $$
+    SELECT * FROM st_hexagongrid(size, bounds);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+```
+
+Only returning geometries:
+
+```sql
+CREATE FUNCTION hexagons(
+    IN size int DEFAULT 10,
+    IN bounds geometry DEFAULT 'srid=4326;POLYGON((-180 -90,-180 90,180 90,180 -90,-180 -90))'::geometry,
+    OUT geom geometry,
+) RETURNS SETOF geometry AS $$
+    SELECT geom FROM st_hexagongrid(size, bounds);
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
+```
+
+With `x`, `y`, `z` input:
 
 ```sql
 CREATE FUNCTION landsat(
