@@ -1,6 +1,7 @@
 """tipg dependencies."""
 
 import re
+import sys
 from typing import Dict, List, Optional, Tuple
 
 from morecantile import Tile
@@ -18,12 +19,18 @@ from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
+if sys.version_info >= (3, 9):
+    from typing import Annotated  # pylint: disable=no-name-in-module
+else:
+    from typing_extensions import Annotated
+
+
 tms_settings = TMSSettings()
 
 
 def CollectionParams(
     request: Request,
-    collectionId: str = Path(..., description="Collection identifier"),
+    collectionId: Annotated[str, Path(description="Collection identifier")],
 ) -> Collection:
     """Return Layer Object."""
     collection_pattern = re.match(  # type: ignore
@@ -102,10 +109,12 @@ def accept_media_type(
 
 def OutputType(
     request: Request,
-    f: Optional[enums.ResponseType] = Query(
-        None,
-        description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
-    ),
+    f: Annotated[
+        Optional[enums.ResponseType],
+        Query(
+            description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
+        ),
+    ] = None,
 ) -> Optional[enums.MediaType]:
     """Output MediaType: json or html."""
     if f:
@@ -117,10 +126,12 @@ def OutputType(
 
 def QueryablesOutputType(
     request: Request,
-    f: Optional[enums.QueryablesResponseType] = Query(
-        None,
-        description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
-    ),
+    f: Annotated[
+        Optional[enums.QueryablesResponseType],
+        Query(
+            description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
+        ),
+    ] = None,
 ) -> Optional[enums.MediaType]:
     """Output MediaType: schemajson or html."""
     if f:
@@ -134,10 +145,12 @@ def QueryablesOutputType(
 
 def ItemsOutputType(
     request: Request,
-    f: Optional[enums.ItemsResponseType] = Query(
-        None,
-        description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
-    ),
+    f: Annotated[
+        Optional[enums.ItemsResponseType],
+        Query(
+            description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
+        ),
+    ] = None,
 ) -> Optional[enums.MediaType]:
     """Output MediaType: geojson, html, json, csv, geojsonseq, ndjson."""
     if f:
@@ -149,10 +162,12 @@ def ItemsOutputType(
 
 def ItemOutputType(
     request: Request,
-    f: Optional[enums.ItemResponseType] = Query(
-        None,
-        description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header.",
-    ),
+    f: Annotated[
+        Optional[enums.ItemResponseType],
+        Query(
+            description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
+        ),
+    ] = None,
 ) -> Optional[enums.MediaType]:
     """Output MediaType: geojson, json or html."""
     if f:
@@ -163,10 +178,10 @@ def ItemOutputType(
 
 
 def bbox_query(
-    bbox: Optional[str] = Query(
-        None,
-        description="Spatial Filter.",
-    )
+    bbox: Annotated[
+        Optional[str],
+        Query(description="Spatial Filter."),
+    ] = None
 ) -> Optional[List[float]]:
     """BBox dependency."""
     if bbox:
@@ -192,14 +207,14 @@ def bbox_query(
 
 
 def ids_query(
-    ids: Optional[str] = Query(None, description="Filter by Ids."),
+    ids: Annotated[Optional[str], Query(description="Filter by Ids.")] = None,
 ) -> Optional[List[str]]:
     """Ids dependency."""
     return ids.split(",") if ids else None
 
 
 def datetime_query(
-    datetime: Optional[str] = Query(None, description="Temporal Filter."),
+    datetime: Annotated[Optional[str], Query(description="Temporal Filter.")] = None,
 ) -> Optional[List[str]]:
     """Datetime dependency."""
     if datetime:
@@ -213,10 +228,12 @@ def datetime_query(
 
 
 def properties_query(
-    properties: Optional[str] = Query(
-        None,
-        description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
-    )
+    properties: Annotated[
+        Optional[str],
+        Query(
+            description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
+        ),
+    ] = None,
 ) -> Optional[List[str]]:
     """Return property list."""
     if properties is not None:
@@ -227,7 +244,7 @@ def properties_query(
 
 def properties_filter_query(
     request: Request,
-    collection: Collection = Depends(CollectionParams),
+    collection: Annotated[Collection, Depends(CollectionParams)],
 ) -> List[Tuple[str, str]]:
     """Get properties to filter on excluding reserved keys."""
     exclude = [
@@ -255,12 +272,16 @@ def properties_filter_query(
 
 
 def filter_query(
-    query: Optional[str] = Query(None, description="CQL2 Filter", alias="filter"),
-    filter_lang: Optional[enums.FilterLang] = Query(
-        None,
-        description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
-        alias="filter-lang",
-    ),
+    query: Annotated[
+        Optional[str], Query(description="CQL2 Filter", alias="filter")
+    ] = None,
+    filter_lang: Annotated[
+        Optional[enums.FilterLang],
+        Query(
+            description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
+            alias="filter-lang",
+        ),
+    ] = None,
 ) -> Optional[AstType]:
     """Parse Filter Query."""
     if query is not None:
@@ -274,30 +295,38 @@ def filter_query(
 
 
 def sortby_query(
-    sortby: Optional[str] = Query(
-        None,
-        description="Column Sort the items by Column (ascending (default) or descending).",
-    )
+    sortby: Annotated[
+        Optional[str],
+        Query(
+            description="Column Sort the items by Column (ascending (default) or descending).",
+        ),
+    ] = None,
 ):
     """Sortby dependency."""
     return sortby
 
 
 def TileParams(
-    z: int = Path(
-        ...,
-        ge=0,
-        le=30,
-        description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
-    ),
-    x: int = Path(
-        ...,
-        description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
-    ),
-    y: int = Path(
-        ...,
-        description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
-    ),
+    z: Annotated[
+        int,
+        Path(
+            ge=0,
+            le=30,
+            description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
+        ),
+    ],
+    x: Annotated[
+        int,
+        Path(
+            description="Column (X) index of the tile on the selected TileMatrix. It cannot exceed the MatrixHeight-1 for the selected TileMatrix.",
+        ),
+    ],
+    y: Annotated[
+        int,
+        Path(
+            description="Row (Y) index of the tile on the selected TileMatrix. It cannot exceed the MatrixWidth-1 for the selected TileMatrix.",
+        ),
+    ],
 ) -> Tile:
     """Tile parameters."""
     return Tile(x, y, z)
@@ -305,7 +334,7 @@ def TileParams(
 
 def function_parameters_query(  # noqa: C901
     request: Request,
-    collection: Collection = Depends(CollectionParams),
+    collection: Annotated[Collection, Depends(CollectionParams)],
 ) -> Dict[str, str]:
     """Get parameters for function layers."""
     function_parameters = {}

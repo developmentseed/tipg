@@ -3,6 +3,7 @@
 import abc
 import csv
 import json
+import sys
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -20,7 +21,7 @@ from urllib.parse import urlencode
 import jinja2
 import orjson
 from ciso8601 import parse_rfc3339
-from morecantile import TileMatrixSet
+from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
@@ -31,7 +32,6 @@ from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
     OutputType,
-    QueryablesOutputType,
     TileParams,
     bbox_query,
     datetime_query,
@@ -59,6 +59,12 @@ from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
+
+if sys.version_info >= (3, 9):
+    from typing import Annotated  # pylint: disable=no-name-in-module
+else:
+    from typing_extensions import Annotated
+
 
 tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
@@ -266,7 +272,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         )
         def conformance(
             request: Request,
-            output_type: Optional[MediaType] = Depends(OutputType),
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Get conformance."""
             data = model.Conformance(
@@ -308,7 +314,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         )
         def landing(
             request: Request,
-            output_type: Optional[MediaType] = Depends(OutputType),
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Get landing page."""
             data = model.Landing(
@@ -435,20 +441,24 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def collections(
             request: Request,
-            output_type: Optional[MediaType] = Depends(OutputType),
-            bbox_filter: Optional[List[float]] = Depends(bbox_query),
-            datetime_filter: Optional[List[str]] = Depends(datetime_query),
-            limit: Optional[int] = Query(
-                None,
-                ge=0,
-                le=1000,
-                description="Limits the number of collection in the response.",
-            ),
-            offset: Optional[int] = Query(
-                None,
-                ge=0,
-                description="Starts the response at an offset.",
-            ),
+            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
+            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+            limit: Annotated[
+                Optional[int],
+                Query(
+                    ge=0,
+                    le=1000,
+                    description="Limits the number of collection in the response.",
+                ),
+            ] = None,
+            offset: Annotated[
+                Optional[int],
+                Query(
+                    ge=0,
+                    description="Starts the response at an offset.",
+                ),
+            ] = None,
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """List of collections."""
             collection_catalog: Database = getattr(
@@ -605,8 +615,8 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def collection(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            output_type: Optional[MediaType] = Depends(OutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
 
@@ -691,8 +701,8 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def queryables(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            output_type: Optional[MediaType] = Depends(QueryablesOutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Queryables for a feature collection.
 
@@ -739,46 +749,64 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         async def items(  # noqa: C901
             request: Request,
-            collection=Depends(self.collection_dependency),
-            ids_filter: Optional[List[str]] = Depends(ids_query),
-            bbox_filter: Optional[List[float]] = Depends(bbox_query),
-            datetime_filter: Optional[List[str]] = Depends(datetime_query),
-            properties: Optional[List[str]] = Depends(properties_query),
-            properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
-            function_parameters: Dict[str, str] = Depends(function_parameters_query),
-            cql_filter: Optional[AstType] = Depends(filter_query),
-            sortby: Optional[str] = Depends(sortby_query),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
-            datetime_column: Optional[str] = Query(
-                None,
-                description="Select datetime column.",
-                alias="datetime-column",
-            ),
-            limit: int = Query(
-                features_settings.default_features_limit,
-                ge=0,
-                lt=features_settings.max_features_per_query,
-                description="Limits the number of features in the response.",
-            ),
-            offset: Optional[int] = Query(
-                None,
-                ge=0,
-                description="Starts the response at an offset.",
-            ),
-            bbox_only: Optional[bool] = Query(
-                None,
-                description="Only return the bounding box of the feature.",
-                alias="bbox-only",
-            ),
-            simplify: Optional[float] = Query(
-                None,
-                description="Simplify the output geometry to given threshold in decimal degrees.",
-            ),
-            output_type: Optional[MediaType] = Depends(ItemsOutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            ids_filter: Annotated[Optional[List[str]], Depends(ids_query)],
+            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
+            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+            properties: Annotated[Optional[List[str]], Depends(properties_query)],
+            properties_filter: Annotated[
+                List[Tuple[str, str]], Depends(properties_filter_query)
+            ],
+            function_parameters: Annotated[
+                Dict[str, str], Depends(function_parameters_query)
+            ],
+            cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
+            sortby: Annotated[Optional[str], Depends(sortby_query)],
+            geom_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ] = None,
+            datetime_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select datetime column.",
+                    alias="datetime-column",
+                ),
+            ] = None,
+            limit: Annotated[
+                int,
+                Query(
+                    ge=0,
+                    lt=features_settings.max_features_per_query,
+                    description="Limits the number of features in the response.",
+                ),
+            ] = features_settings.default_features_limit,
+            offset: Annotated[
+                Optional[int],
+                Query(
+                    ge=0,
+                    description="Starts the response at an offset.",
+                ),
+            ] = None,
+            bbox_only: Annotated[
+                Optional[bool],
+                Query(
+                    description="Only return the bounding box of the feature.",
+                    alias="bbox-only",
+                ),
+            ] = None,
+            simplify: Annotated[
+                Optional[float],
+                Query(
+                    description="Simplify the output geometry to given threshold in decimal degrees.",
+                ),
+            ] = None,
+            output_type: Annotated[
+                Optional[MediaType], Depends(ItemsOutputType)
+            ] = None,
         ):
             offset = offset or 0
 
@@ -934,7 +962,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 "links": links,
                 "features": [
                     {
-                        **feature,
+                        **feature,  # type: ignore
                         "links": [
                             model.Link(
                                 title="Collection",
@@ -972,7 +1000,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    (orjson.dumps(f) + b"\n" for f in data["features"]),
+                    (orjson.dumps(f) + b"\n" for f in data["features"]),  # type: ignore
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -990,7 +1018,10 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "content": {
                         MediaType.geojson.value: {},
                         MediaType.html.value: {},
+                        MediaType.csv.value: {},
                         MediaType.json.value: {},
+                        MediaType.geojsonseq.value: {},
+                        MediaType.ndjson.value: {},
                     },
                     "model": model.Item,
                 },
@@ -998,30 +1029,40 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         async def item(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            itemId: str = Path(..., description="Item identifier"),
-            bbox_only: Optional[bool] = Query(
-                None,
-                description="Only return the bounding box of the feature.",
-                alias="bbox-only",
-            ),
-            simplify: Optional[float] = Query(
-                None,
-                description="Simplify the output geometry to given threshold in decimal degrees.",
-            ),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
-            datetime_column: Optional[str] = Query(
-                None,
-                description="Select datetime column.",
-                alias="datetime-column",
-            ),
-            output_type: Optional[MediaType] = Depends(ItemsOutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            itemId: Annotated[str, Path(description="Item identifier")],
+            bbox_only: Annotated[
+                Optional[bool],
+                Query(
+                    description="Only return the bounding box of the feature.",
+                    alias="bbox-only",
+                ),
+            ] = None,
+            simplify: Annotated[
+                Optional[float],
+                Query(
+                    description="Simplify the output geometry to given threshold in decimal degrees.",
+                ),
+            ] = None,
+            geom_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ] = None,
+            datetime_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select datetime column.",
+                    alias="datetime-column",
+                ),
+            ] = None,
             properties: Optional[List[str]] = Depends(properties_query),
             function_parameters: Dict[str, str] = Depends(function_parameters_query),
+            output_type: Annotated[
+                Optional[MediaType], Depends(ItemsOutputType)
+            ] = None,
         ):
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
@@ -1045,42 +1086,40 @@ class OGCFeaturesFactory(EndpointsFactory):
                 geom_as_wkt=geom_as_wkt,
             )
 
-            features = items.get("features", None)
-
-            if not features or len(features) < 1:
+            features = items.get("features", [])
+            if not features:
                 raise NotFound(
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
-            else:
-                feature = features[0]
+
+            feature = features[0]
 
             if output_type in (
                 MediaType.csv,
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if (
-                    items["features"]
-                    and items["features"][0].get("geometry") is not None
-                ):
-                    rows = (
-                        {
-                            "collectionId": collection.id,
-                            "itemId": f.get("id"),
-                            **f.get("properties", {}),
-                            "geometry": f["geometry"],
-                        }
-                        for f in items["features"]
+                if feature.get("geometry") is not None:
+                    rows = iter(
+                        [
+                            {
+                                "collectionId": collection.id,
+                                "itemId": feature.get("id"),
+                                **feature.get("properties", {}),
+                                "geometry": feature["geometry"],
+                            },
+                        ]
                     )
 
                 else:
-                    rows = (
-                        {
-                            "collectionId": collection.id,
-                            "itemId": f.get("id"),
-                            **f.get("properties", {}),
-                        }
-                        for f in items["features"]
+                    rows = iter(
+                        [
+                            {
+                                "collectionId": collection.id,
+                                "itemId": feature.get("id"),
+                                **feature.get("properties", {}),
+                            },
+                        ]
                     )
 
                 # CSV Response
@@ -1108,7 +1147,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     )
 
             data = {
-                **feature,
+                **feature,  # type: ignore
                 "links": [
                     model.Link(
                         href=self.url_for(
@@ -1238,7 +1277,7 @@ class OGCTilesFactory(EndpointsFactory):
         )
         async def tilematrixsets(
             request: Request,
-            output_type: Optional[MediaType] = Depends(OutputType),
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
@@ -1274,7 +1313,7 @@ class OGCTilesFactory(EndpointsFactory):
             return data
 
         @self.router.get(
-            r"/tileMatrixSets/{tileMatrixSetId}",
+            "/tileMatrixSets/{tileMatrixSetId}",
             response_model=TileMatrixSet,
             response_model_exclude_none=True,
             summary="Retrieve the definition of the specified tiling scheme (tile matrix set).",
@@ -1290,11 +1329,11 @@ class OGCTilesFactory(EndpointsFactory):
         )
         async def tilematrixset(
             request: Request,
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
-                ...,
-                description="Identifier for a supported TileMatrixSet.",
-            ),
-            output_type: Optional[MediaType] = Depends(OutputType),
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                Path(description="Identifier for a supported TileMatrixSet."),
+            ],
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
@@ -1323,8 +1362,8 @@ class OGCTilesFactory(EndpointsFactory):
         )
         async def collection_tileset_list(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            output_type: Optional[MediaType] = Depends(OutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Retrieve a list of available vector tilesets for the specified collection."""
             collection_bbox = None
@@ -1404,11 +1443,12 @@ class OGCTilesFactory(EndpointsFactory):
         )
         async def collection_tileset(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Path(
-                description="Identifier for a supported TileMatrixSet.",
-            ),
-            output_type: Optional[MediaType] = Depends(OutputType),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                Path(description="Identifier for a supported TileMatrixSet."),
+            ],
+            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set)."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1506,43 +1546,58 @@ class OGCTilesFactory(EndpointsFactory):
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
-            operation_id=".collection.vector.getTile",
+            operation_id=".collection.vector.getTileTms",
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
+            operation_id=".collection.vector.getTile",
         )
         async def collection_get_tile(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                tms_settings.default_tms,
-                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ),
-            tile=Depends(TileParams),
-            ids_filter: Optional[List[str]] = Depends(ids_query),
-            bbox_filter: Optional[List[float]] = Depends(bbox_query),
-            datetime_filter: Optional[List[str]] = Depends(datetime_query),
-            properties: Optional[List[str]] = Depends(properties_query),
-            properties_filter: List[Tuple[str, str]] = Depends(properties_filter_query),
-            function_parameters: Dict[str, str] = Depends(function_parameters_query),
-            cql_filter: Optional[AstType] = Depends(filter_query),
-            sortby: Optional[str] = Depends(sortby_query),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
-            datetime_column: Optional[str] = Query(
-                None,
-                description="Select datetime column.",
-                alias="datetime-column",
-            ),
-            limit: Optional[int] = Query(
-                None,
-                description="Limits the number of features in the response. Defaults to 10000 or TIPG_MAX_FEATURES_PER_TILE environment variable.",
-            ),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            tile: Annotated[Tile, Depends(TileParams)],
+            properties_filter: Annotated[
+                List[Tuple[str, str]], Depends(properties_filter_query)
+            ],
+            function_parameters: Annotated[
+                Dict[str, str], Depends(function_parameters_query)
+            ],
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
+            ] = tms_settings.default_tms,
+            ids_filter: Annotated[Optional[List[str]], Depends(ids_query)] = None,
+            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)] = None,
+            datetime_filter: Annotated[
+                Optional[List[str]], Depends(datetime_query)
+            ] = None,
+            properties: Annotated[
+                Optional[List[str]], Depends(properties_query)
+            ] = None,
+            cql_filter: Annotated[Optional[AstType], Depends(filter_query)] = None,
+            sortby: Annotated[Optional[str], Depends(sortby_query)] = None,
+            geom_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ] = None,
+            datetime_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select datetime column.",
+                    alias="datetime-column",
+                ),
+            ] = None,
+            limit: Annotated[
+                Optional[int],
+                Query(
+                    description="Limits the number of features in the response. Defaults to 10000 or TIPG_MAX_FEATURES_PER_TILE environment variable."
+                ),
+            ] = None,
         ):
             """Return Vector Tile."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1575,6 +1630,7 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
+            operation_id=".collection.vector.getTileJSONTms",
         )
         @self.router.get(
             "/collections/{collectionId}/tilejson.json",
@@ -1582,25 +1638,30 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
+            operation_id=".collection.vector.getTileJSON",
         )
         async def collection_tilejson(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                tms_settings.default_tms,
-                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ),
-            minzoom: Optional[int] = Query(
-                None, description="Overwrite default minzoom."
-            ),
-            maxzoom: Optional[int] = Query(
-                None, description="Overwrite default maxzoom."
-            ),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
+            ] = tms_settings.default_tms,
+            minzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
+            geom_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ] = None,
         ):
             """Return TileJSON document."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1667,6 +1728,7 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
+            operation_id=".collection.vector.getStyleJSONTms",
         )
         @self.router.get(
             "/collections/{collectionId}/style.json",
@@ -1674,25 +1736,30 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"description": "Return a StyleJSON"}},
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
+            operation_id=".collection.vector.getStyleJSON",
         )
         async def collection_stylejson(
             request: Request,
-            collection=Depends(self.collection_dependency),
-            tileMatrixSetId: Literal[tuple(self.supported_tms.list())] = Query(
-                tms_settings.default_tms,
-                description=f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ),
-            geom_column: Optional[str] = Query(
-                None,
-                description="Select geometry column.",
-                alias="geom-column",
-            ),
-            minzoom: Optional[int] = Query(
-                None, description="Overwrite default minzoom."
-            ),
-            maxzoom: Optional[int] = Query(
-                None, description="Overwrite default maxzoom."
-            ),
+            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            tileMatrixSetId: Annotated[
+                Literal[tuple(self.supported_tms.list())],
+                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
+            ] = tms_settings.default_tms,
+            geom_column: Annotated[
+                Optional[str],
+                Query(
+                    description="Select geometry column.",
+                    alias="geom-column",
+                ),
+            ] = None,
+            minzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default minzoom."),
+            ] = None,
+            maxzoom: Annotated[
+                Optional[int],
+                Query(description="Overwrite default maxzoom."),
+            ] = None,
         ):
             """Return Mapbox/Maplibre StyleJSON document."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1800,29 +1867,35 @@ class OGCTilesFactory(EndpointsFactory):
             @self.router.get(
                 "/collections/{collectionId}/{tileMatrixSetId}/viewer",
                 response_class=HTMLResponse,
+                operation_id=".collection.vector.viewerTms",
             )
             @self.router.get(
                 "/collections/{collectionId}/viewer",
                 response_class=HTMLResponse,
+                operation_id=".collection.vector.viewer",
             )
             def viewer_endpoint(
                 request: Request,
-                collection=Depends(self.collection_dependency),
-                tileMatrixSetId: Literal["WebMercatorQuad"] = Query(  # noqa
-                    "WebMercatorQuad",
-                    description="Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
-                ),
-                minzoom: Optional[int] = Query(  # noqa
-                    None, description="Overwrite default minzoom."
-                ),
-                maxzoom: Optional[int] = Query(  # noqa
-                    None, description="Overwrite default maxzoom."
-                ),
-                geom_column: Optional[str] = Query(  # noqa
-                    None,
-                    description="Select geometry column.",
-                    alias="geom-column",
-                ),
+                collection: Annotated[Collection, Depends(self.collection_dependency)],
+                tileMatrixSetId: Annotated[
+                    Literal["WebMercatorQuad"],
+                    "Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
+                ] = "WebMercatorQuad",
+                minzoom: Annotated[
+                    Optional[int],
+                    Query(description="Overwrite default minzoom."),
+                ] = None,
+                maxzoom: Annotated[
+                    Optional[int],
+                    Query(description="Overwrite default maxzoom."),
+                ] = None,
+                geom_column: Annotated[
+                    Optional[str],
+                    Query(
+                        description="Select geometry column.",
+                        alias="geom-column",
+                    ),
+                ] = None,
             ):
                 """Return Simple HTML Viewer for a collection."""
                 self.supported_tms.get(tileMatrixSetId)
