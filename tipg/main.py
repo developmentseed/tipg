@@ -141,12 +141,6 @@ if settings.debug:
     @app.get("/refresh", tags=["debug"])
     async def refresh(request: Request):
         """Return parsed catalog data for testing."""
-        await connect_to_db(
-            request.app,
-            settings=postgres_settings,
-            schemas=db_settings.schemas,
-            user_sql_files=custom_sql_settings.sql_files,
-        )
         await register_collection_catalog(
             request.app,
             schemas=db_settings.schemas,
