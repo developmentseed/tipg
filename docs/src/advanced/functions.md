@@ -1,7 +1,5 @@
 
 
-`TiPG` also accepts externally defined `SQL Functions`.
-
 `SQL Functions` are any procedural functions defined in the database that match the following criteria.
   - Must be defined to return "SETOF"
   - Functions defined to return "RECORD" must include typed OUT definitions in the function signature
@@ -11,19 +9,20 @@
 
 `SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter. If a function is defined to have z, x, or y parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a bounds parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
 
-See https://developmentseed.org/tipg/advanced/customization/#sql-functions to see how to register SQL functions to the application
-
-!!! important
-    The SQL functions won't be `hardcoded` within the database but stored in the [`pg_temp` schema](https://www.postgresql.org/docs/current/runtime-config-client.html). This configuration enables `functions version control` and also avoid needing `write` permission on the database.
+At startup, `tipg` application will look for any SQL functions with the above signature and then get displayed as `Collections`:
 
 ```bash
-curl -s http://127.0.0.1:8081/collections\?f\=json | jq -r '.collections[].id' | grep "pg_temp"
-pg_temp.landsat_centroids
-pg_temp.hexagons_g
-pg_temp.hexagons
-pg_temp.squares
-pg_temp.landsat
+curl -s http://127.0.0.1:8000/collections\?f\=json | jq -r '.collections[].id' | grep "public.st_"
+public.st_squaregrid
+public.st_hexagongrid
+public.st_subdivide
 ```
+
+Note: By default, `tipg` should find `st_squaregrid`, `st_hexagongrid`, and `st_subdivide` functions when using the `public` schema from PostGIS
+
+!!! important
+
+    `SQL Functions` can be pre-existent in the database, or you can tell `tipg` to **register** SQL code dynamically to the `pg_temp` schema at startup, see [customization](/advanced/customization/#sql-functions)
 
 
 ### FUNCTION examples

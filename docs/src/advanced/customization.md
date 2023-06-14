@@ -43,11 +43,11 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 
 ### SQL Functions
 
-`tipg` support SQL functional layers, and those need to be registered at application startup when we initialize the [Database connection](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/db.py#L63-L65).
+`tipg` support SQL functional layers (see [Functions](/advanced/functions/)).
 
-The SQL functions won't be `hardcoded` within the database but stored in the [`pg_temp` schema](https://www.postgresql.org/docs/current/runtime-config-client.html). This configuration enables `functions version control` and also avoid needing `write` permission on the database.
+`Functions` will be either found by `tipg` at startup within the specified schemas or by registering them dynamically to the [`pg_temp`](https://www.postgresql.org/docs/current/runtime-config-client.html) schema when creating the [Database connection](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/db.py#L63-L65).
 
-To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option when creating the database connection.
+To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in [tipg.db.connect_to_db](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/main.py#L90-L109).
 
 ```python
 from tipg.db import connect_to_db, register_collection_catalog
@@ -75,4 +75,13 @@ async def startup_event() -> None:
 
 ```bash
 TIPG_DB_EXCLUDE_FUNCTION_SCHEMAS='["public"]' TIPG_CUSTOM_SQL_DIRECTORY=tests/fixtures/functions  uvicorn tipg.main:app --port 8000 --reload
+```
+
+```
+curl -s http://127.0.0.1:8000/collections\?f\=json | jq -r '.collections[].id' | grep "pg_temp"
+pg_temp.landsat_centroids
+pg_temp.hexagons_g
+pg_temp.hexagons
+pg_temp.squares
+pg_temp.landsat
 ```
