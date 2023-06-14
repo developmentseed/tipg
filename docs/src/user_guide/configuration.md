@@ -89,32 +89,7 @@ TIPG_TABLE_CONFIG__pgstac_items__PK=id
 
 ## Custom SQL Function
 
-`TiPG` allows for exposing custom `SQL Functions` as collections.
-
-`SQL Functions` are any procedural functions defined in the database that match the following criteria.
-  - Must be defined to return "SETOF"
-  - Functions defined to return "RECORD" must include typed OUT definitions in the function signature
-  - All arguments (IN and OUT) must be named
-  - Functions that return a geometry will be usable as Features and Vector Tiles, those that do not will be available to return json/csv
-  - Functions that match these qualifications will be found based on the DB visibility settings
-
-`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter. If a function is defined to have z, x, or y parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a bounds parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
-
-
-### Example
-```SQL
-CREATE FUNCTION hexagons(
-    IN size int DEFAULT 10,
-    IN bounds geometry DEFAULT 'srid=4326;POLYGON((-180 -90,-180 90,180 90,180 -90,-180 -90))'::geometry,
-    OUT geom geometry,
-    OUT i integer,
-    OUT j integer
-) RETURNS SETOF RECORD AS $$
-    SELECT * FROM st_hexagongrid(size, bounds);
-$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE;
-```
-
-`TiPG` also accepts externally defined `SQL Functions` that are defined by .sql files in a directory defined by the `TIPG_CUSTOM_SQL_DIRECTORY` configuration setting.
+`TiPG` allows for exposing custom `SQL Functions` as collections (see https://developmentseed.org/tipg/advanced/functions/)
 
 class: `tipg.settings.CustomSQLSettings`
 

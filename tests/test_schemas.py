@@ -3,7 +3,7 @@
 
 def test_myschema(app_myschema):
     """Available tables should come from `myschema` and functions from `pg_temp`."""
-    collection_number = 4  # 3 custom functions + 1 tables from myschema
+    collection_number = 6  # 5 custom functions + 1 tables from myschema
 
     response = app_myschema.get("/collections")
     assert response.status_code == 200
@@ -13,8 +13,10 @@ def test_myschema(app_myschema):
 
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.squares" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
 
     # myschema table
     assert "myschema.landsat" in ids
@@ -25,7 +27,7 @@ def test_myschema(app_myschema):
 def test_myschema_and_public_functions(app_myschema_public_functions):
     """Available tables should come from `myschema` and functions from `pg_temp` and `public` schema."""
     collection_number = (
-        7  # 3 custom functions + 1 tables from myschema + 3 functions from public
+        9  # 5 custom functions + 1 tables from myschema + 3 functions from public
     )
 
     response = app_myschema_public_functions.get("/collections")
@@ -35,8 +37,11 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
 
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.squares" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
+
     # public functions
     assert "public.st_hexagongrid" in ids
 
@@ -52,7 +57,7 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
 def test_myschema_and_public(app_myschema_public):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
     collection_number = (
-        12  # 3 custom functions + 1 tables from myschema + 8 tables from public
+        14  # 5 custom functions + 1 tables from myschema + 8 tables from public
     )
 
     response = app_myschema_public.get("/collections")
@@ -62,8 +67,10 @@ def test_myschema_and_public(app_myschema_public):
 
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.squares" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
 
     # myschema table
     assert "myschema.landsat" in ids
@@ -86,7 +93,7 @@ def test_myschema_and_public(app_myschema_public):
 
 def test_public_functions(app_only_public_functions):
     """Available functions from `pg_temp` and `public` schema (no tables available)."""
-    collection_number = 6  # 3 custom functions + 3 functions from public
+    collection_number = 8  # 5 custom functions + 3 functions from public
 
     response = app_only_public_functions.get("/collections")
     assert response.status_code == 200
@@ -95,8 +102,10 @@ def test_public_functions(app_only_public_functions):
 
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.squares" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
 
     # public functions
     assert "public.st_hexagongrid" in ids
@@ -113,7 +122,7 @@ def test_public_functions(app_only_public_functions):
 def test_myschema_and_public_order(app_myschema_public_order):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
     collection_number = (
-        12  # 3 custom functions + 1 tables from myschema + 8 tables from public
+        14  # 5 custom functions + 1 tables from myschema + 8 tables from public
     )
 
     response = app_myschema_public_order.get("/collections")
@@ -123,8 +132,10 @@ def test_myschema_and_public_order(app_myschema_public_order):
 
     # custom functions
     assert "pg_temp.landsat_centroids" in ids
+    assert "pg_temp.landsat" in ids
     assert "pg_temp.squares" in ids
     assert "pg_temp.hexagons" in ids
+    assert "pg_temp.hexagons_g" in ids
 
     # myschema table
     assert "myschema.landsat" in ids

@@ -19,10 +19,12 @@ extra:
 nav:
   - Intro: "index.md"
   - User Guide:
-    - "Endpoints documentation": endpoints.md
-    - "Endpoints Factories": advanced/factories.md
+    - "Endpoints documentation": user_guide/endpoints.md
+    - "Endpoints Factories": user_guide/factories.md
+    - "Configuration": user_guide/configuration.md
+  - Advanced User Guide:
+    - "Function Layers": advanced/functions.md
     - "Customization": advanced/customization.md
-    - "Configuration": advanced/configuration.md
   - API:
     - db: api/tipg/db.md
     - dbmodel: api/tipg/dbmodel.md
