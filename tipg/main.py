@@ -1,5 +1,6 @@
 """tipg app."""
 
+from contextlib import asynccontextmanager
 from typing import Any, List
 
 import jinja2
@@ -28,11 +29,42 @@ db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI Lifespan."""
+    # Create Connection Pool
+    await connect_to_db(
+        app,
+        settings=postgres_settings,
+        schemas=db_settings.schemas,
+        user_sql_files=custom_sql_settings.sql_files,
+    )
+
+    # Register Collection Catalog
+    await register_collection_catalog(
+        app,
+        schemas=db_settings.schemas,
+        tables=db_settings.tables,
+        exclude_tables=db_settings.exclude_tables,
+        exclude_table_schemas=db_settings.exclude_table_schemas,
+        functions=db_settings.functions,
+        exclude_functions=db_settings.exclude_functions,
+        exclude_function_schemas=db_settings.exclude_function_schemas,
+        spatial=db_settings.only_spatial_tables,
+    )
+
+    yield
+
+    # Close the Connection Pool
+    await close_db_connection(app)
+
+
 app = FastAPI(
     title=settings.name,
     version=tipg_version,
     openapi_url="/api",
     docs_url="/api.html",
+    lifespan=lifespan,
 )
 app.state.db_settings = db_settings
 
@@ -87,34 +119,6 @@ if settings.catalog_ttl:
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Connect to database on startup."""
-    await connect_to_db(
-        app,
-        settings=postgres_settings,
-        schemas=db_settings.schemas,
-        user_sql_files=custom_sql_settings.sql_files,
-    )
-    await register_collection_catalog(
-        app,
-        schemas=db_settings.schemas,
-        tables=db_settings.tables,
-        exclude_tables=db_settings.exclude_tables,
-        exclude_table_schemas=db_settings.exclude_table_schemas,
-        functions=db_settings.functions,
-        exclude_functions=db_settings.exclude_functions,
-        exclude_function_schemas=db_settings.exclude_function_schemas,
-        spatial=db_settings.only_spatial_tables,
-    )
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Close database connection."""
-    await close_db_connection(app)
-
-
 @app.get(
     "/healthz",
     description="Health Check.",
@@ -137,5 +141,21 @@ if settings.debug:
     @app.get("/refresh", tags=["debug"])
     async def refresh(request: Request):
         """Return parsed catalog data for testing."""
-        await startup_event()
+        await connect_to_db(
+            request.app,
+            settings=postgres_settings,
+            schemas=db_settings.schemas,
+            user_sql_files=custom_sql_settings.sql_files,
+        )
+        await register_collection_catalog(
+            request.app,
+            schemas=db_settings.schemas,
+            tables=db_settings.tables,
+            exclude_tables=db_settings.exclude_tables,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
+            functions=db_settings.functions,
+            exclude_functions=db_settings.exclude_functions,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
+            spatial=db_settings.only_spatial_tables,
+        )
         return request.app.state.collection_catalog

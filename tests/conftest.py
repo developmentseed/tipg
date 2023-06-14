@@ -1,6 +1,7 @@
 """``pytest`` configuration."""
 
 import os
+from contextlib import asynccontextmanager
 
 import pytest
 import pytest_pgsql
@@ -90,17 +91,9 @@ def create_tipg_app(
     from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
     from tipg.factory import Endpoints
 
-    app = FastAPI(
-        title="TiPg: OGC Features and Tiles API",
-        openapi_url="/api",
-        docs_url="/api.html",
-    )
-    ogc_api = Endpoints(title="TiPg: OGC Features and Tiles API")
-    app.include_router(ogc_api.router)
-
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        """Connect to database on startup."""
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """FastAPI Lifespan."""
         await connect_to_db(
             app,
             settings=postgres_settings,
@@ -118,11 +111,17 @@ def create_tipg_app(
             exclude_function_schemas=db_settings.exclude_function_schemas,
             spatial=db_settings.only_spatial_tables,
         )
-
-    @app.on_event("shutdown")
-    async def shutdown_event() -> None:
-        """Close database connection."""
+        yield
         await close_db_connection(app)
+
+    app = FastAPI(
+        title="TiPg: OGC Features and Tiles API",
+        openapi_url="/api",
+        docs_url="/api.html",
+        lifespan=lifespan,
+    )
+    ogc_api = Endpoints(title="TiPg: OGC Features and Tiles API")
+    app.include_router(ogc_api.router)
 
     return app
 
@@ -347,7 +346,29 @@ def app_middleware_refresh(database_url, monkeypatch):
         exclude_function_schemas=["public"],
     )
 
-    app = FastAPI()
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """FastAPI Lifespan."""
+        await connect_to_db(
+            app,
+            settings=postgres_settings,
+            schemas=db_settings.schemas,
+        )
+        await register_collection_catalog(
+            app,
+            schemas=db_settings.schemas,
+            tables=db_settings.tables,
+            exclude_tables=db_settings.exclude_tables,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
+            functions=db_settings.functions,
+            exclude_functions=db_settings.exclude_functions,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
+            spatial=db_settings.only_spatial_tables,
+        )
+        yield
+        await close_db_connection(app)
+
+    app = FastAPI(lifespan=lifespan)
 
     @app.get("/rawcatalog", tags=["debug"])
     async def raw_catalog(request: Request):
@@ -367,31 +388,6 @@ def app_middleware_refresh(database_url, monkeypatch):
         exclude_function_schemas=db_settings.exclude_function_schemas,
         spatial=db_settings.only_spatial_tables,
     )
-
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        """Connect to database on startup."""
-        await connect_to_db(
-            app,
-            settings=postgres_settings,
-            schemas=db_settings.schemas,
-        )
-        await register_collection_catalog(
-            app,
-            schemas=db_settings.schemas,
-            tables=db_settings.tables,
-            exclude_tables=db_settings.exclude_tables,
-            exclude_table_schemas=db_settings.exclude_table_schemas,
-            functions=db_settings.functions,
-            exclude_functions=db_settings.exclude_functions,
-            exclude_function_schemas=db_settings.exclude_function_schemas,
-            spatial=db_settings.only_spatial_tables,
-        )
-
-    @app.on_event("shutdown")
-    async def shutdown_event() -> None:
-        """Close database connection."""
-        await close_db_connection(app)
 
     with TestClient(app) as client:
         yield client
