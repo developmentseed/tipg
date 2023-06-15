@@ -204,4 +204,4 @@ jobs:
           file: dockerfiles/Dockerfile.${{ matrix.image-version }}
           push: true
           tags: |
-            ghcr.io/${{ steps.image.outputs.name }}${{ steps.tag.outputs.tag }}
+            ghcr.io/${{ steps.image.outputs.name }}${{ steps.tag.outputs.version }}
