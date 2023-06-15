@@ -5,9 +5,9 @@ Issues and pull requests are more than welcome: https://github.com/developmentse
 **dev install**
 
 ```bash
-$ git clone https://github.com/developmentseed/tipg.git
-$ cd tipg
-$ pip install -e .["test,dev"]
+git clone https://github.com/developmentseed/tipg.git
+cd tipg
+python -m pip install -e .["test,dev"]
 ```
 
 You can then run the tests with the following command:
