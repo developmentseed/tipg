@@ -66,7 +66,6 @@ app = FastAPI(
     docs_url="/api.html",
     lifespan=lifespan,
 )
-app.state.db_settings = db_settings
 
 # custom template directory
 templates_location: List[Any] = (
