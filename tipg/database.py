@@ -1,12 +1,11 @@
 """tipg.db: database events."""
 
 import pathlib
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import orjson
 from buildpg import asyncpg
 
-from tipg.dbmodel import get_collection_index
 from tipg.logger import logger
 from tipg.settings import PostgresSettings
 
@@ -90,11 +89,6 @@ async def connect_to_db(
         init=con_init,
         **kwargs,
     )
-
-
-async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
-    """Register Table catalog."""
-    app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)
 
 
 async def close_db_connection(app: FastAPI) -> None:

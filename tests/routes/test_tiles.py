@@ -3,7 +3,7 @@
 import mapbox_vector_tile
 import numpy as np
 
-from tipg.dbmodel import mvt_settings
+from tipg.collections import mvt_settings
 
 
 def test_tilejson(app):

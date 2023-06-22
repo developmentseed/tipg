@@ -88,7 +88,8 @@ def create_tipg_app(
 ) -> FastAPI:
     """Create TiPG Application."""
 
-    from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
+    from tipg.collections import register_collection_catalog
+    from tipg.database import close_db_connection, connect_to_db
     from tipg.factory import Endpoints
 
     @asynccontextmanager
@@ -337,7 +338,8 @@ def app_myschema_public_order(database_url, monkeypatch):
 def app_middleware_refresh(database_url, monkeypatch):
     """Create APP with CatalogUpdateMiddleware middleware."""
 
-    from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
+    from tipg.collections import register_collection_catalog
+    from tipg.database import close_db_connection, connect_to_db
     from tipg.middleware import CatalogUpdateMiddleware
 
     postgres_settings = PostgresSettings(database_url=database_url)

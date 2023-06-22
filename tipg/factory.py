@@ -27,7 +27,7 @@ from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
-from tipg.dbmodel import Collection, Database
+from tipg.collections import Catalog, Collection
 from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -461,7 +461,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """List of collections."""
-            collection_catalog: Database = getattr(
+            collection_catalog: Catalog = getattr(
                 request.app.state, "collection_catalog", None
             )
             if not collection_catalog:

@@ -8,7 +8,8 @@ While `Tipg` provides a default application `tipg.main:app`, users can easily cr
 
 ```python
 from contextlib import asynccontextmanager
-from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
+from tipg.database import close_db_connection, connect_to_db
+from tipg.collections import register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
 from tipg.settings import DatabaseSettings
@@ -95,7 +96,8 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in [tipg.db.connect_to_db](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/main.py#L90-L109).
 
 ```python
-from tipg.db import connect_to_db, register_collection_catalog
+from tipg.database import connect_to_db
+from tipg.collections import register_collection_catalog
 from tipg.settings import PostgresSettings
 
 postgres_settings = PostgresSettings()
