@@ -43,8 +43,8 @@ jobs:
             tipg.filter.filters \
             tipg.resources.enums \
             tipg.resources.response \
-            tipg.db \
-            tipg.dbmodel \
+            tipg.collections \
+            tipg.database \
             tipg.dependencies \
             tipg.errors \
             tipg.factory \

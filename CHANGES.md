@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [unreleased] - TBD
+## [0.2.0] - 2023-06-22
 
 * remove useless `app.state.db_settings`
 
