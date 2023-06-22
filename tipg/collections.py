@@ -27,6 +27,8 @@ from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings, MVTSettings, TableSettings
 
+from fastapi import FastAPI
+
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
@@ -874,8 +876,8 @@ class Collection(BaseModel):
         return {**geoms, **props}
 
 
-class Database(TypedDict):
-    """Database."""
+class Catalog(TypedDict):
+    """Collection Catalog."""
 
     collections: Dict[str, Collection]
     last_updated: datetime.datetime
@@ -891,7 +893,7 @@ async def get_collection_index(  # noqa: C901
     exclude_functions: Optional[List[str]] = None,
     exclude_function_schemas: Optional[List[str]] = None,
     spatial: bool = True,
-) -> Database:
+) -> Catalog:
     """Fetch Table and Functions index."""
     schemas = schemas or ["public"]
 
@@ -981,4 +983,9 @@ async def get_collection_index(  # noqa: C901
                 parameters=table.get("parameters", []),
             )
 
-        return Database(collections=catalog, last_updated=datetime.datetime.now())
+        return Catalog(collections=catalog, last_updated=datetime.datetime.now())
+
+
+async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
+    """Register Table catalog."""
+    app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)

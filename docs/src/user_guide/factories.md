@@ -61,7 +61,7 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 
 #### Creation Options
 
-- **collection_dependency** (Callable[..., tipg.dbmodel.Collection]): Callable which return a Collection instance
+- **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
 - **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
@@ -98,7 +98,7 @@ app.include_router(endpoints.router, tags=["OGC Tiles API"])
 
 #### Creation Options
 
-- **collection_dependency** (Callable[..., tipg.dbmodel.Collection]): Callable which return a Collection instance
+- **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
@@ -141,7 +141,7 @@ app.include_router(endpoints.router)
 
 #### Creation Options
 
-- **collection_dependency** (Callable[..., tipg.dbmodel.Collection]): Callable which return a Collection instance
+- **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
