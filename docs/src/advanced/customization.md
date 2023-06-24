@@ -38,10 +38,8 @@ async def lifespan(app: FastAPI):
     await close_db_connection(app)
 
 
-app = FastAPI(openapi_url="/api", docs_url="/api.html", lifespan=lifespan,)
+app = FastAPI(openapi_url="/api", docs_url="/api.html", lifespan=lifespan)
 
-
-app = FastAPI()
 endpoints = OGCFeaturesFactory(with_common=True)
 app.include_router(endpoints.router, tags=["OGC Features API"])
 
