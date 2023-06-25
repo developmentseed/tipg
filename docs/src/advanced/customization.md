@@ -87,7 +87,7 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 
 ### SQL Functions
 
-`tipg` support SQL functional layers (see [Functions](/advanced/functions/)).
+`tipg` support SQL functional layers (see [Functions](../functions/)).
 
 `Functions` will be either found by `tipg` at startup within the specified schemas or by registering them dynamically to the [`pg_temp`](https://www.postgresql.org/docs/current/runtime-config-client.html) schema when creating the [Database connection](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/db.py#L63-L65).
 
