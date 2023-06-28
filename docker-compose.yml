@@ -44,7 +44,7 @@ services:
     depends_on:
     - database
     command:
-      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && /start.sh"
+      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && uvicorn tipg.main:app --host 0.0.0.0 --port 8081"
     volumes:
       - ./dockerfiles/scripts:/tmp/scripts
 
