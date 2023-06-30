@@ -85,7 +85,7 @@ templates = Jinja2Templates(
 ogc_api = Endpoints(
     title=settings.name,
     templates=templates,
-    with_tiles_viewer=settings.add_tiles_viewer,
+    with_viewer=settings.add_tiles_viewer,
 )
 app.include_router(ogc_api.router)
 
