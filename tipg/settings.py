@@ -177,6 +177,8 @@ class DatabaseSettings(pydantic.BaseSettings):
 
     only_spatial_tables: bool = True
 
+    write_functions: bool = True
+
     class Config:
         """model config"""
 

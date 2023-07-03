@@ -7,7 +7,7 @@ import orjson
 from buildpg import asyncpg
 
 from tipg.logger import logger
-from tipg.settings import PostgresSettings
+from tipg.settings import PostgresSettings, DatabaseSettings
 
 from fastapi import FastAPI
 
@@ -19,6 +19,7 @@ except ImportError:
 
 DB_CATALOG_FILE = resources_files(__package__) / "sql" / "dbcatalog.sql"
 
+database_settings = DatabaseSettings()
 
 class connection_factory:
     """Connection creation."""
@@ -59,12 +60,13 @@ class connection_factory:
             """
         )
 
-        # Register custom SQL functions/table/views in pg_temp
-        for sqlfile in self.user_sql_files:
-            await conn.execute(sqlfile.read_text())
+        if database_settings.write_functions:
+            # Register custom SQL functions/table/views in pg_temp
+            for sqlfile in self.user_sql_files:
+                await conn.execute(sqlfile.read_text())
 
-        # Register TiPG functions in `pg_temp`
-        await conn.execute(DB_CATALOG_FILE.read_text())
+            # Register TiPG functions in `pg_temp`
+            await conn.execute(DB_CATALOG_FILE.read_text())
 
 
 async def connect_to_db(
