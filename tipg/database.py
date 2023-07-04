@@ -7,7 +7,7 @@ import orjson
 from buildpg import asyncpg
 
 from tipg.logger import logger
-from tipg.settings import PostgresSettings, DatabaseSettings
+from tipg.settings import DatabaseSettings, PostgresSettings
 
 from fastapi import FastAPI
 
@@ -20,6 +20,7 @@ except ImportError:
 DB_CATALOG_FILE = resources_files(__package__) / "sql" / "dbcatalog.sql"
 
 database_settings = DatabaseSettings()
+
 
 class connection_factory:
     """Connection creation."""
