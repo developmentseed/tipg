@@ -12,7 +12,7 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.collections import register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
-from tipg.settings import DatabaseSettings
+from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
 
