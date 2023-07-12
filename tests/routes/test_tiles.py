@@ -58,6 +58,17 @@ def test_tilejson(app):
     assert resp_json["maxzoom"] == 2
     assert "?limit=1000" in resp_json["tiles"][0]
 
+    # Make sure that a non-4326 collection still returns the bounds in 4326
+    response = app.get("/collections/public.minnesota/tilejson.json")
+    assert response.status_code == 200
+
+    resp_json = response.json()
+
+    np.testing.assert_almost_equal(
+        resp_json["bounds"],
+        [-96.28961808496446, 46.11168980088226, -93.05330550250615, 48.56828559755232],
+    )
+
 
 def test_tile(app):
     """request a tile."""

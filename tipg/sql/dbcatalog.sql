@@ -81,7 +81,7 @@ BEGIN
 
         IF bounds_geom IS NOT NULL THEN
             IF srid != 4326 THEN
-                bounds_geom := st_transform(bounds_geom, srid);
+                bounds_geom := st_transform(bounds_geom, 4326);
             END IF;
             bounds = ARRAY[ st_xmin(bounds_geom), st_ymin(bounds_geom), st_xmax(bounds_geom), st_ymax(bounds_geom) ];
         END IF;
