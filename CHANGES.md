@@ -10,36 +10,37 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ### Added
 
-* `type` query parameter to filter collections based on their type (`Function` or `Table`)
+- `type` query parameter to filter collections based on their type (`Function` or `Table`)
+- fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326
 
 ## [0.2.0] - 2023-06-22
 
 ### Changed
 
-* rename `tipg.db` -> `tipg.database`
-* rename `tipg.dbmodel` -> `tipg.collections`
-* rename `tipg.dbmodel.Database` -> `tipg.collections.Catalog`
-* move `register_collection_catalog` from `tipg.dbmodel` to `tipg.collections`
+- rename `tipg.db` -> `tipg.database`
+- rename `tipg.dbmodel` -> `tipg.collections`
+- rename `tipg.dbmodel.Database` -> `tipg.collections.Catalog`
+- move `register_collection_catalog` from `tipg.dbmodel` to `tipg.collections`
 
-    ```python
-    # before
-    from tipg.db import close_db_connection, connect_to_db
-    from tipg.db import register_collection_catalog
-    from tipg.dbmodel import Database, Collection
+  ```python
+  # before
+  from tipg.db import close_db_connection, connect_to_db
+  from tipg.db import register_collection_catalog
+  from tipg.dbmodel import Database, Collection
 
-    # now
-    from tipg.collections import Catalog, Collection
-    from tipg.collections import register_collection_catalog
-    from tipg.database import close_db_connection, connect_to_db
-    ```
+  # now
+  from tipg.collections import Catalog, Collection
+  from tipg.collections import register_collection_catalog
+  from tipg.database import close_db_connection, connect_to_db
+  ```
 
 ### Removed
 
-* remove useless `app.state.db_settings`
+- remove useless `app.state.db_settings`
 
 ## [0.1.0] - 2023-06-15
 
-* Initial release
+- Initial release
 
 [unreleased]: https://github.com/developmentseed/tipg/compare/0.2.0...HEAD
 [0.2.0]: https://github.com/developmentseed/tipg/compare/0.1.0...0.2.0
