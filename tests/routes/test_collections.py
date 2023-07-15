@@ -206,3 +206,43 @@ def test_collections_queryables(app):
         body["properties"]["centroid"]["$ref"]
         == "https://geojson.org/schema/Geometry.json"
     )
+
+
+def test_collections_type_filter(app):
+    """Test /collections endpoint."""
+    response = app.get("/collections", params={"type": "Function"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+
+    ids = [x["id"] for x in body["collections"]]
+    # Tables
+    assert "public.landsat_wrs" not in ids
+
+    # Views
+    assert "pg_temp.landsat_centroids" not in ids
+
+    # Functions
+    assert "pg_temp.hexagons" in ids
+    assert "pg_temp.squares" in ids
+    assert "public.st_squaregrid" in ids
+    assert "public.st_hexagongrid" in ids
+    assert "public.st_subdivide" in ids
+
+    response = app.get("/collections", params={"type": "Table"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+
+    ids = [x["id"] for x in body["collections"]]
+    # Tables
+    assert "public.landsat_wrs" in ids
+    assert "public.my_data" in ids
+    assert "public.nongeo_data" in ids
+    assert "public.landsat" in ids
+
+    # Views
+    assert "pg_temp.landsat_centroids" in ids
+
+    # Functions
+    assert "public.st_squaregrid" not in ids

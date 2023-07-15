@@ -159,11 +159,15 @@ QueryParams:
     - interval-half-bounded-end   = `date-time/..`
     - datetime                    = `date-time`
 
+- **type** * ("Function" or "Table"): Filter collections based on their `type`.
+
 - **f** (str, one of [`json`, `html`]): Select response MediaType.
 
 HeaderParams:
 
 - **accept** (str, one of [`application/json`, `text/html`])): Select response MediaType.
+
+\*  **Not in OGC API Features Specification**
 
 Example:
 

@@ -2,6 +2,50 @@
 `Tipg` is designed to be fully customizable, in respect to the OGC standard. This page aims to show some example of customizations.
 
 
+### Application
+
+While `Tipg` provides a default application `tipg.main:app`, users can easily create their own FastAPI application and register the OGC API endpoints using the [endpoint factories](/user_guide/factories/) provided by `Tipg`.
+
+```python
+from contextlib import asynccontextmanager
+from tipg.database import close_db_connection, connect_to_db
+from tipg.collections import register_collection_catalog
+from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from tipg.factory import OGCFeaturesFactory
+from tipg.settings import PostgresSettings
+
+from fastapi import FastAPI
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI Lifespan
+
+    - Create DB connection POOL and `register` the custom tipg SQL function within `pg_temp`
+    - Create the collection_catalog
+    - Close the connection pool when closing the application
+
+    """
+    await connect_to_db(
+        app,
+        settings=PostgresSettings(database_url="postgres://...."),
+        schemas=["public"],
+    )
+    await register_collection_catalog(app, schemas=["public"])
+
+    yield
+
+    await close_db_connection(app)
+
+
+app = FastAPI(openapi_url="/api", docs_url="/api.html", lifespan=lifespan)
+
+endpoints = OGCFeaturesFactory(with_common=True)
+app.include_router(endpoints.router, tags=["OGC Features API"])
+
+add_exception_handlers(app, DEFAULT_STATUS_CODES)
+```
+
 ### HTML Templates
 
 The default `HTML` responses are generated using [Jinja](https://jinja.palletsprojects.com) HTML [templates](https://github.com/developmentseed/tipg/tree/main/tipg/templates).
@@ -43,14 +87,15 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 
 ### SQL Functions
 
-`tipg` support SQL functional layers (see [Functions](/advanced/functions/)).
+`tipg` support SQL functional layers (see [Functions](../functions/)).
 
 `Functions` will be either found by `tipg` at startup within the specified schemas or by registering them dynamically to the [`pg_temp`](https://www.postgresql.org/docs/current/runtime-config-client.html) schema when creating the [Database connection](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/db.py#L63-L65).
 
 To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in [tipg.db.connect_to_db](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/main.py#L90-L109).
 
 ```python
-from tipg.db import connect_to_db, register_collection_catalog
+from tipg.database import connect_to_db
+from tipg.collections import register_collection_catalog
 from tipg.settings import PostgresSettings
 
 postgres_settings = PostgresSettings()

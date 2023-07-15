@@ -6,7 +6,8 @@ from typing import Any, List
 import jinja2
 
 from tipg import __version__ as tipg_version
-from tipg.db import close_db_connection, connect_to_db, register_collection_catalog
+from tipg.collections import register_collection_catalog
+from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
@@ -66,7 +67,6 @@ app = FastAPI(
     docs_url="/api.html",
     lifespan=lifespan,
 )
-app.state.db_settings = db_settings
 
 # custom template directory
 templates_location: List[Any] = (

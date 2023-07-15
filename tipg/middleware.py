@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Optional, Set
 
-from tipg.db import register_collection_catalog
+from tipg.collections import register_collection_catalog
 from tipg.logger import logger
 
 from starlette.background import BackgroundTask

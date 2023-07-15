@@ -1,13 +1,16 @@
 
 
-`SQL Functions` are any procedural functions defined in the database that match the following criteria.
-  - Must be defined to return "SETOF"
-  - Functions defined to return "RECORD" must include typed OUT definitions in the function signature
-  - All arguments (IN and OUT) must be named
-  - Functions that return a geometry will be usable as Features and Vector Tiles, those that do not will be available to return json/csv
-  - Functions that match these qualifications will be found based on the DB visibility settings
+`SQL Functions` are any procedural functions defined in the database that match the following criteria:
 
-`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter. If a function is defined to have z, x, or y parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a bounds parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
+  - Must be defined to return `SETOF`
+  - Functions defined to return `RECORD` must include typed OUT definitions in the function signature
+  - All arguments (`IN` and `OUT`) must be named
+  - Functions that return a `geometry` will be usable as Features and Vector Tiles, those that do not, will be available to return json/csv
+  - Functions that match these qualifications will be found based on the DB visibility settings (schemas)
+
+`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter.
+
+If a function is defined to have `z`, `x`, or `y` parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a `bounds` parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
 
 At startup, `tipg` application will look for any SQL functions with the above signature and then get displayed as `Collections`:
 
@@ -22,7 +25,7 @@ Note: By default, `tipg` should find `st_squaregrid`, `st_hexagongrid`, and `st_
 
 !!! important
 
-    `SQL Functions` can be pre-existent in the database, or you can tell `tipg` to **register** SQL code dynamically to the `pg_temp` schema at startup, see [customization](/advanced/customization/#sql-functions)
+    `SQL Functions` can be pre-existent in the database, or you can tell `tipg` to **register** SQL code dynamically to the `pg_temp` schema at startup, see [customization](../customization/#sql-functions)
 
 
 ### FUNCTION examples

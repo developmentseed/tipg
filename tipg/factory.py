@@ -27,7 +27,7 @@ from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
 
 from tipg import model
-from tipg.dbmodel import Collection, Database
+from tipg.collections import Catalog, Collection
 from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
@@ -439,10 +439,14 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             },
         )
-        def collections(
+        def collections(  # noqa: C901
             request: Request,
             bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
             datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+            type_filter: Annotated[
+                Optional[Literal["Function", "Table"]],
+                Query(alias="type", description="Filter based on Collection type."),
+            ] = None,
             limit: Annotated[
                 Optional[int],
                 Query(
@@ -461,7 +465,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """List of collections."""
-            collection_catalog: Database = getattr(
+            collection_catalog: Catalog = getattr(
                 request.app.state, "collection_catalog", None
             )
             if not collection_catalog:
@@ -471,6 +475,14 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             limit = limit or 0
             offset = offset or 0
+
+            # type filter
+            if type_filter is not None:
+                collections_list = [
+                    collection
+                    for collection in collections_list
+                    if collection.type == type_filter
+                ]
 
             # bbox filter
             if bbox_filter is not None:
