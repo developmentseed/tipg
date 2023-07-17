@@ -39,22 +39,51 @@
       attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }
   ));
+
+  function displayValue(value) {
+    switch (typeof value) {
+      case 'string':
+        return value;
+      case 'number':
+        return value.toString();
+      case 'object':
+        if (value instanceof Array) {
+          return value.map(displayValue).join(', ');
+        } else {
+          return JSON.stringify(value);
+        }
+      default:
+        return '';
+    }
+  }
+
   function addPopup(feature, layer) {
     if (feature.properties) {
-          //popup HTML
-  var HTMLContent = '<div style="overflow-x:scroll">'
-  Object.keys(geojson.properties).map(prop => {
-    HTMLContent += `<b>${prop}</b> : ${geojson.properties[prop]} <br>`
+      var popupElm = document.createElement('div');
+      popupElm.style.overflowX = 'scroll';
 
-  })
-  HTMLContent += `</div>`
-    
-        layer.bindPopup(HTMLContent);
+      Object.keys(geojson.properties).map(prop => {
+        var propElm = document.createElement('div');
+
+        var bElm = document.createElement('b');
+        bElm.innerText = prop;
+        propElm.appendChild(bElm);
+        var valueElm = document.createTextNode(` : ${displayValue(feature.properties[prop])}`);
+        propElm.appendChild(valueElm);
+
+        var brElm = document.createElement('br');
+        propElm.appendChild(brElm);
+
+        popupElm.appendChild(propElm);
+      })
+
+      layer.bindPopup(popupElm);
     }
-}
+  }
+
   var features = L.geoJSON(geojson, {
     onEachFeature: addPopup
-}).addTo(map);
+  }).addTo(map);
   
   map.fitBounds(features.getBounds());
 </script>
