@@ -39,7 +39,23 @@
       attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }
   ));
-  var features = L.geoJSON(geojson).addTo(map);
+  function addPopup(feature, layer) {
+    if (feature.properties) {
+          //popup HTML
+  var HTMLContent = '<div style="overflow-x:scroll">'
+  Object.keys(geojson.properties).map(prop => {
+    HTMLContent += `<b>${prop}</b> : ${geojson.properties[prop]} <br>`
+
+  })
+  HTMLContent += `</div>`
+    
+        layer.bindPopup(HTMLContent);
+    }
+}
+  var features = L.geoJSON(geojson, {
+    onEachFeature: addPopup
+}).addTo(map);
+  
   map.fitBounds(features.getBounds());
 </script>
 

@@ -77,6 +77,7 @@
 </div>
 
 <script>
+  var currentURL = "{{ template.api_root }}/collections/{{ response.id }}/items"
 function changePageSize() {
   var url = "{{ template.api_root }}/collections/{{ response.id }}/items?";
   url += "limit=" + $("#limit").val();
@@ -95,7 +96,13 @@ $(function() {
       attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }
   ));
-  var features = L.geoJSON(geojson).addTo(map);
+  function addPopup(feature, layer) {
+   HTMLContent = `<a target="_blank" href="${currentURL}/${feature.id}">${feature.id}</a>`
+   layer.bindPopup(HTMLContent);
+}
+  var features = L.geoJSON(geojson, {
+    onEachFeature: addPopup
+}).addTo(map);
   map.fitBounds(features.getBounds());
 
   //

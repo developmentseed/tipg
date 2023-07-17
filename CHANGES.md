@@ -13,6 +13,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - `type` query parameter to filter collections based on their type (`Function` or `Table`)
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
 - fixed a bug where orjson could not properly serialize float values present in the properties of a feature (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/89)
+- added popups to leaflet maps on `items` and `item` page. (author @krishnaglodha, https://github.com/developmentseed/tipg/pull/91)
 
 ## [0.2.0] - 2023-06-22
 
