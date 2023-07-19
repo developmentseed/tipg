@@ -970,6 +970,9 @@ async def get_collection_index(  # noqa: C901
                     ):
                         geometry_column = c
 
+            if table.get("parameters") is None:
+                table["parameters"] = []
+
             catalog[table_id] = Collection(
                 type=table["entity"],
                 id=table_id,
@@ -980,7 +983,7 @@ async def get_collection_index(  # noqa: C901
                 properties=properties,
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
-                parameters=table.get("parameters", []),
+                parameters=table["parameters"],
             )
 
         return Catalog(collections=catalog, last_updated=datetime.datetime.now())
