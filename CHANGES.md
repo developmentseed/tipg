@@ -14,6 +14,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
 - added popups to leaflet maps on `items` and `item` page. (author @krishnaglodha & @jackharrhy, https://github.com/developmentseed/tipg/pull/91, https://github.com/developmentseed/tipg/pull/94)
 
+### Fixed
+
+- fix handling functions that are interpreted as collections but lack parameters (author @jackharrhy, https://github.com/developmentseed/tipg/pull/96)
+
 ## [0.2.0] - 2023-06-22
 
 ### Changed
