@@ -96,13 +96,19 @@ $(function() {
       attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }
   ));
+
   function addPopup(feature, layer) {
-   HTMLContent = `<a target="_blank" href="${currentURL}/${feature.id}">${feature.id}</a>`
-   layer.bindPopup(HTMLContent);
-}
+    var aElm = document.createElement('a');
+    aElm.setAttribute('href', `${currentURL}/${feature.id}`);
+    aElm.setAttribute('target', '_blank');
+    aElm.innerText = feature.id;
+    layer.bindPopup(aElm);
+  }
+
   var features = L.geoJSON(geojson, {
     onEachFeature: addPopup
-}).addTo(map);
+  }).addTo(map);
+
   map.fitBounds(features.getBounds());
 
   //

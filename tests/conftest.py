@@ -78,6 +78,14 @@ def database_url(test_db):
     ).scalar()
     assert count_landsat == count_landsat_schema
 
+    # add a `userschema` schema
+    test_db.create_schema("userschema")
+    assert test_db.has_schema("userschema")
+
+    test_db.connection.execute(
+        "CREATE OR REPLACE FUNCTION userschema.test_no_params() RETURNS TABLE(foo integer, location geometry) AS 'SELECT 1, ST_MakePoint(0,0);' LANGUAGE SQL;"
+    )
+
     return str(test_db.connection.engine.url)
 
 
@@ -323,6 +331,27 @@ def app_myschema_public_order(database_url, monkeypatch):
         only_spatial_tables=False,
     )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_user_schema(database_url):
+    """Create APP with only tables from `userschema` schemas."""
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["userschema"],
+        exclude_table_schemas=["public"],
+        only_spatial_tables=False,
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=None)
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,

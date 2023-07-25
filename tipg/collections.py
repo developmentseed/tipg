@@ -980,7 +980,7 @@ async def get_collection_index(  # noqa: C901
                 properties=properties,
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
-                parameters=table.get("parameters", []),
+                parameters=table.get("parameters") or [],
             )
 
         return Catalog(collections=catalog, last_updated=datetime.datetime.now())
