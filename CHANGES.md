@@ -13,6 +13,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - added `python-dotenv` dependency via `pydantic[dotenv]`
 - `type` query parameter to filter collections based on their type (`Function` or `Table`)
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
+- handling functions that are interpreted as collections but lack parameters (author @jackharrhy, https://github.com/developmentseed/tipg/pull/96)
 
 ### Added
 

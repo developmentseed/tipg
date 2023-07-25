@@ -147,3 +147,24 @@ def test_myschema_and_public_order(app_myschema_public_order):
     assert "public.st_hexagongrid" not in ids
 
     assert body["numberMatched"] == collection_number
+
+
+def test_user_schema(app_user_schema):
+    """Test Function without parameters."""
+    collection_number = 1
+
+    response = app_user_schema.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [x["id"] for x in body["collections"]]
+
+    assert len(ids) == collection_number
+    assert "userschema.test_no_params" in ids
+
+    response = app_user_schema.get("/collections/userschema.test_no_params/queryables")
+    assert response.status_code == 200
+
+    response = app_user_schema.get("/collections/userschema.test_no_params/items")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["numberMatched"] == 1
