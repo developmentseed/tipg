@@ -77,7 +77,7 @@ async def connect_to_db(
 
     async with app.state.pool.acquire() as conn:
         rows = await conn.fetch_b(query, schema=tipg_schema)
-        assert rows, f"Couldn't file `tipg_catalog` in {tipg_schema}"
+        assert rows, f"Couldn't find `tipg_catalog` in {tipg_schema}"
 
 
 async def close_db_connection(app: FastAPI) -> None:
