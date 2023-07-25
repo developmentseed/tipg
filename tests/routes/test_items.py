@@ -769,6 +769,10 @@ def test_items_env_table_config_main(app, monkeypatch):
     body = response.json()
     assert body["features"][0]["geometry"]["type"] == "Polygon"
 
+    # Make sure that Postgres Decimal and Numeric are converted to str
+    assert isinstance(body["features"][0]["properties"]["decimal"], str)
+    assert isinstance(body["features"][0]["properties"]["numeric"], str)
+
     response = app.get(
         "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"
     )

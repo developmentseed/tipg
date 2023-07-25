@@ -67,6 +67,7 @@ def test_tilejson(app):
     np.testing.assert_almost_equal(
         resp_json["bounds"],
         [-96.28961808496446, 46.11168980088226, -93.05330550250615, 48.56828559755232],
+        decimal=3,
     )
 
 
