@@ -16,7 +16,7 @@ def test_features_factory():
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
     assert len(endpoints.router.routes) == 7
-    assert len(endpoints.conforms_to) == 6
+    assert len(endpoints.conforms_to) == 13
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -90,7 +90,7 @@ def test_features_factory():
     assert not endpoints.with_common
     assert endpoints.title == "OGC Features API"
     assert len(endpoints.router.routes) == 5
-    assert len(endpoints.conforms_to) == 6
+    assert len(endpoints.conforms_to) == 13
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -113,7 +113,7 @@ def test_tiles_factory():
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
     assert len(endpoints.router.routes) == 14
-    assert len(endpoints.conforms_to) == 5
+    assert len(endpoints.conforms_to) == 12
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -177,7 +177,7 @@ def test_tiles_factory():
     assert not endpoints.with_common
     assert endpoints.title == "OGC Tiles API"
     assert len(endpoints.router.routes) == 12
-    assert len(endpoints.conforms_to) == 5
+    assert len(endpoints.conforms_to) == 12
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -200,7 +200,9 @@ def test_endpoints_factory():
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
     assert len(endpoints.router.routes) == 19
-    assert len(endpoints.conforms_to) == 11  # 5 from tiles + 6 from features
+    assert (
+        len(endpoints.conforms_to) == 18
+    )  # 5 from tiles + 6 from features + 7 from common
 
     app = FastAPI()
     app.include_router(endpoints.router)
@@ -239,10 +241,6 @@ def test_endpoints_factory():
     assert endpoints.with_common
     assert endpoints.title == "OGC Full API"
     assert len(endpoints.router.routes) == 19
-    assert not endpoints.ogc_features.with_common
-    assert endpoints.ogc_features.router_prefix == "/ogc"
-    assert not endpoints.ogc_tiles.with_common
-    assert endpoints.ogc_tiles.router_prefix == "/ogc"
 
     app = FastAPI()
     app.include_router(endpoints.router, prefix="/ogc")
@@ -281,7 +279,7 @@ def test_endpoints_factory():
     assert not endpoints.with_common
     assert endpoints.title == "Tiles and Features API"
     assert len(endpoints.router.routes) == 17  # 10 from tiles + 5 from features
-    assert len(endpoints.conforms_to) == 11  # 4 from tiles + 6 from features
+    assert len(endpoints.conforms_to) == 18  # 4 from tiles + 6 from features
 
     app = FastAPI()
     app.include_router(endpoints.router)

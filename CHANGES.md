@@ -6,13 +6,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## unreleased
+## [unreleased]
 
 ### Added
 
 - `type` query parameter to filter collections based on their type (`Function` or `Table`)
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
 - added popups to leaflet maps on `items` and `item` page. (author @krishnaglodha & @jackharrhy, https://github.com/developmentseed/tipg/pull/91, https://github.com/developmentseed/tipg/pull/94)
+
+* `catalog_dependency` to retrieve the list of collections (defaults to `tipg.dependencies.CatalogParams`)
+
+* `additional_collection_links` and `additional_item_links` to be able to infer links
+
+### Changed
+
+* `tipg.factory.Endpoints` is now created directly from both `OGCFeaturesFactory` and `OGCTilesFactory` classes
+
+* factory's `links` method now uses `common|features|tiles_links` sub-methods
+
+* `conforms_to` use module's variables
+
 
 ## [0.2.0] - 2023-06-22
 

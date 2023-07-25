@@ -56,6 +56,15 @@ def CollectionParams(
     )
 
 
+def CatalogParams(request: Request) -> Catalog:
+    """Return Collections Catalog."""
+    collection_catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+    if not collection_catalog:
+        raise MissingCollectionCatalog("Could not find collections catalog.")
+
+    return collection_catalog
+
+
 def accept_media_type(
     accept: str, mediatypes: List[enums.MediaType]
 ) -> Optional[enums.MediaType]:
