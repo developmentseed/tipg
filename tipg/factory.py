@@ -29,6 +29,7 @@ from pygeofilter.ast import AstType
 from tipg import model
 from tipg.collections import Catalog, Collection
 from tipg.dependencies import (
+    CatalogParams,
     CollectionParams,
     ItemsOutputType,
     OutputType,
@@ -42,12 +43,7 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import (
-    MissingCollectionCatalog,
-    MissingGeometryColumn,
-    NoPrimaryKey,
-    NotFound,
-)
+from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
@@ -193,6 +189,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     router: APIRouter = field(default_factory=APIRouter)
 
     # collection dependency
+    catalog_dependency: Callable[..., Catalog] = CatalogParams
     collection_dependency: Callable[..., Collection] = CollectionParams
 
     # Router Prefix is needed to find the path for routes when prefixed
@@ -463,14 +460,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ] = None,
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            collection_catalog=Depends(self.catalog_dependency),
         ):
             """List of collections."""
-            collection_catalog: Catalog = getattr(
-                request.app.state, "collection_catalog", None
-            )
-            if not collection_catalog:
-                raise MissingCollectionCatalog("Could not find collections catalog.")
-
             collections_list = list(collection_catalog["collections"].values())
 
             limit = limit or 0
