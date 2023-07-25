@@ -6,13 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## unreleased
+## [0.2.1] - 2023-07-25
 
 ### Added
 
 - `type` query parameter to filter collections based on their type (`Function` or `Table`)
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
 - added popups to leaflet maps on `items` and `item` page. (author @krishnaglodha & @jackharrhy, https://github.com/developmentseed/tipg/pull/91, https://github.com/developmentseed/tipg/pull/94)
+
+### Changed
+
+- pin `geojson-pydantic` to `>=0.4.3,<1.0` to avoid geojson-pydantic breaking changes
+- pin `pydantic` to `~=1.0`
 
 ## [0.2.0] - 2023-06-22
 
@@ -43,6 +48,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.2.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/developmentseed/tipg/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/developmentseed/tipg/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/developmentseed/tipg/compare/9ca80c0bd57d8ce57e37c1709e26d1af1559bc1e...0.1.0
