@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [0.3.0] - 2023-07-25
+## [0.3.0] - 2023-07-27
 
 ### Fixed
 
@@ -14,7 +14,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - `type` query parameter to filter collections based on their type (`Function` or `Table`)
 - fixed a small bug in the `tipg_properties` SQL function where the bounds property was not properly transformed to 4326 (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/87)
 - handling functions that are interpreted as collections but lack parameters (author @jackharrhy, https://github.com/developmentseed/tipg/pull/96)
-- fixed a bug where orjson could not properly serialize float values present in the properties of a feature (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/89)
+- fixed a bug where Numeric/Decimal postgres datatype could not get serialized by orjson. They will now be encoded as string (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/89)
 
 ### Added
 
