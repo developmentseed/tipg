@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.3.1] - 2023-07-28
+
+### Fixed
+
+- fixed wrong media type option for `/queryables` endpoint (`json` instead of `schemajson``)
+
+### Added
+
+- more endpoints in performance benchmarks
+
 ## [0.3.0] - 2023-07-27
 
 ### Fixed
