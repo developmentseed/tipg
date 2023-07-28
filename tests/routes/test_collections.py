@@ -188,6 +188,12 @@ def test_collections_queryables(app):
     assert body["type"] == "object"
     assert ["title", "properties", "type", "$schema", "$id"] == list(body)
 
+    response = app.get(
+        "/collections/public.landsat_wrs/queryables", params={"f": "schemajson"}
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/schema+json"
+
     response = app.get("/collections/public.landsat_wrs/queryables?f=html")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]

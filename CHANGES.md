@@ -8,6 +8,17 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+
+## [0.3.1] - 2023-07-28
+
+### Fixed
+
+- fixed wrong media type option for `/queryables` endpoint (`json` instead of `schemajson``)
+
+### Added
+
+- more endpoints in performance benchmarks
+
 ## [0.3.0] - 2023-07-27
 
 ### Fixed
@@ -57,7 +68,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.3.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/developmentseed/tipg/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/developmentseed/tipg/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/developmentseed/tipg/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/developmentseed/tipg/compare/9ca80c0bd57d8ce57e37c1709e26d1af1559bc1e...0.1.0
