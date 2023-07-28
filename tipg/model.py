@@ -1,12 +1,12 @@
 """tipg models."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Set, Tuple, Union
 
 from geojson_pydantic.features import Feature, FeatureCollection
 from morecantile.models import CRSType
-from pydantic import AnyHttpUrl, AnyUrl, BaseModel, Field, conint, root_validator
+from pydantic import AnyUrl, BaseModel, Field, RootModel, model_validator
+from typing_extensions import Annotated
 
 from tipg.resources.enums import MediaType
 
@@ -19,39 +19,54 @@ class Link(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    href: str = Field(
-        ...,
-        description="Supplies the URI to a remote resource (or resource fragment).",
-        example="http://data.example.com/buildings/123",
-    )
-    rel: str = Field(
-        ..., description="The type or semantics of the relation.", example="alternate"
-    )
-    type: Optional[MediaType] = Field(
-        description="A hint indicating what the media type of the result of dereferencing the link should be.",
-        example="application/geo+json",
-    )
-    templated: Optional[bool] = Field(
-        description="This flag set to true if the link is a URL template."
-    )
-    varBase: Optional[str] = Field(
-        description="A base path to retrieve semantic information about the variables used in URL template.",
-        example="/ogcapi/vars/",
-    )
-    hreflang: Optional[str] = Field(
-        description="A hint indicating what the language of the result of dereferencing the link should be.",
-        example="en",
-    )
-    title: Optional[str] = Field(
-        description="Used to label the destination of a link such that it can be used as a human-readable identifier.",
-        example="Trierer Strasse 70, 53115 Bonn",
-    )
-    length: Optional[int]
+    href: Annotated[
+        str,
+        Field(
+            description="Supplies the URI to a remote resource (or resource fragment).",
+            example="http://data.example.com/buildings/123",
+        ),
+    ]
+    rel: Annotated[
+        str,
+        Field(
+            description="The type or semantics of the relation.", example="alternate"
+        ),
+    ]
+    type: Annotated[
+        Optional[MediaType],
+        Field(
+            description="A hint indicating what the media type of the result of dereferencing the link should be.",
+            example="application/geo+json",
+        ),
+    ] = None
+    templated: Annotated[
+        Optional[bool],
+        Field(description="This flag set to true if the link is a URL template."),
+    ] = None
+    varBase: Annotated[
+        Optional[str],
+        Field(
+            description="A base path to retrieve semantic information about the variables used in URL template.",
+            example="/ogcapi/vars/",
+        ),
+    ] = None
+    hreflang: Annotated[
+        Optional[str],
+        Field(
+            description="A hint indicating what the language of the result of dereferencing the link should be.",
+            example="en",
+        ),
+    ] = None
+    title: Annotated[
+        Optional[str],
+        Field(
+            description="Used to label the destination of a link such that it can be used as a human-readable identifier.",
+            example="Trierer Strasse 70, 53115 Bonn",
+        ),
+    ] = None
+    length: Optional[int] = None
 
-    class Config:
-        """Link model configuration."""
-
-        use_enum_values = True
+    model_config = {"use_enum_values": True}
 
 
 class Spatial(BaseModel):
@@ -94,8 +109,8 @@ class Extent(BaseModel):
 
     """
 
-    spatial: Optional[Spatial]
-    temporal: Optional[Temporal]
+    spatial: Optional[Spatial] = None
+    temporal: Optional[Temporal] = None
 
 
 class Collection(BaseModel):
@@ -108,17 +123,14 @@ class Collection(BaseModel):
     """
 
     id: str
-    title: Optional[str]
-    description: Optional[str]
+    title: Optional[str] = None
+    description: Optional[str] = None
     links: List[Link]
-    extent: Optional[Extent]
+    extent: Optional[Extent] = None
     itemType: str = "feature"
     crs: List[str] = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
 
-    class Config:
-        """Collection model configuration."""
-
-        extra = "ignore"
+    model_config = {"extra": "ignore"}
 
 
 class Collections(BaseModel):
@@ -130,15 +142,12 @@ class Collections(BaseModel):
     """
 
     links: List[Link]
-    timeStamp: Optional[str]
-    numberMatched: Optional[int]
-    numberReturned: Optional[int]
+    timeStamp: Optional[str] = None
+    numberMatched: Optional[int] = None
+    numberReturned: Optional[int] = None
     collections: List[Collection]
 
-    class Config:
-        """Collection model configuration."""
-
-        extra = "allow"
+    model_config = {"extra": "allow"}
 
 
 class Item(Feature):
@@ -148,12 +157,9 @@ class Item(Feature):
 
     """
 
-    links: Optional[List[Link]]
+    links: Optional[List[Link]] = None
 
-    class Config:
-        """Link model configuration."""
-
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class Items(FeatureCollection):
@@ -164,19 +170,16 @@ class Items(FeatureCollection):
     """
 
     id: str
-    title: Optional[str]
-    description: Optional[str]
-    keywords: Optional[List[str]]
+    title: Optional[str] = None
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = None
     features: List[Item]  # type: ignore
-    links: Optional[List[Link]]
-    timeStamp: Optional[str]
-    numberMatched: Optional[int]
-    numberReturned: Optional[int]
+    links: Optional[List[Link]] = None
+    timeStamp: Optional[str] = None
+    numberMatched: Optional[int] = None
+    numberReturned: Optional[int] = None
 
-    class Config:
-        """Link model configuration."""
-
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
     def json_seq(self, **kwargs):
         """return a GeoJSON sequence representation."""
@@ -201,8 +204,8 @@ class Landing(BaseModel):
 
     """
 
-    title: Optional[str]
-    description: Optional[str]
+    title: Optional[str] = None
+    description: Optional[str] = None
     links: List[Link]
 
 
@@ -216,10 +219,12 @@ class Queryables(BaseModel):
     title: str
     properties: Dict[str, Dict[str, str]]
     type: str = "object"
-    schema_name: str = Field(
-        "https://json-schema.org/draft/2019-09/schema", alias="$schema"
-    )
-    link: str = Field(..., alias="$id")
+    schema_name: Annotated[
+        str, Field(alias="$schema")
+    ] = "https://json-schema.org/draft/2019-09/schema"
+    link: Annotated[str, Field(alias="$id")]
+
+    model_config = {"populate_by_name": True}
 
 
 class TileMatrixSetLink(BaseModel):
@@ -228,14 +233,11 @@ class TileMatrixSetLink(BaseModel):
     Based on http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
     """
 
-    href: AnyHttpUrl
-    rel: str = "item"
+    href: str
+    rel: str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes"
     type: MediaType = MediaType.json
 
-    class Config:
-        """Config for model."""
-
-        use_enum_values = True
+    model_config = {"use_enum_values": True}
 
 
 class TileMatrixSetRef(BaseModel):
@@ -245,7 +247,7 @@ class TileMatrixSetRef(BaseModel):
     """
 
     id: str
-    title: Optional[str]
+    title: Optional[str] = None
     links: List[TileMatrixSetLink]
 
 
@@ -258,23 +260,16 @@ class TileMatrixSetList(BaseModel):
     tileMatrixSets: List[TileMatrixSetRef]
 
 
-class SchemeEnum(str, Enum):
-    """TileJSON scheme choice."""
-
-    xyz = "xyz"
-    tms = "tms"
-
-
 class LayerJSON(BaseModel):
     """
     https://github.com/mapbox/tilejson-spec/tree/master/3.0.0#33-vector_layers
     """
 
     id: str
-    fields: Dict = Field(default_factory=dict)
-    description: Optional[str]
-    minzoom: Optional[int]
-    maxzoom: Optional[int]
+    fields: Annotated[Dict, Field(default_factory=dict)]
+    description: Optional[str] = None
+    minzoom: Optional[int] = None
+    maxzoom: Optional[int] = None
 
 
 class TileJSON(BaseModel):
@@ -284,39 +279,34 @@ class TileJSON(BaseModel):
     """
 
     tilejson: str = "3.0.0"
-    name: Optional[str]
-    description: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
     version: str = "1.0.0"
-    attribution: Optional[str]
-    template: Optional[str]
-    legend: Optional[str]
-    scheme: SchemeEnum = SchemeEnum.xyz
+    attribution: Optional[str] = None
+    template: Optional[str] = None
+    legend: Optional[str] = None
+    scheme: Literal["xyz", "tms"] = "xyz"
     tiles: List[str]
-    vector_layers: Optional[List[LayerJSON]]
-    grids: Optional[List[str]]
-    data: Optional[List[str]]
+    vector_layers: Optional[List[LayerJSON]] = None
+    grids: Optional[List[str]] = None
+    data: Optional[List[str]] = None
     minzoom: int = Field(0, ge=0, le=30)
     maxzoom: int = Field(30, ge=0, le=30)
-    fillzoom: Optional[int]
+    fillzoom: Optional[int] = None
     bounds: List[float] = [180, -85.05112877980659, 180, 85.0511287798066]
-    center: Optional[Tuple[float, float, int]]
+    center: Optional[Tuple[float, float, int]] = None
 
-    @root_validator
-    def compute_center(cls, values):
+    @model_validator(mode="after")
+    def compute_center(self):
         """Compute center if it does not exist."""
-        bounds = values["bounds"]
-        if not values.get("center"):
-            values["center"] = (
+        bounds = self.bounds
+        if not self.center:
+            self.center = (
                 (bounds[0] + bounds[2]) / 2,
                 (bounds[1] + bounds[3]) / 2,
-                values["minzoom"],
+                self.minzoom,
             )
-        return values
-
-    class Config:
-        """TileJSON model configuration."""
-
-        use_enum_values = True
+        return self
 
 
 class StyleJSON(BaseModel):
@@ -328,15 +318,15 @@ class StyleJSON(BaseModel):
     """
 
     version: int = 8
-    name: Optional[str]
-    metadata: Optional[Dict]
+    name: Optional[str] = None
+    metadata: Optional[Dict] = None
     layers: List[Dict]
     sources: Dict
     center: List[float] = [0, 0]
     zoom: int = 1
 
 
-class TimeStamp(BaseModel):
+class TimeStamp(RootModel):
     """TimeStamp model.
 
     Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-geodata/timeStamp.yaml
@@ -344,11 +334,13 @@ class TimeStamp(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    __root__: datetime = Field(
-        ...,
-        description="This property indicates the time and date when the response was generated using RFC 3339 notation.",
-        example="2017-08-17T08:05:32Z",
-    )
+    root: Annotated[
+        datetime,
+        Field(
+            description="This property indicates the time and date when the response was generated using RFC 3339 notation.",
+            example="2017-08-17T08:05:32Z",
+        ),
+    ]
 
 
 class BoundingBox(BaseModel):
@@ -359,52 +351,35 @@ class BoundingBox(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    lowerLeft: List[float] = Field(
-        ...,
-        max_items=2,
-        min_items=2,
-        description="A 2D Point in the CRS indicated elsewhere",
-    )
-    upperRight: List[float] = Field(
-        ...,
-        max_items=2,
-        min_items=2,
-        description="A 2D Point in the CRS indicated elsewhere",
-    )
-    crs: Optional[CRSType] = Field(name="CRS")
-    orderedAxes: Optional[List[str]] = Field(max_items=2, min_items=2)
+    lowerLeft: Annotated[
+        List[float],
+        Field(
+            max_length=2,
+            min_length=2,
+            description="A 2D Point in the CRS indicated elsewhere",
+        ),
+    ]
+    upperRight: Annotated[
+        List[float],
+        Field(
+            max_length=2,
+            min_length=2,
+            description="A 2D Point in the CRS indicated elsewhere",
+        ),
+    ]
+    crs: Annotated[Optional[CRSType], Field(name="CRS")] = None
+    orderedAxes: Annotated[
+        Optional[List[str]], Field(max_length=2, min_length=2)
+    ] = None
 
 
-class Type(Enum):
-    """Type enum.
+# Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+Type = Literal["array", "boolean", "integer", "null", "number", "object", "string"]
 
-    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
-
-    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
-    """
-
-    array = "array"
-    boolean = "boolean"
-    integer = "integer"
-    null = "null"
-    number = "number"
-    object = "object"
-    string = "string"
-
-
-class AccessConstraints(Enum):
-    """AccessConstraints enum.
-
-    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
-
-    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
-    """
-
-    unclassified = "unclassified"
-    restricted = "restricted"
-    confidential = "confidential"
-    secret = "secret"
-    topSecret = "topSecret"
+# Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
+AccessConstraints = Literal[
+    "unclassified", "restricted", "confidential", "secret", "topSecret"
+]
 
 
 class Properties(BaseModel):
@@ -415,29 +390,52 @@ class Properties(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    title: Optional[str]
-    description: Optional[str] = Field(description="Implements 'description'")
-    type: Optional[Type]
-    enum: Optional[List] = Field(
-        description="Implements 'acceptedValues'", min_items=1, unique_items=True
-    )
-    format: Optional[str] = Field(description="Complements implementation of 'type'")
-    contentMediaType: Optional[str] = Field(description="Implements 'mediaType'")
-    maximum: Optional[float] = Field(description="Implements 'range'")
-    exclusiveMaximum: Optional[float] = Field(description="Implements 'range'")
-    minimum: Optional[float] = Field(description="Implements 'range'")
-    exclusiveMinimum: Optional[float] = Field(description="Implements 'range'")
-    pattern: Optional[str]
-    maxItems: Optional[conint(ge=0)] = Field(  # type: ignore
-        description="Implements 'upperMultiplicity'"
-    )
-    minItems: Optional[conint(ge=0)] = Field(  # type: ignore
-        0, description="Implements 'lowerMultiplicity'"
-    )
-    observedProperty: Optional[str]
-    observedPropertyURI: Optional[AnyUrl]
-    uom: Optional[str]
-    uomURI: Optional[AnyUrl]
+    title: Optional[str] = None
+    description: Annotated[
+        Optional[str], Field(description="Implements 'description'")
+    ] = None
+    type: Optional[Type] = None
+    enum: Annotated[
+        Optional[Set],
+        Field(
+            description="Implements 'acceptedValues'",
+            min_length=1,
+        ),
+    ] = None
+    format: Annotated[
+        Optional[str],
+        Field(description="Complements implementation of 'type'"),
+    ] = None
+    contentMediaType: Annotated[
+        Optional[str], Field(description="Implements 'mediaType'")
+    ] = None
+    maximum: Annotated[Optional[float], Field(description="Implements 'range'")] = None
+    exclusiveMaximum: Annotated[
+        Optional[float], Field(description="Implements 'range'")
+    ] = None
+    minimum: Annotated[Optional[float], Field(description="Implements 'range'")] = None
+    exclusiveMinimum: Annotated[
+        Optional[float], Field(description="Implements 'range'")
+    ] = None
+    pattern: Optional[str] = None
+    maxItems: Annotated[
+        Optional[int],
+        Field(
+            description="Implements 'upperMultiplicity'",
+            ge=0,
+        ),
+    ] = None
+    minItems: Annotated[
+        Optional[int],
+        Field(
+            description="Implements 'lowerMultiplicity'",
+            ge=0,
+        ),
+    ] = 0
+    observedProperty: Optional[str] = None
+    observedPropertyURI: Optional[AnyUrl] = None
+    uom: Optional[str] = None
+    uomURI: Optional[AnyUrl] = None
 
 
 class PropertiesSchema(BaseModel):
@@ -449,10 +447,13 @@ class PropertiesSchema(BaseModel):
     """
 
     type: Literal["object"]
-    required: Optional[List[str]] = Field(
-        description="Implements 'multiplicity' by citing property 'name' defined as 'additionalProperties'",
-        min_items=1,
-    )
+    required: Annotated[
+        Optional[List[str]],
+        Field(
+            description="Implements 'multiplicity' by citing property 'name' defined as 'additionalProperties'",
+            min_length=1,
+        ),
+    ] = None
     properties: Dict[str, Properties]
 
 
@@ -464,18 +465,26 @@ class Style(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    id: str = Field(
-        ..., description="An identifier for this style. Implementation of 'identifier'"
-    )
-    title: Optional[str] = Field(description="A title for this style")
-    description: Optional[str] = Field(
-        description="Brief narrative description of this style"
-    )
-    keywords: Optional[List[str]] = Field(description="keywords about this style")
-    links: Optional[List[Link]] = Field(
-        description="Links to style related resources. Possible link 'rel' values are: 'style' for a URL pointing to the style description, 'styleSpec' for a URL pointing to the specification or standard used to define the style.",
-        min_items=1,
-    )
+    id: Annotated[
+        str,
+        Field(
+            description="An identifier for this style. Implementation of 'identifier'"
+        ),
+    ]
+    title: Annotated[Optional[str], Field(description="A title for this style")] = None
+    description: Annotated[
+        Optional[str], Field(description="Brief narrative description of this style")
+    ] = None
+    keywords: Annotated[
+        Optional[List[str]], Field(description="keywords about this style")
+    ] = None
+    links: Annotated[
+        Optional[List[Link]],
+        Field(
+            description="Links to style related resources. Possible link 'rel' values are: 'style' for a URL pointing to the style description, 'styleSpec' for a URL pointing to the specification or standard used to define the style.",
+            min_length=1,
+        ),
+    ] = None
 
 
 class GeospatialData(BaseModel):
@@ -486,73 +495,119 @@ class GeospatialData(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    title: Optional[str] = Field(
-        description="Title of this tile matrix set, normally used for display to a human",
-    )
-    description: Optional[str] = Field(
-        description="Brief narrative description of this tile matrix set, normally available for display to a human",
-    )
-    keywords: Optional[str] = Field(
-        description="Unordered list of one or more commonly used or formalized word(s) or phrase(s) used to describe this layer",
-    )
-    id: str = Field(
-        ...,
-        description="Unique identifier of the Layer. Implementation of 'identifier'",
-    )
-    dataType: Literal["map", "vector", "coverage"] = Field(
-        ..., description="Type of data represented in the tileset"
-    )
-    geometryDimension: Optional[conint(ge=0, le=3)] = Field(  # type: ignore
-        description="The geometry dimension of the features shown in this layer (0: points, 1: curves, 2: surfaces, 3: solids), unspecified: mixed or unknown",
-    )
-    featureType: Optional[str] = Field(
-        description="Feature type identifier. Only applicable to layers of datatype 'geometries'",
-    )
-    attribution: Optional[str] = Field(
-        description="Short reference to recognize the author or provider"
-    )
-    license: Optional[str] = Field(description="License applicable to the tiles")
-    pointOfContact: Optional[str] = Field(
-        description="Useful information to contact the authors or custodians for the layer (e.g. e-mail address, a physical address,  phone numbers, etc)",
-    )
-    publisher: Optional[str] = Field(
-        description="Organization or individual responsible for making the layer available",
-    )
-    theme: Optional[str] = Field(description="Category where the layer can be grouped")
-    crs: Optional[CRSType] = Field(name="CRS")
-    epoch: Optional[float] = Field(
-        description="Epoch of the Coordinate Reference System (CRS)"
-    )
-    minScaleDenominator: Optional[float] = Field(
-        description="Minimum scale denominator for usage of the layer"
-    )
-    maxScaleDenominator: Optional[float] = Field(
-        description="Maximum scale denominator for usage of the layer"
-    )
-    minCellSize: Optional[float] = Field(
-        description="Minimum cell size for usage of the layer"
-    )
-    maxCellSize: Optional[float] = Field(
-        description="Maximum cell size for usage of the layer"
-    )
-    maxTileMatrix: Optional[str] = Field(
-        description="TileMatrix identifier associated with the minScaleDenominator",
-    )
-    minTileMatrix: Optional[str] = Field(
-        description="TileMatrix identifier associated with the maxScaleDenominator",
-    )
-    boundingBox: Optional[BoundingBox]
-    created: Optional[TimeStamp]
-    updated: Optional[TimeStamp]
-    style: Optional[Style]
-    geoDataClasses: Optional[List[str]] = Field(
-        description="URI identifying a class of data contained in this layer (useful to determine compatibility with styles or processes)",
-    )
-    propertiesSchema: Optional[PropertiesSchema]
-    links: Optional[List[Link]] = Field(
-        description="Links related to this layer. Possible link 'rel' values are: 'geodata' for a URL pointing to the collection of geospatial data.",
-        min_items=1,
-    )
+    title: Annotated[
+        Optional[str],
+        Field(
+            description="Title of this tile matrix set, normally used for display to a human",
+        ),
+    ] = None
+    description: Annotated[
+        Optional[str],
+        Field(
+            description="Brief narrative description of this tile matrix set, normally available for display to a human",
+        ),
+    ] = None
+    keywords: Annotated[
+        Optional[str],
+        Field(
+            description="Unordered list of one or more commonly used or formalized word(s) or phrase(s) used to describe this layer",
+        ),
+    ] = None
+    id: Annotated[
+        str,
+        Field(
+            description="Unique identifier of the Layer. Implementation of 'identifier'"
+        ),
+    ]
+    dataType: Annotated[
+        Literal["map", "vector", "coverage"],
+        Field(description="Type of data represented in the tileset"),
+    ]
+    geometryDimension: Annotated[
+        Optional[int],
+        Field(  # type: ignore
+            description="The geometry dimension of the features shown in this layer (0: points, 1: curves, 2: surfaces, 3: solids), unspecified: mixed or unknown",
+            ge=0,
+            le=3,
+        ),
+    ] = None
+    featureType: Annotated[
+        Optional[str],
+        Field(
+            description="Feature type identifier. Only applicable to layers of datatype 'geometries'",
+        ),
+    ] = None
+    attribution: Annotated[
+        Optional[str],
+        Field(description="Short reference to recognize the author or provider"),
+    ] = None
+    license: Annotated[
+        Optional[str], Field(description="License applicable to the tiles")
+    ] = None
+    pointOfContact: Annotated[
+        Optional[str],
+        Field(
+            description="Useful information to contact the authors or custodians for the layer (e.g. e-mail address, a physical address,  phone numbers, etc)",
+        ),
+    ] = None
+    publisher: Annotated[
+        Optional[str],
+        Field(
+            description="Organization or individual responsible for making the layer available",
+        ),
+    ] = None
+    theme: Annotated[
+        Optional[str], Field(description="Category where the layer can be grouped")
+    ] = None
+    crs: Annotated[Optional[CRSType], Field(name="CRS")] = None
+    epoch: Annotated[
+        Optional[float],
+        Field(description="Epoch of the Coordinate Reference System (CRS)"),
+    ] = None
+    minScaleDenominator: Annotated[
+        Optional[float],
+        Field(description="Minimum scale denominator for usage of the layer"),
+    ] = None
+    maxScaleDenominator: Annotated[
+        Optional[float],
+        Field(description="Maximum scale denominator for usage of the layer"),
+    ] = None
+    minCellSize: Annotated[
+        Optional[float], Field(description="Minimum cell size for usage of the layer")
+    ] = None
+    maxCellSize: Annotated[
+        Optional[float], Field(description="Maximum cell size for usage of the layer")
+    ] = None
+    maxTileMatrix: Annotated[
+        Optional[str],
+        Field(
+            description="TileMatrix identifier associated with the minScaleDenominator",
+        ),
+    ] = None
+    minTileMatrix: Annotated[
+        Optional[str],
+        Field(
+            description="TileMatrix identifier associated with the maxScaleDenominator",
+        ),
+    ] = None
+    boundingBox: Optional[BoundingBox] = None
+    created: Optional[TimeStamp] = None
+    updated: Optional[TimeStamp] = None
+    style: Optional[Style] = None
+    geoDataClasses: Annotated[
+        Optional[List[str]],
+        Field(
+            description="URI identifying a class of data contained in this layer (useful to determine compatibility with styles or processes)",
+        ),
+    ] = None
+    propertiesSchema: Optional[PropertiesSchema] = None
+    links: Annotated[
+        Optional[List[Link]],
+        Field(
+            description="Links related to this layer. Possible link 'rel' values are: 'geodata' for a URL pointing to the collection of geospatial data.",
+            min_length=1,
+        ),
+    ] = None
 
 
 class TilePoint(BaseModel):
@@ -563,17 +618,19 @@ class TilePoint(BaseModel):
     Code generated using https://github.com/koxudaxi/datamodel-code-generator/
     """
 
-    coordinates: List[float] = Field(..., max_items=2, min_items=2)
-    crs: Optional[CRSType] = Field(name="CRS")
-    tileMatrix: Optional[str] = Field(
-        description="TileMatrix identifier associated with the scaleDenominator"
-    )
-    scaleDenominator: Optional[float] = Field(
-        description="Scale denominator of the tile matrix selected"
-    )
-    cellSize: Optional[float] = Field(
-        description="Cell size of the tile matrix selected"
-    )
+    coordinates: Annotated[List[float], Field(max_length=2, min_length=2)]
+    crs: Annotated[Optional[CRSType], Field(name="CRS")]
+    tileMatrix: Annotated[
+        Optional[str],
+        Field(description="TileMatrix identifier associated with the scaleDenominator"),
+    ] = None
+    scaleDenominator: Annotated[
+        Optional[float],
+        Field(description="Scale denominator of the tile matrix selected"),
+    ] = None
+    cellSize: Annotated[
+        Optional[float], Field(description="Cell size of the tile matrix selected")
+    ] = None
 
 
 class TileMatrixLimits(BaseModel):
@@ -584,10 +641,10 @@ class TileMatrixLimits(BaseModel):
     """
 
     tileMatrix: str
-    minTileRow: int = Field(ge=0)
-    maxTileRow: int = Field(ge=0)
-    minTileCol: int = Field(ge=0)
-    maxTileCol: int = Field(ge=0)
+    minTileRow: Annotated[int, Field(ge=0)]
+    maxTileRow: Annotated[int, Field(ge=0)]
+    minTileCol: Annotated[int, Field(ge=0)]
+    maxTileCol: Annotated[int, Field(ge=0)]
 
 
 class TileSet(BaseModel):
@@ -597,48 +654,77 @@ class TileSet(BaseModel):
     Based on https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/tileSet.yaml
     """
 
-    title: Optional[str] = Field(description="A title for this tileset")
-    description: Optional[str] = Field(
-        description="Brief narrative description of this tile set"
-    )
-    dataType: Literal["map", "vector", "coverage"] = Field(
-        ..., description="Type of data represented in the tileset"
-    )
-    crs: CRSType = Field(..., name="CRS")
-    tileMatrixSetURI: Optional[AnyUrl] = Field(
-        description="Reference to a Tile Matrix Set on an official source for Tile Matrix Sets"
-    )
-    links: List[Link] = Field(description="Links to related resources")
-    tileMatrixSetLimits: Optional[List[TileMatrixLimits]] = Field(
-        description="Limits for the TileRow and TileCol values for each TileMatrix in the tileMatrixSet. If missing, there are no limits other that the ones imposed by the TileMatrixSet. If present the TileMatrices listed are limited and the rest not available at all",
-    )
-    epoch: Optional[Union[float, int]] = Field(
-        description="Epoch of the Coordinate Reference System (CRS)"
-    )
-    layers: Optional[List[GeospatialData]] = Field(min_items=1)
-    boundingBox: Optional[BoundingBox]
-    centerPoint: Optional[TilePoint]
-    style: Optional[Style]
-    attribution: Optional[str] = Field(
-        description="Short reference to recognize the author or provider"
-    )
-    license: Optional[str] = Field(description="License applicable to the tiles")
-    accessConstraints: Optional[AccessConstraints] = Field(
-        "unclassified",
-        description="Restrictions on the availability of the Tile Set that the user needs to be aware of before using or redistributing the Tile Set",
-    )
-    keywords: Optional[List[str]] = Field(description="keywords about this tileset")
-    version: Optional[str] = Field(
-        description="Version of the Tile Set. Changes if the data behind the tiles has been changed",
-    )
-    created: Optional[TimeStamp]
-    updated: Optional[TimeStamp]
-    pointOfContact: Optional[str] = Field(
-        description="Useful information to contact the authors or custodians for the Tile Set",
-    )
-    mediaTypes: Optional[List[str]] = Field(
-        description="Media types available for the tiles"
-    )
+    title: Annotated[
+        Optional[str], Field(description="A title for this tileset")
+    ] = None
+    description: Annotated[
+        Optional[str], Field(description="Brief narrative description of this tile set")
+    ] = None
+    dataType: Annotated[
+        Literal["map", "vector", "coverage"],
+        Field(description="Type of data represented in the tileset"),
+    ]
+    crs: Annotated[CRSType, Field(name="CRS")]
+    tileMatrixSetURI: Annotated[
+        Optional[AnyUrl],
+        Field(
+            description="Reference to a Tile Matrix Set on an official source for Tile Matrix Sets"
+        ),
+    ] = None
+    links: Annotated[
+        List[Link],
+        Field(description="Links to related resources"),
+    ]
+    tileMatrixSetLimits: Annotated[
+        Optional[List[TileMatrixLimits]],
+        Field(
+            description="Limits for the TileRow and TileCol values for each TileMatrix in the tileMatrixSet. If missing, there are no limits other that the ones imposed by the TileMatrixSet. If present the TileMatrices listed are limited and the rest not available at all",
+        ),
+    ] = None
+    epoch: Annotated[
+        Optional[Union[float, int]],
+        Field(description="Epoch of the Coordinate Reference System (CRS)"),
+    ] = None
+    layers: Annotated[
+        Optional[List[GeospatialData]],
+        Field(min_length=1),
+    ] = None
+    boundingBox: Optional[BoundingBox] = None
+    centerPoint: Optional[TilePoint] = None
+    style: Optional[Style] = None
+    attribution: Annotated[
+        Optional[str],
+        Field(description="Short reference to recognize the author or provider"),
+    ] = None
+    license: Annotated[
+        Optional[str], Field(description="License applicable to the tiles")
+    ] = None
+    accessConstraints: Annotated[
+        Optional[AccessConstraints],
+        Field(
+            description="Restrictions on the availability of the Tile Set that the user needs to be aware of before using or redistributing the Tile Set",
+        ),
+    ] = "unclassified"
+    keywords: Annotated[
+        Optional[List[str]], Field(description="keywords about this tileset")
+    ] = None
+    version: Annotated[
+        Optional[str],
+        Field(
+            description="Version of the Tile Set. Changes if the data behind the tiles has been changed",
+        ),
+    ] = None
+    created: Optional[TimeStamp] = None
+    updated: Optional[TimeStamp] = None
+    pointOfContact: Annotated[
+        Optional[str],
+        Field(
+            description="Useful information to contact the authors or custodians for the Tile Set",
+        ),
+    ] = None
+    mediaTypes: Annotated[
+        Optional[List[str]], Field(description="Media types available for the tiles")
+    ] = None
 
 
 class TileSetList(BaseModel):

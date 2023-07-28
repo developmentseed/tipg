@@ -81,7 +81,7 @@ async def connect_to_db(
     con_init = connection_factory(schemas, user_sql_files)
 
     app.state.pool = await asyncpg.create_pool_b(
-        settings.database_url,
+        str(settings.database_url),
         min_size=settings.db_min_conn_size,
         max_size=settings.db_max_conn_size,
         max_queries=settings.db_max_queries,

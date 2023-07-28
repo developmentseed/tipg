@@ -1,20 +1,21 @@
 """tipg config."""
 
 import pathlib
-import sys
 from typing import Any, Dict, List, Optional
 
-import pydantic
+from pydantic import (
+    DirectoryPath,
+    Field,
+    FieldValidationInfo,
+    PostgresDsn,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import BaseSettings
+from typing_extensions import TypedDict
 
-# Pydantic does not support older versions of typing.TypedDict
-# https://github.com/pydantic/pydantic/pull/3374
-if sys.version_info < (3, 9, 2):
-    from typing_extensions import TypedDict
-else:
-    from typing import TypedDict
 
-
-class APISettings(pydantic.BaseSettings):
+class APISettings(BaseSettings):
     """API settings"""
 
     name: str = "TiPg: OGC Features and Tiles API"
@@ -27,16 +28,12 @@ class APISettings(pydantic.BaseSettings):
 
     catalog_ttl: int = 300
 
-    @pydantic.validator("cors_origins")
+    model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
+
+    @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
         return [origin.strip() for origin in v.split(",")]
-
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_"
-        env_file = ".env"
 
 
 class TableConfig(TypedDict, total=False):
@@ -48,59 +45,51 @@ class TableConfig(TypedDict, total=False):
     properties: Optional[List[str]]
 
 
-class TableSettings(pydantic.BaseSettings):
+class TableSettings(BaseSettings):
     """Table configuration settings"""
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
     datetime_extent: bool = True
 
-    class Config:
-        """model config"""
+    model_config = {
+        "env_prefix": "TIPG_",
+        "env_file": ".env",
+        "env_nested_delimiter": "__",
+        "extra": "ignore",
+    }
 
-        env_prefix = "TIPG_"
-        env_file = ".env"
-        env_nested_delimiter = "__"
 
-
-class TMSSettings(pydantic.BaseSettings):
+class TMSSettings(BaseSettings):
     """TiPG TMS settings"""
 
     default_tms: str = "WebMercatorQuad"
     default_minzoom: int = 0
     default_maxzoom: int = 22
 
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_"
-        env_file = ".env"
+    model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
 
-class FeaturesSettings(pydantic.BaseSettings):
+class FeaturesSettings(BaseSettings):
     """TiPG Items settings"""
 
-    default_features_limit: int = pydantic.Field(10, ge=0)
-    max_features_per_query: int = pydantic.Field(10000, ge=0)
+    default_features_limit: int = Field(10, ge=0)
+    max_features_per_query: int = Field(10000, ge=0)
 
-    class Config:
-        """model config"""
+    model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
-        env_prefix = "TIPG_"
-        env_file = ".env"
-
-    @pydantic.root_validator(pre=False)
-    def max_default(cls, values):
+    @model_validator(mode="after")
+    def max_default(self):
         """Set default bounds and srid when this is a function."""
-        if values.get("default_features_limit") > values.get("max_features_per_query"):
+        if self.default_features_limit > self.max_features_per_query:
             raise ValueError(
-                f"Invalid combination of `limit` ({values.get('default_features_limit')}) and `max features per query` ({values.get('max_features_per_query')}) values"
+                f"Invalid combination of `limit` ({self.default_features_limit}) and `max features per query` ({self.max_features_per_query}) values"
             )
 
-        return values
+        return self
 
 
-class MVTSettings(pydantic.BaseSettings):
+class MVTSettings(BaseSettings):
     """TiPG MVT settings"""
 
     tile_resolution: int = 4096
@@ -108,16 +97,12 @@ class MVTSettings(pydantic.BaseSettings):
     tile_clip: bool = True
     max_features_per_tile: int = 10000
 
-    set_mvt_layername: Optional[bool]
+    set_mvt_layername: Optional[bool] = None
 
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_"
-        env_file = ".env"
+    model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
 
-class PostgresSettings(pydantic.BaseSettings):
+class PostgresSettings(BaseSettings):
     """Postgres connection settings.
 
     Attributes:
@@ -129,71 +114,60 @@ class PostgresSettings(pydantic.BaseSettings):
 
     """
 
-    postgres_user: Optional[str]
-    postgres_pass: Optional[str]
-    postgres_host: Optional[str]
-    postgres_port: Optional[str]
-    postgres_dbname: Optional[str]
+    postgres_user: Optional[str] = None
+    postgres_pass: Optional[str] = None
+    postgres_host: Optional[str] = None
+    postgres_port: Optional[str] = None
+    postgres_dbname: Optional[str] = None
 
-    database_url: Optional[pydantic.PostgresDsn] = None
+    database_url: Optional[PostgresDsn] = None
 
     db_min_conn_size: int = 1
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
     db_max_inactive_conn_lifetime: float = 300
 
-    class Config:
-        """model config"""
-
-        env_file = ".env"
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
-    @pydantic.validator("database_url", pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+    @field_validator("database_url", mode="before")
+    def assemble_db_connection(cls, v: Optional[str], info: FieldValidationInfo) -> Any:
         """Validate db url settings."""
         if isinstance(v, str):
             return v
 
-        return pydantic.PostgresDsn.build(
+        return PostgresDsn.build(
             scheme="postgresql",
-            user=values.get("postgres_user"),
-            password=values.get("postgres_pass"),
-            host=values.get("postgres_host", ""),
-            port=values.get("postgres_port", 5432),
-            path=f"/{values.get('postgres_dbname') or ''}",
+            user=info.data.get("postgres_user"),
+            password=info.data.get("postgres_pass"),
+            host=info.data.get("postgres_host", ""),
+            port=info.data.get("postgres_port", 5432),
+            path=f"/{info.data.get('postgres_dbname') or ''}",
         )
 
 
-class DatabaseSettings(pydantic.BaseSettings):
+class DatabaseSettings(BaseSettings):
     """TiPg Database settings."""
 
     schemas: List[str] = ["public"]
-    tables: Optional[List[str]]
-    exclude_tables: Optional[List[str]]
-    exclude_table_schemas: Optional[List[str]]
-    functions: Optional[List[str]]
-    exclude_functions: Optional[List[str]]
-    exclude_function_schemas: Optional[List[str]]
+    tables: Optional[List[str]] = None
+    exclude_tables: Optional[List[str]] = None
+    exclude_table_schemas: Optional[List[str]] = None
+    functions: Optional[List[str]] = None
+    exclude_functions: Optional[List[str]] = None
+    exclude_function_schemas: Optional[List[str]] = None
 
     only_spatial_tables: bool = True
 
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_DB_"
-        env_file = ".env"
+    model_config = {"env_prefix": "TIPG_DB_", "env_file": ".env", "extra": "ignore"}
 
 
-class CustomSQLSettings(pydantic.BaseSettings):
+class CustomSQLSettings(BaseSettings):
     """TiPg Custom SQL settings."""
 
-    custom_sql_directory: Optional[pydantic.DirectoryPath]
+    custom_sql_directory: Optional[DirectoryPath]
 
-    class Config:
-        """model config"""
-
-        env_prefix = "TIPG_"
-        env_file = ".env"
+    model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
     @property
     def sql_files(self) -> Optional[List[pathlib.Path]]:

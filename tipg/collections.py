@@ -10,7 +10,7 @@ from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 from pygeofilter.ast import AstType
 
 from tipg.errors import (
@@ -89,14 +89,14 @@ class Column(BaseModel):
 
     name: str
     type: str
-    description: Optional[str]
-    geometry_type: Optional[str]
-    srid: Optional[int]
-    bounds: Optional[List[float]]
-    mindt: Optional[str]
-    maxdt: Optional[str]
+    description: Optional[str] = None
+    geometry_type: Optional[str] = None
+    srid: Optional[int] = None
+    bounds: Optional[List[float]] = None
+    mindt: Optional[str] = None
+    maxdt: Optional[str] = None
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     def sridbounds_default(cls, values):
         """Set default bounds and srid when this is a function."""
         if values.get("geometry_type"):
@@ -160,12 +160,12 @@ class Collection(BaseModel):
     id: str
     table: str
     dbschema: str = Field(..., alias="schema")
-    title: Optional[str]
-    description: Optional[str]
+    title: Optional[str] = None
+    description: Optional[str] = None
     properties: List[Column] = []
-    id_column: Optional[str]
-    geometry_column: Optional[Column]
-    datetime_column: Optional[Column]
+    id_column: Optional[str] = None
+    geometry_column: Optional[Column] = None
+    datetime_column: Optional[Column] = None
     parameters: List[Parameter] = []
 
     @property

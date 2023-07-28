@@ -3,7 +3,6 @@
 import abc
 import csv
 import json
-import sys
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -25,6 +24,7 @@ from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
+from typing_extensions import Annotated
 
 from tipg import model
 from tipg.collections import Catalog, Collection
@@ -55,12 +55,6 @@ from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates, _TemplateResponse
-
-if sys.version_info >= (3, 9):
-    from typing import Annotated  # pylint: disable=no-name-in-module
-else:
-    from typing_extensions import Annotated
-
 
 tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
@@ -288,7 +282,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="conformance",
                 )
 
@@ -348,7 +342,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="landing",
                 )
 
@@ -523,7 +517,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         rel="next",
                         type=MediaType.json,
                         title="Next page",
-                    ).dict(exclude_none=True),
+                    ),
                 )
 
             if offset:
@@ -545,7 +539,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         rel="prev",
                         type=MediaType.json,
                         title="Previous page",
-                    ).dict(exclude_none=True),
+                    ),
                 )
 
             data = model.Collections(
@@ -554,41 +548,39 @@ class OGCFeaturesFactory(EndpointsFactory):
                 numberReturned=items_returned,
                 collections=[
                     model.Collection(
-                        **{
-                            "id": collection.id,
-                            "title": collection.id,
-                            "description": collection.description,
-                            "extent": collection.extent,
-                            "links": [
-                                model.Link(
-                                    href=self.url_for(
-                                        request,
-                                        "collection",
-                                        collectionId=collection.id,
-                                    ),
-                                    rel="collection",
-                                    type=MediaType.json,
+                        id=collection.id,
+                        title=collection.id,
+                        description=collection.description,
+                        extent=collection.extent,
+                        links=[
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "collection",
+                                    collectionId=collection.id,
                                 ),
-                                model.Link(
-                                    href=self.url_for(
-                                        request,
-                                        "items",
-                                        collectionId=collection.id,
-                                    ),
-                                    rel="items",
-                                    type=MediaType.geojson,
+                                rel="collection",
+                                type=MediaType.json,
+                            ),
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "items",
+                                    collectionId=collection.id,
                                 ),
-                                model.Link(
-                                    href=self.url_for(
-                                        request,
-                                        "queryables",
-                                        collectionId=collection.id,
-                                    ),
-                                    rel="queryables",
-                                    type=MediaType.schemajson,
+                                rel="items",
+                                type=MediaType.geojson,
+                            ),
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "queryables",
+                                    collectionId=collection.id,
                                 ),
-                            ],
-                        }
+                                rel="queryables",
+                                type=MediaType.schemajson,
+                            ),
+                        ],
                     )
                     for collection in collections_list
                 ],
@@ -597,7 +589,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="collections",
                 )
 
@@ -624,9 +616,9 @@ class OGCFeaturesFactory(EndpointsFactory):
         ):
             """Metadata for a feature collection."""
 
-            data = model.Collection(
-                **{
-                    **collection.dict(),
+            data = model.Collection.model_validate(
+                {
+                    **collection.model_dump(),
                     "title": collection.id,
                     "extent": collection.extent,
                     "links": [
@@ -682,7 +674,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="collection",
                 )
 
@@ -713,22 +705,17 @@ class OGCFeaturesFactory(EndpointsFactory):
             ref: http://docs.ogc.org/DRAFTS/19-079r1.html#filter-queryables
             """
             qs = "?" + str(request.query_params) if request.query_params else ""
-
+            self_url = self.url_for(request, "queryables", collectionId=collection.id)
             data = model.Queryables(
-                **{
-                    "title": collection.id,
-                    "$id": self.url_for(
-                        request, "queryables", collectionId=collection.id
-                    )
-                    + qs,
-                    "properties": collection.queryables,
-                }
+                title=collection.id,
+                link=self_url + qs,
+                properties=collection.queryables,
             )
 
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="queryables",
                 )
 
@@ -902,14 +889,14 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                     rel="collection",
                     type=MediaType.json,
-                ).dict(exclude_none=True),
+                ).model_dump(exclude_none=True, mode="json"),
                 model.Link(
                     title="Items",
                     href=self.url_for(request, "items", collectionId=collection.id)
                     + qs,
                     rel="self",
                     type=MediaType.geojson,
-                ).dict(exclude_none=True),
+                ).model_dump(exclude_none=True, mode="json"),
             ]
 
             items_returned = len(items["features"])
@@ -929,7 +916,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         rel="next",
                         type=MediaType.geojson,
                         title="Next page",
-                    ).dict(exclude_none=True),
+                    ).model_dump(exclude_none=True, mode="json"),
                 )
 
             if offset:
@@ -951,7 +938,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         rel="prev",
                         type=MediaType.geojson,
                         title="Previous page",
-                    ).dict(exclude_none=True),
+                    ).model_dump(exclude_none=True, mode="json"),
                 )
 
             data = {
@@ -977,7 +964,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                                 ),
                                 rel="collection",
                                 type=MediaType.json,
-                            ).dict(exclude_none=True),
+                            ).model_dump(exclude_none=True, mode="json"),
                             model.Link(
                                 title="Item",
                                 href=self.url_for(
@@ -988,7 +975,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                                 ),
                                 rel="item",
                                 type=MediaType.json,
-                            ).dict(exclude_none=True),
+                            ).model_dump(exclude_none=True, mode="json"),
                         ],
                     }
                     for feature in items["features"]
@@ -1159,7 +1146,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         ),
                         rel="collection",
                         type=MediaType.json,
-                    ).dict(exclude_none=True),
+                    ).model_dump(exclude_none=True, mode="json"),
                     model.Link(
                         href=self.url_for(
                             request,
@@ -1169,7 +1156,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         ),
                         rel="self",
                         type=MediaType.geojson,
-                    ).dict(exclude_none=True),
+                    ).model_dump(exclude_none=True, mode="json"),
                 ],
             }
 
@@ -1288,21 +1275,21 @@ class OGCTilesFactory(EndpointsFactory):
             """
             data = model.TileMatrixSetList(
                 tileMatrixSets=[
-                    {
-                        "id": tms_id,
-                        "links": [
-                            {
-                                "href": self.url_for(
+                    model.TileMatrixSetRef(
+                        id=tms_id,
+                        title=f"Definition of {tms_id} tileMatrixSets",
+                        links=[
+                            model.TileMatrixSetLink(
+                                href=self.url_for(
                                     request,
                                     "tilematrixset",
                                     tileMatrixSetId=tms_id,
                                 ),
-                                "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                                "type": "application/json",
-                                "title": f"Definition of {tms_id} tileMatrixSets",
-                            }
+                                rel="http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                                type=MediaType.json,
+                            )
                         ],
-                    }
+                    )
                     for tms_id in self.supported_tms.list()
                 ]
             )
@@ -1310,7 +1297,7 @@ class OGCTilesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="tilematrixsets",
                 )
 
@@ -1346,10 +1333,15 @@ class OGCTilesFactory(EndpointsFactory):
 
             if output_type == MediaType.html:
                 # For visualization purpose we add the tms bbox
-                data = {**data.dict(exclude_none=True), "bbox": data.bbox}
+                data = {
+                    **data.model_dump(exclude_none=True, mode="json"),
+                    "bbox": data.bbox,
+                }
                 return self._create_html_response(
                     request,
-                    json.dumps(data),
+                    json.dumps(
+                        data,
+                    ),
                     template_name="tilematrixset",
                 )
 
@@ -1372,65 +1364,69 @@ class OGCTilesFactory(EndpointsFactory):
             """Retrieve a list of available vector tilesets for the specified collection."""
             collection_bbox = None
             if bounds := collection.bounds:
-                collection_bbox = {
-                    "lowerLeft": [bounds[0], bounds[1]],
-                    "upperRight": [bounds[2], bounds[3]],
-                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                }
+                collection_bbox = model.BoundingBox.model_validate(
+                    {
+                        "lowerLeft": [bounds[0], bounds[1]],
+                        "upperRight": [bounds[2], bounds[3]],
+                        "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                    }
+                )
 
-            data = model.TileSetList(
-                tilesets=[
-                    model.TileSet(
-                        title=f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
-                        dataType="vector",
-                        crs=self.supported_tms.get(tms).crs,
-                        boundingBox=collection_bbox,
-                        links=[
-                            {
-                                "href": self.url_for(
-                                    request,
-                                    "collection_tileset",
-                                    collectionId=collection.id,
-                                    tileMatrixSetId=tms,
-                                ),
-                                "rel": "self",
-                                "type": MediaType.json,
-                                "title": f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
-                            },
-                            {
-                                "href": self.url_for(
-                                    request,
-                                    "tilematrixset",
-                                    tileMatrixSetId=tms,
-                                ),
-                                "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                                "type": MediaType.json,
-                                "title": f"Definition of '{tms}' tileMatrixSet",
-                            },
-                            {
-                                "href": self.url_for(
-                                    request,
-                                    "collection_get_tile",
-                                    tileMatrixSetId=tms,
-                                    collectionId=collection.id,
-                                    z="{z}",
-                                    x="{x}",
-                                    y="{y}",
-                                ),
-                                "rel": "tile",
-                                "type": MediaType.mvt,
-                                "title": "Templated link for retrieving Vector tiles",
-                            },
-                        ],
-                    )
-                    for tms in self.supported_tms.list()
-                ]
+            data = model.TileSetList.model_validate(
+                {
+                    "tilesets": [
+                        {
+                            "title": f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
+                            "dataType": "vector",
+                            "crs": self.supported_tms.get(tms).crs,
+                            "boundingBox": collection_bbox,
+                            "links": [
+                                {
+                                    "href": self.url_for(
+                                        request,
+                                        "collection_tileset",
+                                        collectionId=collection.id,
+                                        tileMatrixSetId=tms,
+                                    ),
+                                    "rel": "self",
+                                    "type": MediaType.json,
+                                    "title": f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
+                                },
+                                {
+                                    "href": self.url_for(
+                                        request,
+                                        "tilematrixset",
+                                        tileMatrixSetId=tms,
+                                    ),
+                                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                                    "type": MediaType.json,
+                                    "title": f"Definition of '{tms}' tileMatrixSet",
+                                },
+                                {
+                                    "href": self.url_for(
+                                        request,
+                                        "collection_get_tile",
+                                        tileMatrixSetId=tms,
+                                        collectionId=collection.id,
+                                        z="{z}",
+                                        x="{x}",
+                                        y="{y}",
+                                    ),
+                                    "rel": "tile",
+                                    "type": MediaType.mvt,
+                                    "title": "Templated link for retrieving Vector tiles",
+                                },
+                            ],
+                        }
+                        for tms in self.supported_tms.list()
+                    ]
+                }
             )
 
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="tilesets",
                 )
 
@@ -1458,11 +1454,13 @@ class OGCTilesFactory(EndpointsFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
 
             if bounds := collection.bounds:
-                collection_bbox = {
-                    "lowerLeft": [bounds[0], bounds[1]],
-                    "upperRight": [bounds[2], bounds[3]],
-                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                }
+                collection_bbox = model.BoundingBox.model_validate(
+                    {
+                        "lowerLeft": [bounds[0], bounds[1]],
+                        "upperRight": [bounds[2], bounds[3]],
+                        "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                    }
+                )
                 tilematrix_limit = []
                 for matrix in tms:
                     ulTile = tms.tile(bounds[0], bounds[3], int(matrix.id))
@@ -1492,55 +1490,57 @@ class OGCTilesFactory(EndpointsFactory):
                     for matrix in tms
                 ]
 
-            data = model.TileSet(
-                title=f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
-                dataType="vector",
-                crs=tms.crs,
-                boundingBox=collection_bbox,
-                links=[
-                    {
-                        "href": self.url_for(
-                            request,
-                            "collection_tileset",
-                            collectionId=collection.id,
-                            tileMatrixSetId=tileMatrixSetId,
-                        ),
-                        "rel": "self",
-                        "type": MediaType.json,
-                        "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
-                    },
-                    {
-                        "href": self.url_for(
-                            request,
-                            "tilematrixset",
-                            tileMatrixSetId=tileMatrixSetId,
-                        ),
-                        "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                        "type": MediaType.json,
-                        "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
-                    },
-                    {
-                        "href": self.url_for(
-                            request,
-                            "collection_get_tile",
-                            tileMatrixSetId=tileMatrixSetId,
-                            collectionId=collection.id,
-                            z="{z}",
-                            x="{x}",
-                            y="{y}",
-                        ),
-                        "rel": "tile",
-                        "type": MediaType.mvt,
-                        "title": "Templated link for retrieving Vector tiles",
-                    },
-                ],
-                tileMatrixSetLimits=tilematrix_limit,
+            data = model.TileSet.model_validate(
+                {
+                    "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
+                    "dataType": "vector",
+                    "crs": tms.crs,
+                    "boundingBox": collection_bbox,
+                    "links": [
+                        {
+                            "href": self.url_for(
+                                request,
+                                "collection_tileset",
+                                collectionId=collection.id,
+                                tileMatrixSetId=tileMatrixSetId,
+                            ),
+                            "rel": "self",
+                            "type": MediaType.json,
+                            "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
+                        },
+                        {
+                            "href": self.url_for(
+                                request,
+                                "tilematrixset",
+                                tileMatrixSetId=tileMatrixSetId,
+                            ),
+                            "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                            "type": MediaType.json,
+                            "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
+                        },
+                        {
+                            "href": self.url_for(
+                                request,
+                                "collection_get_tile",
+                                tileMatrixSetId=tileMatrixSetId,
+                                collectionId=collection.id,
+                                z="{z}",
+                                x="{x}",
+                                y="{y}",
+                            ),
+                            "rel": "tile",
+                            "type": MediaType.mvt,
+                            "title": "Templated link for retrieving Vector tiles",
+                        },
+                    ],
+                    "tileMatrixSetLimits": tilematrix_limit,
+                }
             )
 
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.json(exclude_none=True),
+                    data.model_dump_json(exclude_none=True),
                     template_name="tileset",
                 )
 
