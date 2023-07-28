@@ -623,51 +623,51 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "title": collection.id,
                     "extent": collection.extent,
                     "links": [
-                        model.Link(
-                            href=self.url_for(
+                        {
+                            "href": self.url_for(
                                 request,
                                 "collection",
                                 collectionId=collection.id,
                             ),
-                            rel="self",
-                            type=MediaType.json,
-                        ),
-                        model.Link(
-                            title="Items",
-                            href=self.url_for(
+                            "rel": "self",
+                            "type": "application/json",
+                        },
+                        {
+                            "title": "Items",
+                            "href": self.url_for(
                                 request, "items", collectionId=collection.id
                             ),
-                            rel="items",
-                            type=MediaType.geojson,
-                        ),
-                        model.Link(
-                            title="Items (CSV)",
-                            href=self.url_for(
+                            "rel": "items",
+                            "type": "application/geo+json",
+                        },
+                        {
+                            "title": "Items (CSV)",
+                            "href": self.url_for(
                                 request, "items", collectionId=collection.id
                             )
                             + "?f=csv",
-                            rel="alternate",
-                            type=MediaType.csv,
-                        ),
-                        model.Link(
-                            title="Items (GeoJSONSeq)",
-                            href=self.url_for(
+                            "rel": "alternate",
+                            "type": "text/csv",
+                        },
+                        {
+                            "title": "Items (GeoJSONSeq)",
+                            "href": self.url_for(
                                 request, "items", collectionId=collection.id
                             )
                             + "?f=geojsonseq",
-                            rel="alternate",
-                            type=MediaType.geojsonseq,
-                        ),
-                        model.Link(
-                            title="Queryables",
-                            href=self.url_for(
+                            "rel": "alternate",
+                            "type": "application/geo+json-seq",
+                        },
+                        {
+                            "title": "Queryables",
+                            "href": self.url_for(
                                 request,
                                 "queryables",
                                 collectionId=collection.id,
                             ),
-                            rel="queryables",
-                            type=MediaType.schemajson,
-                        ),
+                            "rel": "queryables",
+                            "type": "application/schema+json",
+                        },
                     ],
                 }
             )
