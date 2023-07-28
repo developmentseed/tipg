@@ -33,6 +33,7 @@ from tipg.dependencies import (
     CollectionParams,
     ItemsOutputType,
     OutputType,
+    QueryablesOutputType,
     TileParams,
     bbox_query,
     datetime_query,
@@ -706,7 +707,9 @@ class OGCFeaturesFactory(EndpointsFactory):
         def queryables(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[
+                Optional[MediaType], Depends(QueryablesOutputType)
+            ] = None,
         ):
             """Queryables for a feature collection.
 
@@ -1360,7 +1363,14 @@ class OGCTilesFactory(EndpointsFactory):
             response_model=model.TileSetList,
             response_class=ORJSONResponse,
             response_model_exclude_none=True,
-            responses={200: {"content": {MediaType.json.value: {}}}},
+            responses={
+                200: {
+                    "content": {
+                        MediaType.json.value: {},
+                        MediaType.html.value: {},
+                    }
+                }
+            },
             summary="Retrieve a list of available vector tilesets for the specified collection.",
             operation_id=".collection.vector.getTileSetsList",
         )
