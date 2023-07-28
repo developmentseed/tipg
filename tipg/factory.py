@@ -1374,13 +1374,11 @@ class OGCTilesFactory(EndpointsFactory):
             """Retrieve a list of available vector tilesets for the specified collection."""
             collection_bbox = None
             if bounds := collection.bounds:
-                collection_bbox = model.BoundingBox.model_validate(
-                    {
-                        "lowerLeft": [bounds[0], bounds[1]],
-                        "upperRight": [bounds[2], bounds[3]],
-                        "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                    }
-                )
+                collection_bbox = {
+                    "lowerLeft": [bounds[0], bounds[1]],
+                    "upperRight": [bounds[2], bounds[3]],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                }
 
             data = model.TileSetList.model_validate(
                 {
@@ -1399,7 +1397,7 @@ class OGCTilesFactory(EndpointsFactory):
                                         tileMatrixSetId=tms,
                                     ),
                                     "rel": "self",
-                                    "type": MediaType.json,
+                                    "type": "application/json",
                                     "title": f"'{collection.id}' tileset tiled using {tms} TileMatrixSet",
                                 },
                                 {
@@ -1409,7 +1407,7 @@ class OGCTilesFactory(EndpointsFactory):
                                         tileMatrixSetId=tms,
                                     ),
                                     "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                                    "type": MediaType.json,
+                                    "type": "application/json",
                                     "title": f"Definition of '{tms}' tileMatrixSet",
                                 },
                                 {
@@ -1423,7 +1421,7 @@ class OGCTilesFactory(EndpointsFactory):
                                         y="{y}",
                                     ),
                                     "rel": "tile",
-                                    "type": MediaType.mvt,
+                                    "type": "application/vnd.mapbox-vector-tile",
                                     "title": "Templated link for retrieving Vector tiles",
                                 },
                             ],
@@ -1464,13 +1462,12 @@ class OGCTilesFactory(EndpointsFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
 
             if bounds := collection.bounds:
-                collection_bbox = model.BoundingBox.model_validate(
-                    {
-                        "lowerLeft": [bounds[0], bounds[1]],
-                        "upperRight": [bounds[2], bounds[3]],
-                        "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                    }
-                )
+                collection_bbox = {
+                    "lowerLeft": [bounds[0], bounds[1]],
+                    "upperRight": [bounds[2], bounds[3]],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                }
+
                 tilematrix_limit = []
                 for matrix in tms:
                     ulTile = tms.tile(bounds[0], bounds[3], int(matrix.id))
@@ -1515,7 +1512,7 @@ class OGCTilesFactory(EndpointsFactory):
                                 tileMatrixSetId=tileMatrixSetId,
                             ),
                             "rel": "self",
-                            "type": MediaType.json,
+                            "type": "application/json",
                             "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
                         },
                         {
@@ -1525,7 +1522,7 @@ class OGCTilesFactory(EndpointsFactory):
                                 tileMatrixSetId=tileMatrixSetId,
                             ),
                             "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                            "type": MediaType.json,
+                            "type": "application/json",
                             "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
                         },
                         {
@@ -1539,7 +1536,7 @@ class OGCTilesFactory(EndpointsFactory):
                                 y="{y}",
                             ),
                             "rel": "tile",
-                            "type": MediaType.mvt,
+                            "type": "application/vnd.mapbox-vector-tile",
                             "title": "Templated link for retrieving Vector tiles",
                         },
                     ],

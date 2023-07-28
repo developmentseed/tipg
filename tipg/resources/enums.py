@@ -1,19 +1,6 @@
 """tipg enums."""
 
 from enum import Enum
-from typing import Literal
-
-ResponseType = Literal["json", "html"]
-
-QueryablesResponseType = Literal["schemajson", "html"]
-
-ItemsResponseType = Literal["geojson", "html", "json", "csv", "geojsonseq", "ndjson"]
-ItemResponseType = Literal["geojson", "html", "json"]
-
-VectorResponseType = Literal["geojson", "mvt"]
-VectorType = Literal["pbf", "mvt"]
-
-FilterLang = Literal["cql2-text", "cql2-json"]
 
 
 class MediaType(str, Enum):

@@ -8,6 +8,20 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+### Changed
+
+- update requirement to switch to pydantic~=2.0
+  - morecantile>=5.0,<6.0
+  - pydantic~=2.0
+  - pydantic-settings~=2.0
+  - geojson-pydantic>=1.0,<2.0
+  - fastapi>=0.100
+
+- move `ResponseType`, `QueryablesResponseType`, `ItemsResponseType`, `ItemResponseType`, `VectorResponseType`, `VectorType` and `FilterLang` from `tipg.enums` to `tipg.dependencies` and use `Literal` instead of `Enum`
+
+### Fixed
+
+- remove usage of pydantic models in `/items` and `/items/{itemId}` endpoints to increase performance
 
 ## [0.3.1] - 2023-07-28
 

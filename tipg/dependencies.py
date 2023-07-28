@@ -1,7 +1,7 @@
 """tipg dependencies."""
 
 import re
-from typing import Dict, List, Optional, Tuple, get_args
+from typing import Dict, List, Literal, Optional, Tuple, get_args
 
 from morecantile import Tile
 from morecantile import tms as default_tms
@@ -12,7 +12,7 @@ from typing_extensions import Annotated
 
 from tipg.collections import Catalog, Collection
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
-from tipg.resources import enums
+from tipg.resources.enums import MediaType
 from tipg.settings import TMSSettings
 
 from fastapi import Depends, HTTPException, Path, Query
@@ -20,6 +20,14 @@ from fastapi import Depends, HTTPException, Path, Query
 from starlette.requests import Request
 
 tms_settings = TMSSettings()
+
+ResponseType = Literal["json", "html"]
+QueryablesResponseType = Literal["schemajson", "html"]
+ItemsResponseType = Literal["geojson", "html", "json", "csv", "geojsonseq", "ndjson"]
+ItemResponseType = Literal["geojson", "html", "json"]
+VectorResponseType = Literal["geojson", "mvt"]
+VectorType = Literal["pbf", "mvt"]
+FilterLang = Literal["cql2-text", "cql2-json"]
 
 
 def CollectionParams(
@@ -59,9 +67,7 @@ def CatalogParams(request: Request) -> Catalog:
     return collection_catalog
 
 
-def accept_media_type(
-    accept: str, mediatypes: List[enums.MediaType]
-) -> Optional[enums.MediaType]:
+def accept_media_type(accept: str, mediatypes: List[MediaType]) -> Optional[MediaType]:
     """Return MediaType based on accept header and available mediatype.
 
     Links:
@@ -111,70 +117,68 @@ def accept_media_type(
 def OutputType(
     request: Request,
     f: Annotated[
-        Optional[enums.ResponseType],
+        Optional[ResponseType],
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[enums.MediaType]:
+) -> Optional[MediaType]:
     """Output MediaType: json or html."""
     if f:
-        return enums.MediaType[f]
+        return MediaType[f]
 
-    accepted_media = [enums.MediaType[v] for v in get_args(enums.ResponseType)]
+    accepted_media = [MediaType[v] for v in get_args(ResponseType)]
     return accept_media_type(request.headers.get("accept", ""), accepted_media)
 
 
 def QueryablesOutputType(
     request: Request,
     f: Annotated[
-        Optional[enums.QueryablesResponseType],
+        Optional[QueryablesResponseType],
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[enums.MediaType]:
+) -> Optional[MediaType]:
     """Output MediaType: schemajson or html."""
     if f:
-        return enums.MediaType[f]
+        return MediaType[f]
 
-    accepted_media = [
-        enums.MediaType[v] for v in get_args(enums.QueryablesResponseType)
-    ]
+    accepted_media = [MediaType[v] for v in get_args(QueryablesResponseType)]
     return accept_media_type(request.headers.get("accept", ""), accepted_media)
 
 
 def ItemsOutputType(
     request: Request,
     f: Annotated[
-        Optional[enums.ItemsResponseType],
+        Optional[ItemsResponseType],
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[enums.MediaType]:
+) -> Optional[MediaType]:
     """Output MediaType: geojson, html, json, csv, geojsonseq, ndjson."""
     if f:
-        return enums.MediaType[f]
+        return MediaType[f]
 
-    accepted_media = [enums.MediaType[v] for v in get_args(enums.ItemsResponseType)]
+    accepted_media = [MediaType[v] for v in get_args(ItemsResponseType)]
     return accept_media_type(request.headers.get("accept", ""), accepted_media)
 
 
 def ItemOutputType(
     request: Request,
     f: Annotated[
-        Optional[enums.ItemResponseType],
+        Optional[ItemResponseType],
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[enums.MediaType]:
+) -> Optional[MediaType]:
     """Output MediaType: geojson, json or html."""
     if f:
-        return enums.MediaType[f]
+        return MediaType[f]
 
-    accepted_media = [enums.MediaType[v] for v in get_args(enums.ItemResponseType)]
+    accepted_media = [MediaType[v] for v in get_args(ItemResponseType)]
     return accept_media_type(request.headers.get("accept", ""), accepted_media)
 
 
@@ -277,7 +281,7 @@ def filter_query(
         Optional[str], Query(description="CQL2 Filter", alias="filter")
     ] = None,
     filter_lang: Annotated[
-        Optional[enums.FilterLang],
+        Optional[FilterLang],
         Query(
             description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
             alias="filter-lang",
