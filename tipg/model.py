@@ -173,7 +173,7 @@ class Items(FeatureCollection):
     title: Optional[str] = None
     description: Optional[str] = None
     keywords: Optional[List[str]] = None
-    features: List[Item]  # type: ignore
+    features: List[Item]
     links: Optional[List[Link]] = None
     timeStamp: Optional[str] = None
     numberMatched: Optional[int] = None

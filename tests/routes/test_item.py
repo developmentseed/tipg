@@ -1,5 +1,7 @@
 """Test /item endpoints."""
 
+from tipg.model import Item
+
 
 def test_item(app):
     """Test /items/{item id} endpoint."""
@@ -10,6 +12,7 @@ def test_item(app):
     assert body["type"] == "Feature"
     assert body["id"] == 1
     assert body["links"]
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items/1?f=html")
     assert response.status_code == 200

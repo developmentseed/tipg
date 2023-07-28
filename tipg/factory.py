@@ -885,21 +885,21 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             qs = "?" + str(request.query_params) if request.query_params else ""
             links: List[Dict] = [
-                model.Link(
-                    title="Collection",
-                    href=self.url_for(
+                {
+                    "title": "Collection",
+                    "href": self.url_for(
                         request, "collection", collectionId=collection.id
                     ),
-                    rel="collection",
-                    type=MediaType.json,
-                ).model_dump(exclude_none=True, mode="json"),
-                model.Link(
-                    title="Items",
-                    href=self.url_for(request, "items", collectionId=collection.id)
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+                {
+                    "title": "Items",
+                    "href": self.url_for(request, "items", collectionId=collection.id)
                     + qs,
-                    rel="self",
-                    type=MediaType.geojson,
-                ).model_dump(exclude_none=True, mode="json"),
+                    "rel": "self",
+                    "type": "application/geo+json",
+                },
             ]
 
             items_returned = len(items["features"])
@@ -914,12 +914,12 @@ class OGCFeaturesFactory(EndpointsFactory):
                     + f"?{query_params}"
                 )
                 links.append(
-                    model.Link(
-                        href=url,
-                        rel="next",
-                        type=MediaType.geojson,
-                        title="Next page",
-                    ).model_dump(exclude_none=True, mode="json"),
+                    {
+                        "href": url,
+                        "rel": "next",
+                        "type": "application/geo+json",
+                        "title": "Next page",
+                    },
                 )
 
             if offset:
@@ -936,12 +936,12 @@ class OGCFeaturesFactory(EndpointsFactory):
                     url += f"?{query_params}"
 
                 links.append(
-                    model.Link(
-                        href=url,
-                        rel="prev",
-                        type=MediaType.geojson,
-                        title="Previous page",
-                    ).model_dump(exclude_none=True, mode="json"),
+                    {
+                        "href": url,
+                        "rel": "prev",
+                        "type": "application/geo+json",
+                        "title": "Previous page",
+                    },
                 )
 
             data = {
@@ -958,27 +958,27 @@ class OGCFeaturesFactory(EndpointsFactory):
                     {
                         **feature,  # type: ignore
                         "links": [
-                            model.Link(
-                                title="Collection",
-                                href=self.url_for(
+                            {
+                                "title": "Collection",
+                                "href": self.url_for(
                                     request,
                                     "collection",
                                     collectionId=collection.id,
                                 ),
-                                rel="collection",
-                                type=MediaType.json,
-                            ).model_dump(exclude_none=True, mode="json"),
-                            model.Link(
-                                title="Item",
-                                href=self.url_for(
+                                "rel": "collection",
+                                "type": "application/json",
+                            },
+                            {
+                                "title": "Item",
+                                "href": self.url_for(
                                     request,
                                     "item",
                                     collectionId=collection.id,
                                     itemId=feature.get("id"),
                                 ),
-                                rel="item",
-                                type=MediaType.json,
-                            ).model_dump(exclude_none=True, mode="json"),
+                                "rel": "item",
+                                "type": "application/geo+json",
+                            },
                         ],
                     }
                     for feature in items["features"]
@@ -1143,23 +1143,23 @@ class OGCFeaturesFactory(EndpointsFactory):
             data = {
                 **feature,  # type: ignore
                 "links": [
-                    model.Link(
-                        href=self.url_for(
+                    {
+                        "href": self.url_for(
                             request, "collection", collectionId=collection.id
                         ),
-                        rel="collection",
-                        type=MediaType.json,
-                    ).model_dump(exclude_none=True, mode="json"),
-                    model.Link(
-                        href=self.url_for(
+                        "rel": "collection",
+                        "type": "application/json",
+                    },
+                    {
+                        "href": self.url_for(
                             request,
                             "item",
                             collectionId=collection.id,
                             itemId=itemId,
                         ),
-                        rel="self",
-                        type=MediaType.geojson,
-                    ).model_dump(exclude_none=True, mode="json"),
+                        "rel": "self",
+                        "type": "application/geo+json",
+                    },
                 ],
             }
 
