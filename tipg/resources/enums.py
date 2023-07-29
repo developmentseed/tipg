@@ -3,53 +3,6 @@
 from enum import Enum
 
 
-class ResponseType(str, Enum):
-    """Response Type Enums."""
-
-    json = "json"
-    html = "html"
-
-
-class QueryablesResponseType(str, Enum):
-    """Response Type Enums."""
-
-    schemajson = "schemajson"
-    html = "html"
-
-
-class ItemsResponseType(str, Enum):
-    """Response Type Enums."""
-
-    geojson = "geojson"
-    html = "html"
-    json = "json"
-    csv = "csv"
-    geojsonseq = "geojsonseq"
-    ndjson = "ndjson"
-
-
-class ItemResponseType(str, Enum):
-    """Response Type Enums."""
-
-    geojson = "geojson"
-    html = "html"
-    json = "json"
-
-
-class VectorResponseType(str, Enum):
-    """Vector Type Enums."""
-
-    geojson = "geojson"
-    mvt = "mvt"
-
-
-class VectorType(str, Enum):
-    """Vector Type Enums."""
-
-    pbf = "pbf"
-    mvt = "mvt"
-
-
 class MediaType(str, Enum):
     """Responses Media types formerly known as MIME types."""
 
@@ -66,13 +19,3 @@ class MediaType(str, Enum):
     openapi30_yaml = "application/vnd.oai.openapi;version=3.0"
     pbf = "application/x-protobuf"
     mvt = "application/vnd.mapbox-vector-tile"
-
-
-class FilterLang(str, Enum):
-    """filter language.
-
-    ref: https://github.com/radiantearth/stac-api-spec/tree/master/fragments/filter#get-query-parameters-and-post-json-fields
-    """
-
-    cql2_text = "cql2-text"
-    cql2_json = "cql2-json"

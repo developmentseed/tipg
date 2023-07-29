@@ -2,6 +2,8 @@
 
 import json
 
+from tipg.model import Item, Items
+
 
 def test_items(app):
     """Test /items endpoint."""
@@ -16,6 +18,7 @@ def test_items(app):
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 10
     assert ["collection", "self", "next"] == [link["rel"] for link in body["links"]]
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?f=html")
     assert response.status_code == 200
@@ -34,6 +37,7 @@ def test_items_limit_and_offset(app):
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 1
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&offset=1")
     assert response.status_code == 200
@@ -47,6 +51,7 @@ def test_items_limit_and_offset(app):
     assert ["collection", "self", "next", "prev"] == [
         link["rel"] for link in body["links"]
     ]
+    Items.model_validate(body)
 
     # negative offset
     response = app.get("/collections/public.landsat_wrs/items?offset=-1")
@@ -63,6 +68,7 @@ def test_items_limit_and_offset(app):
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 1
     assert ["collection", "self", "prev"] == [link["rel"] for link in body["links"]]
+    Items.model_validate(body)
 
     # offset overflow, return empty feature collection
     response = app.get("/collections/public.landsat_wrs/items?offset=20000")
@@ -84,6 +90,7 @@ def test_items_bbox(app):
     assert len(body["features"]) == 10
     assert body["numberMatched"] == 45
     assert body["numberReturned"] == 10
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.landsat_wrs/items?bbox=-200,34.488448,-85.429688,41.112469"
@@ -121,6 +128,7 @@ def test_items_ids(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?ids=1,2")
     assert response.status_code == 200
@@ -133,6 +141,7 @@ def test_items_ids(app):
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["features"][1]["id"] == 2
     assert body["features"][1]["properties"]["ogc_fid"] == 2
+    Items.model_validate(body)
 
 
 def test_items_properties(app):
@@ -142,6 +151,7 @@ def test_items_properties(app):
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
     assert sorted(["path", "row"]) == sorted(body["features"][0]["properties"])
+    Items.model_validate(body)
 
     # no properties
     response = app.get("/collections/public.landsat_wrs/items?properties=")
@@ -149,6 +159,7 @@ def test_items_properties(app):
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
     assert [] == list(body["features"][0]["properties"])
+    Items.model_validate(body)
 
 
 def test_items_properties_filter(app):
@@ -161,6 +172,7 @@ def test_items_properties_filter(app):
     assert body["numberMatched"] == 104
     assert body["numberReturned"] == 10
     assert body["features"][0]["properties"]["path"] == 13
+    Items.model_validate(body)
 
     # invalid type (str instead of int)
     response = app.get("/collections/public.landsat_wrs/items?path=d")
@@ -176,6 +188,7 @@ def test_items_properties_filter(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?pr=013001")
     assert response.status_code == 200
@@ -186,6 +199,7 @@ def test_items_properties_filter(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 1
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?path=1000000")
     assert response.status_code == 200
@@ -194,6 +208,7 @@ def test_items_properties_filter(app):
     assert len(body["features"]) == 0
     assert body["numberMatched"] == 0
     assert body["numberReturned"] == 0
+    Items.model_validate(body)
 
     # We exclude invalid properties (not matching any collection column.) so they have no effects
     response = app.get("/collections/public.landsat_wrs/items?token=mysecrettoken")
@@ -201,6 +216,7 @@ def test_items_properties_filter(app):
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
     assert len(body["features"]) == 10
+    Items.model_validate(body)
 
 
 def test_items_filter_cql_ids(app):
@@ -217,6 +233,7 @@ def test_items_filter_cql_ids(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid=1"
@@ -229,6 +246,7 @@ def test_items_filter_cql_ids(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)"
@@ -244,6 +262,7 @@ def test_items_filter_cql_ids(app):
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["features"][1]["id"] == 2
     assert body["features"][1]["properties"]["ogc_fid"] == 2
+    Items.model_validate(body)
 
 
 def test_items_properties_filter_cql2(app):
@@ -259,6 +278,7 @@ def test_items_properties_filter_cql2(app):
     assert body["numberMatched"] == 104
     assert body["numberReturned"] == 10
     assert body["features"][0]["properties"]["path"] == 13
+    Items.model_validate(body)
 
     # invalid type (str instead of int)
     filter_query = {"op": "=", "args": [{"property": "path"}, "d"]}
@@ -286,6 +306,7 @@ def test_items_properties_filter_cql2(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=path=13 AND row=10"
@@ -298,6 +319,7 @@ def test_items_properties_filter_cql2(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["properties"]["path"] == 13
     assert body["features"][0]["properties"]["row"] == 10
+    Items.model_validate(body)
 
 
 def test_items_geo_filter_cql2(app):
@@ -309,6 +331,7 @@ def test_items_geo_filter_cql2(app):
     body = response.json()
     assert len(body["features"]) == 10
     assert body["numberMatched"] == 78
+    Items.model_validate(body)
 
 
 def test_items_geo_filter_cql2_non_4326_crs(app):
@@ -321,6 +344,7 @@ def test_items_geo_filter_cql2_non_4326_crs(app):
     body = response.json()
     assert len(body["features"]) == 2
     assert body["numberMatched"] == 2
+    Items.model_validate(body)
 
 
 def test_items_function_filter_cql2(app):
@@ -332,6 +356,7 @@ def test_items_function_filter_cql2(app):
     body = response.json()
     assert len(body["features"]) == 10
     assert body["numberMatched"] == 642
+    Items.model_validate(body)
 
 
 def test_items_geom_column(app):
@@ -346,6 +371,7 @@ def test_items_geom_column(app):
     assert body["links"]
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 10
+    Items.model_validate(body)
 
     # Invalid geom-column name
     response = app.get("/collections/public.landsat_wrs/items?geom-column=the_geom")
@@ -366,6 +392,7 @@ def test_items_geom_column(app):
     # Make sure we don't return any geometry in the properties
     assert "centroid" not in body["features"][0]["properties"]
     assert "geom" not in body["features"][0]["properties"]
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat/items?geom-column=centroid")
     body = response.json()
@@ -374,14 +401,17 @@ def test_items_geom_column(app):
     assert body["features"][0]["geometry"]["type"] == "Point"
     assert "centroid" not in body["features"][0]["properties"]
     assert "geom" not in body["features"][0]["properties"]
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1?geom-column=geom")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
+    Item.model_validate(body)
 
 
 def test_geom_operation(app):
@@ -390,16 +420,19 @@ def test_geom_operation(app):
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     poly = body["geometry"]
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1?bbox-only=true")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     assert not body["geometry"] == poly
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1?geom-column=centroid")
     body = response.json()
     assert body["geometry"]["type"] == "Point"
     point = body["geometry"]
+    Item.model_validate(body)
 
     # bbox-only (ST_Envelope) has no influence on point
     response = app.get(
@@ -408,21 +441,25 @@ def test_geom_operation(app):
     body = response.json()
     assert body["geometry"]["type"] == "Point"
     assert body["geometry"] == point
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     poly = body["geometry"]
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1?simplify=0.5")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     assert not body["geometry"] == poly
+    Item.model_validate(body)
 
     response = app.get("/collections/public.landsat/items/1?bbox-only=true")
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     poly = body["geometry"]
+    Item.model_validate(body)
 
     # Check that simplify has no influence when bbox only
     response = app.get(
@@ -431,6 +468,7 @@ def test_geom_operation(app):
     body = response.json()
     assert body["geometry"]["type"] == "Polygon"
     assert body["geometry"] == poly
+    Item.model_validate(body)
 
 
 def test_items_datetime(app):
@@ -447,6 +485,7 @@ def test_items_datetime(app):
     assert body["links"]
     assert body["numberMatched"] == 1
     assert body["numberReturned"] == 1
+    Items.model_validate(body)
 
     # no datetime column
     response = app.get(
@@ -475,6 +514,7 @@ def test_items_datetime(app):
     body = response.json()
     assert body["numberMatched"] == 0
     assert body["numberReturned"] == 0
+    Items.model_validate(body)
 
     # Closed Interval
     response = app.get(
@@ -483,9 +523,9 @@ def test_items_datetime(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
-
     assert body["numberMatched"] == 2
     assert body["numberReturned"] == 2
+    Items.model_validate(body)
 
     # Open end-Interval (2004-10-20T10:23:54Z or later)
     response = app.get(
@@ -496,6 +536,7 @@ def test_items_datetime(app):
     body = response.json()
     assert body["numberMatched"] == 5
     assert body["numberReturned"] == 5
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.my_data/items?datetime=2004-10-20T10:23:54Z/"
@@ -505,6 +546,7 @@ def test_items_datetime(app):
     body = response.json()
     assert body["numberMatched"] == 5
     assert body["numberReturned"] == 5
+    Items.model_validate(body)
 
     # Open start-Interval (2004-10-20T10:23:54 or earlier)
     response = app.get(
@@ -515,6 +557,7 @@ def test_items_datetime(app):
     body = response.json()
     assert body["numberMatched"] == 2
     assert body["numberReturned"] == 2
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.my_data/items?datetime=/2004-10-20T10:23:54Z"
@@ -524,6 +567,7 @@ def test_items_datetime(app):
     body = response.json()
     assert body["numberMatched"] == 2
     assert body["numberReturned"] == 2
+    Items.model_validate(body)
 
     # bad interval
     response = app.get("/collections/public.my_data/items?datetime=../..")
@@ -550,6 +594,7 @@ def test_items_geometry_return_options(app):
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert not body["features"][0]["geometry"]
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?ids=1&bbox-only=true")
     assert response.status_code == 200
@@ -572,6 +617,7 @@ def test_items_geometry_return_options(app):
         ],
         "type": "Polygon",
     }
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?ids=1&simplify=.001")
     assert response.status_code == 200
@@ -595,6 +641,7 @@ def test_items_geometry_return_options(app):
         ],
         "type": "Polygon",
     }
+    Items.model_validate(body)
 
 
 def test_output_response_type(app):
@@ -631,6 +678,7 @@ def test_output_response_type(app):
     )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
+    Items.model_validate(response.json())
 
     # geojsonseq output
     response = app.get("/collections/public.landsat_wrs/items?f=geojsonseq")
@@ -639,6 +687,7 @@ def test_output_response_type(app):
     body = response.text.splitlines()
     assert len(body) == 10
     assert json.loads(body[0])["type"] == "Feature"
+    Item.model_validate(json.loads(body[0]))
 
     response = app.get(
         "/collections/public.landsat_wrs/items",
@@ -649,6 +698,7 @@ def test_output_response_type(app):
     body = response.text.splitlines()
     assert len(body) == 10
     assert json.loads(body[0])["type"] == "Feature"
+    Item.model_validate(json.loads(body[0]))
 
     # json output
     response = app.get("/collections/public.landsat_wrs/items?f=json")
@@ -722,6 +772,7 @@ def test_items_sortby(app):
     body = response.json()
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["numberMatched"] == 16269
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=ogc_fid")
     assert response.status_code == 200
@@ -729,34 +780,40 @@ def test_items_sortby(app):
     body = response.json()
     assert body["features"][0]["properties"]["ogc_fid"] == 1
     assert body["numberMatched"] == 16269
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=row")
     assert response.status_code == 200
     body = response.json()
     assert body["features"][0]["properties"]["row"] == 1
     assert body["numberMatched"] == 16269
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=+row")
     assert response.status_code == 200
     body = response.json()
     assert body["features"][0]["properties"]["row"] == 1
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row")
     assert response.status_code == 200
     body = response.json()
     assert body["features"][0]["properties"]["row"] == 248
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row,path")
     assert response.status_code == 200
     body = response.json()
     assert body["features"][0]["properties"]["row"] == 248
     assert body["features"][0]["properties"]["path"] == 1
+    Items.model_validate(body)
 
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=path,-row")
     assert response.status_code == 200
     body = response.json()
     assert body["features"][0]["properties"]["row"] == 248
     assert body["features"][0]["properties"]["path"] == 1
+    Items.model_validate(body)
 
     # Invalid column name
     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=something")
@@ -768,6 +825,7 @@ def test_items_env_table_config_main(app, monkeypatch):
     response = app.get("/collections/public.my_data/items?limit=1")
     body = response.json()
     assert body["features"][0]["geometry"]["type"] == "Polygon"
+    Items.model_validate(body)
 
     # Make sure that Postgres Decimal and Numeric are converted to str
     assert isinstance(body["features"][0]["properties"]["decimal"], str)
@@ -778,6 +836,7 @@ def test_items_env_table_config_main(app, monkeypatch):
     )
     body = response.json()
     assert body["features"][0]["id"] == 1
+    Items.model_validate(body)
 
 
 def test_items_env_table_config_alt(app, monkeypatch):
@@ -785,9 +844,11 @@ def test_items_env_table_config_alt(app, monkeypatch):
     response = app.get("/collections/public.my_data_alt/items?limit=1")
     body = response.json()
     assert body["features"][0]["geometry"]["type"] == "Point"
+    Items.model_validate(body)
 
     response = app.get(
         "/collections/public.my_data_alt/items?datetime=2005-10-19T10:23:54Z"
     )
     body = response.json()
     assert body["features"][0]["id"] == "0"
+    Items.model_validate(body)

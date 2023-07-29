@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [unreleased]
+
+### Changed
+
+- update requirement to switch to pydantic~=2.0
+  - morecantile>=5.0,<6.0
+  - pydantic~=2.0
+  - pydantic-settings~=2.0
+  - geojson-pydantic>=1.0,<2.0
+  - fastapi>=0.100
+
+- move `ResponseType`, `QueryablesResponseType`, `ItemsResponseType`, `ItemResponseType`, `VectorResponseType`, `VectorType` and `FilterLang` from `tipg.enums` to `tipg.dependencies` and use `Literal` instead of `Enum`
+
+### Fixed
+
+- remove usage of pydantic models in `/items` and `/items/{itemId}` endpoints to increase performance
+
 ## [0.3.1] - 2023-07-28
 
 ### Fixed
@@ -65,7 +82,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.3.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/developmentseed/tipg/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/developmentseed/tipg/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/developmentseed/tipg/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/developmentseed/tipg/compare/9ca80c0bd57d8ce57e37c1709e26d1af1559bc1e...0.1.0
