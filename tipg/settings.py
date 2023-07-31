@@ -138,7 +138,7 @@ class PostgresSettings(BaseSettings):
 
         return PostgresDsn.build(
             scheme="postgresql",
-            user=info.data.get("postgres_user"),
+            username=info.data.get("postgres_user"),
             password=info.data.get("postgres_pass"),
             host=info.data.get("postgres_host", ""),
             port=info.data.get("postgres_port", 5432),
