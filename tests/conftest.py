@@ -409,6 +409,7 @@ def app_middleware_refresh(database_url, monkeypatch):
     # refresh every 2 seconds
     app.add_middleware(
         CatalogUpdateMiddleware,
+        func=register_collection_catalog,
         ttl=2,
         schemas=db_settings.schemas,
         tables=db_settings.tables,

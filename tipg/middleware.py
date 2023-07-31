@@ -2,9 +2,8 @@
 
 import re
 from datetime import datetime, timedelta
-from typing import Any, Optional, Set
+from typing import Any, Optional, Protocol, Set
 
-from tipg.collections import register_collection_catalog
 from tipg.logger import logger
 
 from starlette.background import BackgroundTask
@@ -64,17 +63,28 @@ class CacheControlMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
+class CatalogUpdateFunc(Protocol):
+    """Catalog update function protocol."""
+
+    def __call__(self, app: ASGIApp, **kwargs: Any) -> None:
+        """define input/output for the function."""
+        ...
+
+
 class CatalogUpdateMiddleware:
     """Middleware to update the catalog cache."""
 
     def __init__(
         self,
         app: ASGIApp,
+        *,
+        func: CatalogUpdateFunc,
         ttl: int = 300,
         **kwargs: Any,
     ) -> None:
         """Init Middleware."""
         self.app = app
+        self.func = func
         self.ttl = ttl
         self.kwargs = kwargs
 
@@ -96,7 +106,7 @@ class CatalogUpdateMiddleware:
                 f"Running catalog refresh in background. Last Updated: {last_updated}"
             )
             background = BackgroundTask(
-                register_collection_catalog,
+                self.func,
                 request.app,
                 **self.kwargs,
             )

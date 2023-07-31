@@ -19,6 +19,23 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - move `ResponseType`, `QueryablesResponseType`, `ItemsResponseType`, `ItemResponseType`, `VectorResponseType`, `VectorType` and `FilterLang` from `tipg.enums` to `tipg.dependencies` and use `Literal` instead of `Enum`
 
+- add `func` attribute to `CatalogUpdateMiddleware` to allow custom Catalog Update function
+
+    ```python
+    # Before
+    app.add_middleware(
+        CatalogUpdateMiddleware,
+        ttl=300,
+    )
+
+    # Now
+    app.add_middleware(
+        CatalogUpdateMiddleware,
+        func=register_collection_catalog,
+        ttl=300,
+    )
+    ```
+
 ### Fixed
 
 - remove usage of pydantic models in `/items` and `/items/{itemId}` endpoints to increase performance
