@@ -8,7 +8,7 @@
   - Functions that return a `geometry` will be usable as Features and Vector Tiles, those that do not, will be available to return json/csv
   - Functions that match these qualifications will be found based on the DB visibility settings (schemas)
 
-`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter.
+`SQL Function` arguments will be exposed to the items API as query parameters. Any argument that does not have a default will be required and will return an error if not set as a query parameter. Functions should have a unique name. Function overloading by argument type is not currently supported.
 
 If a function is defined to have `z`, `x`, or `y` parameters, those will be filled from the path parameters in requests to Tile endpoints. If a function has a `bounds` parameter, that will be populated by the Tile bounding box in requests to Tile endpoints. All other arguments will be filled from query parameters matching the name of the argument and cast to the appropriate types.
 
