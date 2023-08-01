@@ -36,6 +36,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
     )
     ```
 
+- add global variables for conformance classes
+
 ### Fixed
 
 - remove usage of pydantic models in `/items` and `/items/{itemId}` endpoints to increase performance

@@ -67,6 +67,32 @@ DEFAULT_TEMPLATES = Jinja2Templates(
 )  # type:ignore
 
 
+COMMON_CONFORMS = [
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
+]
+FEATURES_CONFORMS = [
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+]
+TILES_CONFORMS = [
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tileset",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tilesets-list",
+]
+
+
 def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
     """Creates an iterator that returns lines of csv from an iterable of dicts."""
 
@@ -267,18 +293,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Get conformance."""
-            data = model.Conformance(
-                conformsTo=[
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-                    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-                    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-                    *self.conforms_to,
-                ]
-            )
+            data = model.Conformance(conformsTo=[*COMMON_CONFORMS, *self.conforms_to])
 
             if output_type == MediaType.html:
                 return self._create_html_response(
@@ -357,14 +372,7 @@ class OGCFeaturesFactory(EndpointsFactory):
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
-        return [
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-            "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
-            "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
-        ]
+        return FEATURES_CONFORMS
 
     def links(self, request: Request) -> List[model.Link]:
         """OGC Features API links."""
@@ -1185,13 +1193,7 @@ class OGCTilesFactory(EndpointsFactory):
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
-        return [
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tileset",
-            "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tilesets-list",
-        ]
+        return TILES_CONFORMS
 
     def links(self, request: Request) -> List[model.Link]:
         """OGC Tiles API links."""
