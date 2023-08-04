@@ -165,7 +165,7 @@ class DatabaseSettings(BaseSettings):
 class CustomSQLSettings(BaseSettings):
     """TiPg Custom SQL settings."""
 
-    custom_sql_directory: Optional[DirectoryPath]
+    custom_sql_directory: Optional[DirectoryPath] = None
 
     model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
