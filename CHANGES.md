@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [unreleased]
+
+### Fixed
+
+- set `custom_sql_directory` in `CustomSQLSettings` to `None` to ensure it can be properly optional
+
 ## [0.4.0] - 2023-08-01
 
 ### Changed
