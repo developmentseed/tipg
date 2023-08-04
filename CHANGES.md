@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [0.4.1] - 2023-08-04
+
 ### Fixed
 
 - set `custom_sql_directory` in `CustomSQLSettings` to `None` to ensure it can be properly optional
@@ -107,7 +109,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.3.1...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/developmentseed/tipg/compare/0.4.0...0.4.1
+[0.4.0]: https://github.com/developmentseed/tipg/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/developmentseed/tipg/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/developmentseed/tipg/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/developmentseed/tipg/compare/0.1.0...0.2.0
