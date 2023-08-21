@@ -782,7 +782,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 int,
                 Query(
                     ge=0,
-                    lt=features_settings.max_features_per_query,
+                    le=features_settings.max_features_per_query,
                     description="Limits the number of features in the response.",
                 ),
             ] = features_settings.default_features_limit,
