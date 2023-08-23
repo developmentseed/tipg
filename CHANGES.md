@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+### changed
+
+- replace stamen basemap by OSM in tiles viewer
+
 ### fixed
 
 - `limit` option is `less than or equal to` to the `MAX_FEATURES_PER_QUERY` configuration (instead of `less than`)
