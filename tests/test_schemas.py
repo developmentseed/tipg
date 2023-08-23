@@ -27,7 +27,7 @@ def test_myschema(app_myschema):
 def test_myschema_and_public_functions(app_myschema_public_functions):
     """Available tables should come from `myschema` and functions from `pg_temp` and `public` schema."""
     collection_number = (
-        9  # 5 custom functions + 1 tables from myschema + 3 functions from public
+        6  # 5 custom functions + 1 tables from myschema + (N) functions from public
     )
 
     response = app_myschema_public_functions.get("/collections")
@@ -51,7 +51,7 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
     # no tables from public
     assert "public.my_data" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] >= collection_number
 
 
 def test_myschema_and_public(app_myschema_public):
@@ -93,7 +93,7 @@ def test_myschema_and_public(app_myschema_public):
 
 def test_public_functions(app_only_public_functions):
     """Available functions from `pg_temp` and `public` schema (no tables available)."""
-    collection_number = 8  # 5 custom functions + 3 functions from public
+    collection_number = 5  # 5 custom functions + (N) functions from public
 
     response = app_only_public_functions.get("/collections")
     assert response.status_code == 200
@@ -116,7 +116,7 @@ def test_public_functions(app_only_public_functions):
     # no tables from public
     assert "public.my_data" not in ids
 
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] >= collection_number
 
 
 def test_myschema_and_public_order(app_myschema_public_order):

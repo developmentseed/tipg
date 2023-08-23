@@ -132,3 +132,11 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "B905",  # ignore zip() without an explicit strict= parameter, only support with python >3.10
 ]
+
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::morecantile.errors.PointOutsideTMSBounds",
+    "ignore:You will likely lose important projection*:UserWarning",
+    "ignore:Call to deprecated create function *:DeprecationWarning",
+]

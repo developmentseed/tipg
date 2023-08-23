@@ -1,6 +1,8 @@
 """Test /collections endpoints."""
 
-collection_number = 16
+collection_number = (
+    16  # 5 custom functions + 8 public tables + (N) functions from public
+)
 
 
 def test_collections(app):
@@ -15,8 +17,8 @@ def test_collections(app):
         "numberReturned",
         "collections",
     ] == list(body)
-    assert body["numberMatched"] == collection_number
-    assert body["numberReturned"] == collection_number
+    assert body["numberMatched"] >= collection_number
+    assert body["numberReturned"] >= collection_number
 
     ids = [x["id"] for x in body["collections"]]
     assert "public.landsat_wrs" in ids
@@ -29,7 +31,7 @@ def test_collections(app):
     assert "pg_temp.hexagons" in ids
     assert "pg_temp.squares" in ids
 
-    # Public functions
+    # Some Public functions (There might be more on some PG versions)
     assert "public.st_squaregrid" in ids
     assert "public.st_hexagongrid" in ids
     assert "public.st_subdivide" in ids
@@ -44,25 +46,25 @@ def test_collections_search(app):
     """Test /collections endpoint."""
     response = app.get("/collections", params={"limit": 1})
     body = response.json()
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] >= collection_number
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
     assert "prev" not in rels
 
+    ncol = body["numberMatched"]
+
     response = app.get("/collections", params={"limit": 1, "offset": 1})
     body = response.json()
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == ncol
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" in rels
     assert "prev" in rels
 
-    response = app.get(
-        "/collections", params={"limit": 1, "offset": collection_number - 1}
-    )
+    response = app.get("/collections", params={"limit": 1, "offset": ncol - 1})
     body = response.json()
-    assert body["numberMatched"] == collection_number
+    assert body["numberMatched"] == ncol
     assert body["numberReturned"] == 1
     rels = [x["rel"] for x in body["links"]]
     assert "next" not in rels
@@ -70,9 +72,7 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"bbox": "-180,81,180,87"})
     body = response.json()
-    assert (
-        body["numberMatched"] == collection_number - 3
-    )  # 2 collections are not within the bbox
+    assert body["numberMatched"] < ncol  # some collections are not within the bbox
     ids = [x["id"] for x in body["collections"]]
     assert "public.nongeo_data" not in ids
     assert "public.canada" not in ids

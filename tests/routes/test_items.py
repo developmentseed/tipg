@@ -78,6 +78,12 @@ def test_items_limit_and_offset(app):
     assert body["numberMatched"] == 16269
     assert body["numberReturned"] == 0
 
+    response = app.get("/collections/public.landsat_wrs/items?limit=10000")
+    assert response.status_code == 200
+
+    response = app.get("/collections/public.landsat_wrs/items?limit=10001")
+    assert response.status_code == 422
+
 
 def test_items_bbox(app):
     """Test /items endpoint with bbox options."""

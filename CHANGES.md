@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+### fixed
+
+- `limit` option is `less than or equal to` to the `MAX_FEATURES_PER_QUERY` configuration (instead of `less than`)
+
 ## [0.4.1] - 2023-08-04
 
 ### Fixed
