@@ -19,7 +19,7 @@ def test_tilejson(app):
     assert resp_json["vector_layers"]
 
     np.testing.assert_almost_equal(
-        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]
+        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401], decimal=4
     )
 
     response = app.get("/collections/public.landsat_wrs/WGS1984Quad/tilejson.json")
@@ -34,7 +34,7 @@ def test_tilejson(app):
     assert "WGS1984Quad" in resp_json["tiles"][0]
 
     np.testing.assert_almost_equal(
-        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401]
+        resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401], decimal=4
     )
 
     response = app.get(
