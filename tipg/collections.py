@@ -988,4 +988,9 @@ async def get_collection_index(  # noqa: C901
 
 async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
     """Register Table catalog."""
-    app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)
+    host = kwargs.pop('host', None)
+    if host:
+        dynamic_collection_catalog = await get_collection_index(app.state.pool, **kwargs)
+        setattr(app.state, host, dynamic_collection_catalog)
+    else:
+        app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)

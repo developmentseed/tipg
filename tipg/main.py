@@ -10,12 +10,13 @@ from tipg.collections import register_collection_catalog
 from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
-from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
+from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware, HostHeaderLoggingMiddleware
 from tipg.settings import (
     APISettings,
     CustomSQLSettings,
     DatabaseSettings,
     PostgresSettings,
+    HostToSchemaLookupSettings,
 )
 
 from fastapi import FastAPI, Request
@@ -28,6 +29,7 @@ settings = APISettings()
 postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
+host_to_schema_settings = HostToSchemaLookupSettings()
 
 
 @asynccontextmanager
@@ -42,17 +44,19 @@ async def lifespan(app: FastAPI):
     )
 
     # Register Collection Catalog
-    await register_collection_catalog(
-        app,
-        schemas=db_settings.schemas,
-        tables=db_settings.tables,
-        exclude_tables=db_settings.exclude_tables,
-        exclude_table_schemas=db_settings.exclude_table_schemas,
-        functions=db_settings.functions,
-        exclude_functions=db_settings.exclude_functions,
-        exclude_function_schemas=db_settings.exclude_function_schemas,
-        spatial=db_settings.only_spatial_tables,
-    )
+    for host, schema_list in host_to_schema_settings.mapping.items():
+        await register_collection_catalog(
+            app,
+            host=host,
+            schemas=schema_list,
+            tables=db_settings.tables,
+            exclude_tables=db_settings.exclude_tables,
+            exclude_table_schemas=db_settings.exclude_table_schemas,
+            functions=db_settings.functions,
+            exclude_functions=db_settings.exclude_functions,
+            exclude_function_schemas=db_settings.exclude_function_schemas,
+            spatial=db_settings.only_spatial_tables,
+        )
 
     yield
 
@@ -101,6 +105,7 @@ if settings.cors_origins:
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
+app.add_middleware(HostHeaderLoggingMiddleware)
 
 if settings.catalog_ttl:
     app.add_middleware(

@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime, timedelta
-from typing import Any, Optional, Protocol, Set
+from typing import Any, Optional, Protocol, Set, Dict, List
 
 from tipg.logger import logger
 
@@ -114,3 +114,23 @@ class CatalogUpdateMiddleware:
         await self.app(scope, receive, send)
         if background:
             await background()
+
+
+class HostHeaderLoggingMiddleware:
+    def __init__(
+        self,
+        app: ASGIApp,
+    ) -> None:
+        """Init Middleware."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        """Handle call."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope)
+        host_header = request.headers.get("host")
+        logger.error(f"[ HOST HEADER ]: {host_header}")
+        await self.app(scope, receive, send)

@@ -46,9 +46,10 @@ def CollectionParams(
     assert collection_pattern.groupdict()["schema"]
     assert collection_pattern.groupdict()["collection"]
 
-    collection_catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+    host_header = request.headers.get("host")
+    collection_catalog: Catalog = getattr(request.app.state, host_header, None)
     if not collection_catalog:
-        raise MissingCollectionCatalog("Could not find collections catalog.")
+        raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
 
     if collectionId in collection_catalog["collections"]:
         return collection_catalog["collections"][collectionId]
@@ -60,9 +61,10 @@ def CollectionParams(
 
 def CatalogParams(request: Request) -> Catalog:
     """Return Collections Catalog."""
-    collection_catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+    host_header = request.headers.get("host")
+    collection_catalog: Catalog = getattr(request.app.state, host_header, None)
     if not collection_catalog:
-        raise MissingCollectionCatalog("Could not find collections catalog.")
+        raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
 
     return collection_catalog
 

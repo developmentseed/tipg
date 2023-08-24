@@ -176,3 +176,8 @@ class CustomSQLSettings(BaseSettings):
             return list(self.custom_sql_directory.glob("*.sql"))
 
         return None
+
+
+class HostToSchemaLookupSettings(BaseSettings):
+    mapping: Dict[str, List[str]] = {}
+    model_config = {"env_prefix": "TIPG_MULTI_", "env_file": ".env", "extra": "ignore"}
