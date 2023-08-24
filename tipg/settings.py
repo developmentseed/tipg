@@ -26,7 +26,7 @@ class APISettings(BaseSettings):
 
     add_tiles_viewer: bool = True
 
-    catalog_ttl: int = 300
+    catalog_ttl: int = 0
 
     model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
