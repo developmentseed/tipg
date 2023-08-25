@@ -1961,6 +1961,7 @@ class Endpoints(EndpointsFactory):
     def register_routes(self):
         """Register factory Routes."""
         self.ogc_features = OGCFeaturesFactory(
+            catalog_dependency=self.catalog_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,
@@ -1970,6 +1971,7 @@ class Endpoints(EndpointsFactory):
         self.router.include_router(self.ogc_features.router, tags=["OGC Features API"])
 
         self.ogc_tiles = OGCTilesFactory(
+            catalog_dependency=self.catalog_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,

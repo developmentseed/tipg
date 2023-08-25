@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [unreleased]
+
+### fixed
+
+- forward `catalog_dependency` in `OGCFeaturesFactory` and `OGCTilesFactory` when using `Endpoints` factory
+
 ## [0.4.2] - 2023-08-24
 
 ### changed
