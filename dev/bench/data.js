@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1692865966386,
+  "lastUpdate": 1692998873876,
   "repoUrl": "https://github.com/developmentseed/tipg",
   "entries": {
     "TiPg Benchmarks": [
@@ -11121,6 +11121,317 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00035875588730159303",
             "extra": "mean: 5.230543623529831 msec\nrounds: 85"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "vincent.sarago@gmail.com",
+            "name": "Vincent Sarago",
+            "username": "vincentsarago"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "638fed0ac2e2d427b013464a592056223da6229e",
+          "message": "Merge pull request #113 from developmentseed/FowardCatalogDep\n\nforward dependency to Factories",
+          "timestamp": "2023-08-25T17:22:12-04:00",
+          "tree_id": "9b82ce3deffad54855017d916f6e1f91f31bd4e2",
+          "url": "https://github.com/developmentseed/tipg/commit/638fed0ac2e2d427b013464a592056223da6229e"
+        },
+        "date": 1692998873422,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collections[json-1]",
+            "value": 349.0268506065629,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00018471419277522622",
+            "extra": "mean: 2.8651090833330763 msec\nrounds: 168"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collections[json-10]",
+            "value": 204.15284156957745,
+            "unit": "iter/sec",
+            "range": "stddev: 0.005389049315644362",
+            "extra": "mean: 4.898290870270299 msec\nrounds: 185"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collections[html-1]",
+            "value": 354.45995859360147,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00012989143115946575",
+            "extra": "mean: 2.821193129874872 msec\nrounds: 77"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collections[html-10]",
+            "value": 212.44912125104673,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00021206971726801804",
+            "extra": "mean: 4.707009349397688 msec\nrounds: 166"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collection[json]",
+            "value": 453.31812857788964,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00010471810364684962",
+            "extra": "mean: 2.2059563405000224 msec\nrounds: 279"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_collection[html]",
+            "value": 434.01526638658936,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00012319438168549002",
+            "extra": "mean: 2.304066417583736 msec\nrounds: 91"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_queryables",
+            "value": 492.8662488253101,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005644799865948021",
+            "extra": "mean: 2.028948020651413 msec\nrounds: 339"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-1]",
+            "value": 143.41769618313577,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00025302921370213703",
+            "extra": "mean: 6.9726402432448795 msec\nrounds: 111"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-10]",
+            "value": 130.0063227779472,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00024287340884673544",
+            "extra": "mean: 7.6919335816306065 msec\nrounds: 98"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-50]",
+            "value": 85.07875586722021,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002562058947423978",
+            "extra": "mean: 11.753815506666191 msec\nrounds: 75"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-100]",
+            "value": 59.78273161847331,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003802952114549287",
+            "extra": "mean: 16.727238333334913 msec\nrounds: 54"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-200]",
+            "value": 33.09222420060152,
+            "unit": "iter/sec",
+            "range": "stddev: 0.016921472318622698",
+            "extra": "mean: 30.218579263155814 msec\nrounds: 38"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[geojson-250]",
+            "value": 28.809445786822565,
+            "unit": "iter/sec",
+            "range": "stddev: 0.016956007973555294",
+            "extra": "mean: 34.7108378064461 msec\nrounds: 31"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-1]",
+            "value": 144.13632249415483,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002888013870396779",
+            "extra": "mean: 6.93787646788722 msec\nrounds: 109"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-10]",
+            "value": 116.91208453364783,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003105940439149177",
+            "extra": "mean: 8.5534357204297 msec\nrounds: 93"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-50]",
+            "value": 62.838665128409374,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000986753502113863",
+            "extra": "mean: 15.913768982146946 msec\nrounds: 56"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-100]",
+            "value": 40.5624903436597,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006565667083859446",
+            "extra": "mean: 24.653318657894225 msec\nrounds: 38"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-200]",
+            "value": 23.323498912412752,
+            "unit": "iter/sec",
+            "range": "stddev: 0.001359628450342104",
+            "extra": "mean: 42.87521369565184 msec\nrounds: 23"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[csv-250]",
+            "value": 18.529949944441437,
+            "unit": "iter/sec",
+            "range": "stddev: 0.005607180944548401",
+            "extra": "mean: 53.96668652631613 msec\nrounds: 19"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-1]",
+            "value": 138.1945905172497,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00027106875907849994",
+            "extra": "mean: 7.236173255820589 msec\nrounds: 43"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-10]",
+            "value": 113.23308799667164,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00043310507100961267",
+            "extra": "mean: 8.831340888887478 msec\nrounds: 90"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-50]",
+            "value": 62.83877329126837,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00926170244734859",
+            "extra": "mean: 15.913741590161706 msec\nrounds: 61"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-100]",
+            "value": 35.99071437111218,
+            "unit": "iter/sec",
+            "range": "stddev: 0.020240600859600544",
+            "extra": "mean: 27.78494446341544 msec\nrounds: 41"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-200]",
+            "value": 21.400392919775843,
+            "unit": "iter/sec",
+            "range": "stddev: 0.02574267916736449",
+            "extra": "mean: 46.72811399999633 msec\nrounds: 26"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_items[html-250]",
+            "value": 16.863330428748547,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03245847554655074",
+            "extra": "mean: 59.30026718181383 msec\nrounds: 22"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_item[geojson-NewfoundlandandLabrador]",
+            "value": 1.8679738533498567,
+            "unit": "iter/sec",
+            "range": "stddev: 0.02961922959657111",
+            "extra": "mean: 535.3393989999859 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_item[geojson-Saskatchewan]",
+            "value": 37.4035369514652,
+            "unit": "iter/sec",
+            "range": "stddev: 0.026039914006590042",
+            "extra": "mean: 26.735439520000455 msec\nrounds: 50"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_item[html-NewfoundlandandLabrador]",
+            "value": 0.7677278692877645,
+            "unit": "iter/sec",
+            "range": "stddev: 0.07863283918511996",
+            "extra": "mean: 1.3025448730000107 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_item[html-Saskatchewan]",
+            "value": 16.010887456837704,
+            "unit": "iter/sec",
+            "range": "stddev: 0.04283750223467742",
+            "extra": "mean: 62.457499791676696 msec\nrounds: 24"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[0/0/0-WGS1984Quad]",
+            "value": 8.580726475022233,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0035865882734659326",
+            "extra": "mean: 116.54024900000195 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[0/0/0-WebMercatorQuad]",
+            "value": 5.339053056601821,
+            "unit": "iter/sec",
+            "range": "stddev: 0.010572807658926951",
+            "extra": "mean: 187.29913139999326 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[4/8/5-WGS1984Quad]",
+            "value": 167.77175678994683,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00036062545453042583",
+            "extra": "mean: 5.9604788024722035 msec\nrounds: 81"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[4/8/5-WebMercatorQuad]",
+            "value": 118.24093026256621,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00027843017884810985",
+            "extra": "mean: 8.45730829230958 msec\nrounds: 65"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[6/33/25-WGS1984Quad]",
+            "value": 212.50535179301747,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00032616617753859756",
+            "extra": "mean: 4.705763838710334 msec\nrounds: 93"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tile[6/33/25-WebMercatorQuad]",
+            "value": 196.92885080968662,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00011936636105644734",
+            "extra": "mean: 5.077976111110336 msec\nrounds: 81"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/tileMatrixSets]",
+            "value": 506.79247149165417,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0001017252667850463",
+            "extra": "mean: 1.9731942683692136 msec\nrounds: 313"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/tileMatrixSets/WGS1984Quad]",
+            "value": 656.1380861995661,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00016680388526371816",
+            "extra": "mean: 1.5240694314700203 msec\nrounds: 394"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/tileMatrixSets/WebMercatorQuad]",
+            "value": 648.2961976363388,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0001439150361686797",
+            "extra": "mean: 1.5425048051275925 msec\nrounds: 390"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/collections/public.landsat_wrs/tiles]",
+            "value": 48.90207123550996,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00019723420482102585",
+            "extra": "mean: 20.44903159999194 msec\nrounds: 5"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/collections/public.landsat_wrs/tiles/WGS1984Quad]",
+            "value": 224.80784111422523,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00010192352690924675",
+            "extra": "mean: 4.448243419996629 msec\nrounds: 100"
+          },
+          {
+            "name": "tests/benchmarks.py::test_benchmark_tilematrixset_endpoints[/collections/public.landsat_wrs/tiles/WebMercatorQuad]",
+            "value": 217.94305444485673,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0001014958047902868",
+            "extra": "mean: 4.588354524750486 msec\nrounds: 101"
           }
         ]
       }
