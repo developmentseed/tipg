@@ -10,6 +10,7 @@ from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 from typing_extensions import Annotated
 
+from tipg.logger import logger
 from tipg.collections import Catalog, Collection
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
 from tipg.resources.enums import MediaType
@@ -47,7 +48,15 @@ def CollectionParams(
     assert collection_pattern.groupdict()["collection"]
 
     host_header = request.headers.get("host")
-    collection_catalog: Catalog = getattr(request.app.state, host_header, None)
+    host_subdomain = None
+    if 'wfs3labs.com' in host_header:
+        host_subdomain = host_header.split('.')[0]
+    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
+    if host_subdomain:
+        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
+    else:
+        collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
+
     if not collection_catalog:
         raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
 
@@ -62,7 +71,15 @@ def CollectionParams(
 def CatalogParams(request: Request) -> Catalog:
     """Return Collections Catalog."""
     host_header = request.headers.get("host")
-    collection_catalog: Catalog = getattr(request.app.state, host_header, None)
+    host_subdomain = None
+    if 'wfs3labs.com' in host_header:
+        host_subdomain = host_header.split('.')[0]
+    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
+    if host_subdomain:
+        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
+    else:
+        collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
+
     if not collection_catalog:
         raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
 

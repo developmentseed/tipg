@@ -141,8 +141,8 @@ class PostgresSettings(BaseSettings):
             username=info.data.get("postgres_user"),
             password=info.data.get("postgres_pass"),
             host=info.data.get("postgres_host", ""),
-            port=info.data.get("postgres_port", 5432),
-            path=f"/{info.data.get('postgres_dbname') or ''}",
+            port=int(info.data.get("postgres_port", 5432)),
+            path=f"{info.data.get('postgres_dbname') or ''}",
         )
 
 
@@ -179,5 +179,5 @@ class CustomSQLSettings(BaseSettings):
 
 
 class HostToSchemaLookupSettings(BaseSettings):
-    mapping: Dict[str, List[str]] = {}
+    mapping: Dict[str, Optional[Dict[str, List[str]]]] = {}
     model_config = {"env_prefix": "TIPG_MULTI_", "env_file": ".env", "extra": "ignore"}

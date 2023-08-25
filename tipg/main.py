@@ -1,5 +1,6 @@
 """tipg app."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Any, List
 
@@ -44,19 +45,20 @@ async def lifespan(app: FastAPI):
     )
 
     # Register Collection Catalog
-    for host, schema_list in host_to_schema_settings.mapping.items():
-        await register_collection_catalog(
+    await asyncio.gather(*(
+        register_collection_catalog(
             app,
             host=host,
-            schemas=schema_list,
+            schemas=schemas_map["include"],
             tables=db_settings.tables,
             exclude_tables=db_settings.exclude_tables,
-            exclude_table_schemas=db_settings.exclude_table_schemas,
+            exclude_table_schemas=schemas_map["exclude"],
             functions=db_settings.functions,
             exclude_functions=db_settings.exclude_functions,
             exclude_function_schemas=db_settings.exclude_function_schemas,
             spatial=db_settings.only_spatial_tables,
-        )
+        ) for host, schemas_map in host_to_schema_settings.mapping.items()
+    ))
 
     yield
 
