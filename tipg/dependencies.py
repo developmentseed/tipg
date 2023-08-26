@@ -33,6 +33,10 @@ FilterLang = Literal["cql2-text", "cql2-json"]
 
 def CollectionParams(
     request: Request,
+    catalogId: Annotated[
+        str,
+        Path(description="catalog name"),
+    ],
     collectionId: Annotated[str, Path(description="Collection identifier")],
 ) -> Collection:
     """Return Layer Object."""
@@ -47,18 +51,10 @@ def CollectionParams(
     assert collection_pattern.groupdict()["schema"]
     assert collection_pattern.groupdict()["collection"]
 
-    host_header = request.headers.get("host")
-    host_subdomain = None
-    if 'wfs3labs.com' in host_header:
-        host_subdomain = host_header.split('.')[0]
-    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
-    if host_subdomain:
-        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
-    else:
-        collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
+    collection_catalog = Catalog = getattr(request.app.state, catalogId, None)
 
     if not collection_catalog:
-        raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
+        raise MissingCollectionCatalog(f"Could not find collections catalog named '{catalogId}'")
 
     if collectionId in collection_catalog["collections"]:
         return collection_catalog["collections"][collectionId]
@@ -68,20 +64,17 @@ def CollectionParams(
     )
 
 
-def CatalogParams(request: Request) -> Catalog:
+def CatalogParams(
+    request: Request,
+    catalogId: Annotated[
+        str,
+        Path(description="catalog name"),
+    ],
+) -> Catalog:
     """Return Collections Catalog."""
-    host_header = request.headers.get("host")
-    host_subdomain = None
-    if 'wfs3labs.com' in host_header:
-        host_subdomain = host_header.split('.')[0]
-    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
-    if host_subdomain:
-        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
-    else:
-        collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
-
+    collection_catalog = Catalog = getattr(request.app.state, catalogId, None)
     if not collection_catalog:
-        raise MissingCollectionCatalog(f"Could not find collections catalog named '{host_header}'")
+        raise MissingCollectionCatalog(f"Could not find collections catalog named '{catalogId}'")
 
     return collection_catalog
 

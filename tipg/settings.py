@@ -179,5 +179,10 @@ class CustomSQLSettings(BaseSettings):
 
 
 class HostToSchemaLookupSettings(BaseSettings):
+    """TiPg with Multiple Schemas"""
+
+    enabled: bool = False
+
     mapping: Dict[str, Optional[Dict[str, List[str]]]] = {}
+
     model_config = {"env_prefix": "TIPG_MULTI_", "env_file": ".env", "extra": "ignore"}
