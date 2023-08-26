@@ -4,17 +4,7 @@ import abc
 import csv
 import json
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-)
+from typing import Any, Callable, Dict, Generator, Iterable, List, Literal, Optional
 from urllib.parse import urlencode
 
 import jinja2
@@ -756,12 +746,6 @@ class OGCFeaturesFactory(EndpointsFactory):
             bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
             datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
             properties: Annotated[Optional[List[str]], Depends(properties_query)],
-            properties_filter: Annotated[
-                List[Tuple[str, str]], Depends(properties_filter_query)
-            ],
-            function_parameters: Annotated[
-                Dict[str, str], Depends(function_parameters_query)
-            ],
             cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
             sortby: Annotated[Optional[str], Depends(sortby_query)],
             geom_column: Annotated[
@@ -824,8 +808,8 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
-                properties_filter=properties_filter,
-                function_parameters=function_parameters,
+                properties_filter=properties_filter_query(request, collection),
+                function_parameters=function_parameters_query(request, collection),
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
@@ -1061,7 +1045,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ] = None,
             properties: Optional[List[str]] = Depends(properties_query),
-            function_parameters: Dict[str, str] = Depends(function_parameters_query),
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
@@ -1082,7 +1065,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 simplify=simplify,
                 ids_filter=[itemId],
                 properties=properties,
-                function_parameters=function_parameters,
+                function_parameters=function_parameters_query(request, collection),
                 geom=geom_column,
                 dt=datetime_column,
                 geom_as_wkt=geom_as_wkt,
@@ -1571,12 +1554,6 @@ class OGCTilesFactory(EndpointsFactory):
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             tile: Annotated[Tile, Depends(TileParams)],
-            properties_filter: Annotated[
-                List[Tuple[str, str]], Depends(properties_filter_query)
-            ],
-            function_parameters: Annotated[
-                Dict[str, str], Depends(function_parameters_query)
-            ],
             tileMatrixSetId: Annotated[
                 Literal[tuple(self.supported_tms.list())],
                 f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
@@ -1622,8 +1599,8 @@ class OGCTilesFactory(EndpointsFactory):
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
-                properties_filter=properties_filter,
-                function_parameters=function_parameters,
+                properties_filter=properties_filter_query(request, collection),
+                function_parameters=function_parameters_query(request, collection),
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
