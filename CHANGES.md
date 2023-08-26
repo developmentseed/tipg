@@ -12,6 +12,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - forward `catalog_dependency` in `OGCFeaturesFactory` and `OGCTilesFactory` when using `Endpoints` factory
 
+### changed
+
+- changed `function_parameters_query` and `properties_filter_query` from dependencies to simple callabe
+
 ## [0.4.2] - 2023-08-24
 
 ### changed

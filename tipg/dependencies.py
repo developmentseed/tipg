@@ -15,7 +15,7 @@ from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionPa
 from tipg.resources.enums import MediaType
 from tipg.settings import TMSSettings
 
-from fastapi import Depends, HTTPException, Path, Query
+from fastapi import HTTPException, Path, Query
 
 from starlette.requests import Request
 
@@ -249,7 +249,7 @@ def properties_query(
 
 def properties_filter_query(
     request: Request,
-    collection: Annotated[Collection, Depends(CollectionParams)],
+    collection: Collection,
 ) -> List[Tuple[str, str]]:
     """Get properties to filter on excluding reserved keys."""
     exclude = [
@@ -339,7 +339,7 @@ def TileParams(
 
 def function_parameters_query(  # noqa: C901
     request: Request,
-    collection: Annotated[Collection, Depends(CollectionParams)],
+    collection: Collection,
 ) -> Dict[str, str]:
     """Get parameters for function layers."""
     function_parameters = {}
