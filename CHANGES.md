@@ -11,6 +11,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ### fixed
 
 - forward `catalog_dependency` in `OGCFeaturesFactory` and `OGCTilesFactory` when using `Endpoints` factory
+- allow Factory's prefix with path parameter
 
 ### changed
 
