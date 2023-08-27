@@ -12,6 +12,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - forward `catalog_dependency` in `OGCFeaturesFactory` and `OGCTilesFactory` when using `Endpoints` factory
 - allow Factory's prefix with path parameter
+- changed `database_url` type in `PostgresSettings` to always be of `pydantic.PostgresDsn` type
+- `postgres_port` type in `PostgresSettings` to be of `integer` type
+- remove additional `/` prefix for dbname when constructing the database url from individual parameters
 
 ### changed
 

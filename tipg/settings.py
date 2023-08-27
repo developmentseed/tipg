@@ -1,7 +1,7 @@
 """tipg config."""
 
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import (
     DirectoryPath,
@@ -117,7 +117,7 @@ class PostgresSettings(BaseSettings):
     postgres_user: Optional[str] = None
     postgres_pass: Optional[str] = None
     postgres_host: Optional[str] = None
-    postgres_port: Optional[str] = None
+    postgres_port: Optional[int] = None
     postgres_dbname: Optional[str] = None
 
     database_url: Optional[PostgresDsn] = None
@@ -131,10 +131,12 @@ class PostgresSettings(BaseSettings):
 
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
     @field_validator("database_url", mode="before")
-    def assemble_db_connection(cls, v: Optional[str], info: FieldValidationInfo) -> Any:
+    def assemble_db_connection(
+        cls, v: Optional[str], info: FieldValidationInfo
+    ) -> PostgresDsn:
         """Validate db url settings."""
         if isinstance(v, str):
-            return v
+            return PostgresDsn(v)
 
         return PostgresDsn.build(
             scheme="postgresql",
@@ -142,7 +144,7 @@ class PostgresSettings(BaseSettings):
             password=info.data.get("postgres_pass"),
             host=info.data.get("postgres_host", ""),
             port=info.data.get("postgres_port", 5432),
-            path=f"/{info.data.get('postgres_dbname') or ''}",
+            path=info.data.get("postgres_dbname", ""),
         )
 
 
