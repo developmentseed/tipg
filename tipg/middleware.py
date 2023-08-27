@@ -97,6 +97,7 @@ class CatalogUpdateMiddleware:
         request = Request(scope)
         background: Optional[BackgroundTask] = None
 
+        # TODO: plumb through `host_to_schema_settings.enabled` logic
         collection_catalog = getattr(request.app.state, "collection_catalog", {})
         last_updated = collection_catalog.get("last_updated")
         if not last_updated or datetime.now() > (

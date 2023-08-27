@@ -14,13 +14,14 @@ from tipg.logger import logger
 from tipg.collections import Catalog, Collection
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
 from tipg.resources.enums import MediaType
-from tipg.settings import TMSSettings
+from tipg.settings import TMSSettings, HostToSchemaLookupSettings
 
 from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
 tms_settings = TMSSettings()
+host_to_schema_settings = HostToSchemaLookupSettings()
 
 ResponseType = Literal["json", "html"]
 QueryablesResponseType = Literal["schemajson", "html"]
@@ -47,13 +48,10 @@ def CollectionParams(
     assert collection_pattern.groupdict()["schema"]
     assert collection_pattern.groupdict()["collection"]
 
-    host_header = request.headers.get("host")
-    host_subdomain = None
-    if 'wfs3labs.com' in host_header:
-        host_subdomain = host_header.split('.')[0]
-    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
-    if host_subdomain:
-        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
+    if host_to_schema_settings.enabled:
+        host_header = request.headers.get("host")
+        logger.info(f"[ APP STATE KEYS ]: {request.app.state._state.keys()}")
+        collection_catalog: Catalog = getattr(request.app.state, host_header, None)
     else:
         collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
 
@@ -70,13 +68,10 @@ def CollectionParams(
 
 def CatalogParams(request: Request) -> Catalog:
     """Return Collections Catalog."""
-    host_header = request.headers.get("host")
-    host_subdomain = None
-    if 'wfs3labs.com' in host_header:
-        host_subdomain = host_header.split('.')[0]
-    logger.error(f"[ APP STATE ]: {request.app.state._state.keys()}")
-    if host_subdomain:
-        collection_catalog: Catalog = getattr(request.app.state, host_subdomain, None)
+    if host_to_schema_settings.enabled:
+        host_header = request.headers.get("host")
+        logger.info(f"[ APP STATE KEYS ]: {request.app.state._state.keys()}")
+        collection_catalog: Catalog = getattr(request.app.state, host_header, None)
     else:
         collection_catalog: Catalog = getattr(request.app.state, 'collection_catalog', None)
 

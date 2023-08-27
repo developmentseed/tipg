@@ -679,8 +679,8 @@ class Collection(BaseModel):
         )
 
         q, p = render(":c", c=c)
-        logger.error(f"[ QUERY ]: {q}")
-        logger.error(f"[ PARAMS ]: {p}")
+        logger.info(f"[ QUERY ]: {q}")
+        logger.info(f"[ PARAMS ]: {p}")
         async with pool.acquire() as conn:
             for r in await conn.fetch(q, *p):
                 props = dict(r)
@@ -911,7 +911,6 @@ async def get_collection_index(  # noqa: C901
             :spatial
         );
     """  # noqa: W605
-    logger.error(f"[ SCHEMA SELECT ]: {schemas}, {tables}")
 
     async with db_pool.acquire() as conn:
         rows = await conn.fetch_b(
@@ -936,7 +935,7 @@ async def get_collection_index(  # noqa: C901
             table_id = table["schema"] + "." + table["name"]
             confid = table["schema"] + "_" + table["name"]
 
-            logger.error(f"[ TABLE_ID ]: {table_id}")
+            logger.info(f"[ TABLE_ID ]: {table_id}")
 
             if table_id == "pg_temp.tipg_catalog":
                 continue
