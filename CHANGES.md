@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [unreleased]
+## [0.4.3] - 2023-08-28
 
 ### fixed
 
@@ -131,7 +131,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.4.2...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.4.3...HEAD
+[0.4.3]: https://github.com/developmentseed/tipg/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/developmentseed/tipg/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/developmentseed/tipg/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/developmentseed/tipg/compare/0.3.1...0.4.0
