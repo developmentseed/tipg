@@ -130,10 +130,10 @@ $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_fun_defaults(defaults pg_node_tree) RETURNS text[] AS $$
     WITH d AS (
-        SELECT btrim(split_part(btrim(string_to_table(
+        SELECT btrim(split_part(btrim(unnest(string_to_array(
                 pg_get_expr(defaults,0::oid),
                 ','
-        )),'::',1),'''') d
+        ))),'::',1),'''') d
     ) SELECT array_agg(d) FROM d
     ;
 $$ LANGUAGE SQL;

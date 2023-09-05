@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.4.4] - TBD
+
+### fixed
+
+- replace `string_to_table(...)` by `unnest(string_to_array(...))` to support Postgres<14
+
 ## [0.4.3] - 2023-08-28
 
 ### fixed
@@ -131,7 +137,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.4.3...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.4.4...HEAD
+[0.4.4]: https://github.com/developmentseed/tipg/compare/0.4.3...0.4.4
 [0.4.3]: https://github.com/developmentseed/tipg/compare/0.4.2...0.4.3
 [0.4.2]: https://github.com/developmentseed/tipg/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/developmentseed/tipg/compare/0.4.0...0.4.1
