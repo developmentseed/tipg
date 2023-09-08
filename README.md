@@ -25,7 +25,7 @@
 
 ---
 
-`tipg`, pronounced *T[ee]pg*, is a **python** package which helps creating lightweight OGC **Features** and **Tiles** API with PostGIS Database backend. The API has been designed with respect to [OGC Features](https://ogcapi.ogc.org/features) and [OGC Tiles](https://ogcapi.ogc.org/tiles/) specifications.
+`tipg`, pronounced *T[ee]pg*, is a **Python** package that helps create lightweight OGC **Features** and **Tiles** API with a PostGIS Database backend. The API has been designed for [OGC Features](https://ogcapi.ogc.org/features) and [OGC Tiles](https://ogcapi.ogc.org/tiles/) specifications.
 
 > **Note**
 > This project is the result of the merge between [tifeatures](https://github.com/developmentseed/tifeatures) and [timvt](https://github.com/developmentseed/timvt).
@@ -55,13 +55,13 @@ OGC Tiles Part 1: Core                 |  ✅ | https://docs.ogc.org/is/20-057/2
 
 Notes:
 
-The project authors choose not to implement the Part 2 of the specification to avoid the introduction of CRS based GeoJSON. This might change in the future.
+We chose to avoid implementing the second part of the specification to prevent the introduction of CRS-based GeoJSON. We may review this decision in the future. 
 
-While the authors tried to follow OGC specifications to the letter, some API endpoints might have more capabilities (e.g geometry column selection).
+While we tried to follow OGC specifications to the letter, some API endpoints might have more capabilities (e.g., geometry column selection).
 
 ## PostGIS/PostgreSQL
 
-`tipg` rely a lot of `ST_*` PostGIS functions. You need to make sure your PostgreSQL database has PostGIS installed.
+`tipg` relies greatly on PostGIS' `ST_*` functions. PostGIS must be installed on your PostgreSQL database.
 
 ```sql
 SELECT name, default_version,installed_version
@@ -74,23 +74,23 @@ CREATE EXTENSION postgis;
 
 ### Configuration
 
-To be able to work, the application will need access to the database. `tipg` uses [starlette](https://www.starlette.io/config/)'s configuration pattern which make use of environment variable and/or `.env` file to pass variable to the application.
+To be able to work, the application will need access to the database. `tipg` uses [Starlette](https://www.starlette.io/config/)'s configuration pattern, which makes use of environment variables or a `.env` file to pass variables to the application.
 
-Example of `.env` file can be found in [.env.example](https://github.com/developmentseed/tipg/blob/main/.env.example)
+An example of a `.env` file can be found in [.env.example](https://github.com/developmentseed/tipg/blob/main/.env.example)
 
 ```
-# you need define the DATABASE_URL directly
+# you need to define the DATABASE_URL directly
 DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 ```
 
-More info about configuration options in https://developmentseed.org/tipg/advanced/configuration/
+More info about configuration options at https://developmentseed.org/tipg/user_guide/configuration/
 
 ## Launch
 
 ```bash
 $ pip install uvicorn
 
-# Set your postgis database instance URL in the environment
+# Set your PostGIS database instance URL in the environment
 $ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 $ uvicorn tipg.main:app
 
