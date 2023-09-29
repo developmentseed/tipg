@@ -4,7 +4,7 @@
 
 ### Application
 
-While `Tipg` provides a default application `tipg.main:app`, users can easily create their own FastAPI application and register the OGC API endpoints using the [endpoint factories](/user_guide/factories/) provided by `Tipg`.
+While `Tipg` provides a default application `tipg.main:app`, users can easily create their own FastAPI application and register the OGC API endpoints using the [endpoint factories](../user_guide/factories/) provided by `Tipg`.
 
 ```python
 from contextlib import asynccontextmanager

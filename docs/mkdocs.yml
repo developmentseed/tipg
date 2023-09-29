@@ -25,6 +25,8 @@ nav:
   - Advanced User Guide:
     - "Function Layers": advanced/functions.md
     - "Customization": advanced/customization.md
+    - "TiPg Vector Tiles server": advanced/ogc_tiles_server.md
+    - "TiPg Features server": advanced/ogc_features_server.md
   - API:
     - db: api/tipg/db.md
     - dbmodel: api/tipg/dbmodel.md
