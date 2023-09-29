@@ -1,5 +1,5 @@
 
-`TiPg` default application comes with both OGC Tiles and Features endpoints but some users might just want one or the other. `TiPg` is built around the notion of endpoints [factories](../user_guide/factories/) which then makes *easy* to build custom applications with the desired set of endpoints.
+`TiPg` default application comes with both OGC Tiles and Features endpoints but some users might just want one or the other. `TiPg` is built around the notion of endpoints [factories](/tipg/user_guide/factories/) which then makes *easy* to build custom applications with the desired set of endpoints.
 
 The code below shows how to create a simple OGC Features service.
 
