@@ -12,6 +12,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - replace `string_to_table(...)` by `unnest(string_to_array(...))` to support Postgres<14
 
+### changed
+
+- update pydantic minimum version to >=2.4
+
 ## [0.4.3] - 2023-08-28
 
 ### fixed
