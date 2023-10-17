@@ -132,6 +132,7 @@ def test_collections_excludes(app_excludes):
     ids = [x["id"] for x in body["collections"]]
     assert "public.my_data" in ids
     assert "public.nongeo_data" not in ids
+    assert "public.minnesota" not in ids
 
 
 def test_collections_includes(app_includes):
@@ -140,7 +141,7 @@ def test_collections_includes(app_includes):
     assert response.status_code == 200
     body = response.json()
     ids = [x["id"] for x in body["collections"]]
-    assert ["public.nongeo_data"] == ids
+    assert ["public.minnesota", "public.nongeo_data"] == ids
 
 
 def test_collections_landsat(app):
@@ -252,3 +253,31 @@ def test_collections_type_filter(app):
 
     # Functions
     assert "public.st_squaregrid" not in ids
+
+
+def test_collections_exclude_functions(app_excludes_function):
+    """Test /collections endpoint."""
+    response = app_excludes_function.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [x["id"] for x in body["collections"]]
+    assert "pg_temp.hexagons" in ids
+    assert "pg_temp.squares" not in ids
+    assert "public.st_squaregrid" not in ids
+
+
+def test_collections_include_functions(app_includes_function):
+    """Test /collections endpoint."""
+    response = app_includes_function.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    ids = [x["id"] for x in body["collections"]]
+    assert ["pg_temp.hexagons", "pg_temp.squares"] == ids
+
+
+def test_collections_empty(app_empty):
+    """Test /collections endpoint."""
+    response = app_empty.get("/collections")
+    assert response.status_code == 200
+    body = response.json()
+    assert not body["collections"]
