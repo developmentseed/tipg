@@ -47,24 +47,30 @@
 
 <script>
   $(function() {
-    var map = L.map('map').setView([0, 0], 1);
-    map.addLayer(new L.TileLayer(
-      'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-      }
-    ));
+    var collection = {{ response|tojson }};
+    if (collection.extent && collection.extent.spatial){
+      var bbox = collection.extent.spatial.bbox[0]
+      var bbox_polygon = L.polygon([
+        [bbox[1], bbox[0]],
+        [bbox[1], bbox[2]],
+        [bbox[3], bbox[2]],
+        [bbox[3], bbox[0]]
+      ]);
 
-    var bbox = {{ ('extent' in response and response.extent.spatial.bbox.0) or [-180,-90,180,90] }};
-    var bbox_polygon = L.polygon([
-      [bbox[1], bbox[0]],
-      [bbox[1], bbox[2]],
-      [bbox[3], bbox[2]],
-      [bbox[3], bbox[0]]
-    ]);
+      var map = L.map('map').setView([0, 0], 1);
+      map.addLayer(new L.TileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+        }
+      ));
 
-    map.addLayer(bbox_polygon);
-    map.fitBounds(bbox_polygon.getBounds());
+      map.addLayer(bbox_polygon);
+      map.fitBounds(bbox_polygon.getBounds());
+    } else {
+      document.getElementById("map").style.display = "none";
+    }
+
   });
 </script>
 
