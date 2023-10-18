@@ -32,60 +32,65 @@
 
 <script>
   var geojson = {{ response|tojson }};
-  var map = L.map('map').setView([0, 0], 1);
-  map.addLayer(new L.TileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-    }
-  ));
+  if (geojson.geometry) {
+    var map = L.map('map').setView([0, 0], 1);
+    map.addLayer(new L.TileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: 'Map data &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+      }
+    ));
 
-  function displayValue(value) {
-    switch (typeof value) {
-      case 'string':
-        return value;
-      case 'number':
-        return value.toString();
-      case 'object':
-        if (value instanceof Array) {
-          return value.map(displayValue).join(', ');
-        } else {
-          return JSON.stringify(value);
-        }
-      default:
-        return '';
+    function displayValue(value) {
+      switch (typeof value) {
+        case 'string':
+          return value;
+        case 'number':
+          return value.toString();
+        case 'object':
+          if (value instanceof Array) {
+            return value.map(displayValue).join(', ');
+          } else {
+            return JSON.stringify(value);
+          }
+        default:
+          return '';
+      }
     }
+
+    function addPopup(feature, layer) {
+      if (feature.properties) {
+        var popupElm = document.createElement('div');
+        popupElm.style.overflowX = 'scroll';
+
+        Object.keys(geojson.properties).map(prop => {
+          var propElm = document.createElement('div');
+
+          var bElm = document.createElement('b');
+          bElm.innerText = prop;
+          propElm.appendChild(bElm);
+          var valueElm = document.createTextNode(` : ${displayValue(feature.properties[prop])}`);
+          propElm.appendChild(valueElm);
+
+          var brElm = document.createElement('br');
+          propElm.appendChild(brElm);
+
+          popupElm.appendChild(propElm);
+        })
+
+        layer.bindPopup(popupElm);
+      }
+    }
+
+    var features = L.geoJSON(geojson, {
+      onEachFeature: addPopup
+    }).addTo(map);
+
+    map.fitBounds(features.getBounds());
+  } else {
+    document.getElementById("map").style.display = "none";
   }
 
-  function addPopup(feature, layer) {
-    if (feature.properties) {
-      var popupElm = document.createElement('div');
-      popupElm.style.overflowX = 'scroll';
-
-      Object.keys(geojson.properties).map(prop => {
-        var propElm = document.createElement('div');
-
-        var bElm = document.createElement('b');
-        bElm.innerText = prop;
-        propElm.appendChild(bElm);
-        var valueElm = document.createTextNode(` : ${displayValue(feature.properties[prop])}`);
-        propElm.appendChild(valueElm);
-
-        var brElm = document.createElement('br');
-        propElm.appendChild(brElm);
-
-        popupElm.appendChild(propElm);
-      })
-
-      layer.bindPopup(popupElm);
-    }
-  }
-
-  var features = L.geoJSON(geojson, {
-    onEachFeature: addPopup
-  }).addTo(map);
-  
-  map.fitBounds(features.getBounds());
 </script>
 
 {% include "footer.html" %}
