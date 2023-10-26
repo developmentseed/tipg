@@ -421,9 +421,15 @@ class OGCFeaturesFactory(EndpointsFactory):
             ),
         ]
 
-    def register_routes(self):  # noqa: C901
+    def register_routes(self):
         """Register OGC Features endpoints."""
+        self._collections_route()
+        self._collection_route()
+        self._queryables_route()
+        self._items_route()
+        self._item_route()
 
+    def _collections_route(self):  # noqa: C901
         @self.router.get(
             "/collections",
             response_model=model.Collections,
@@ -603,6 +609,7 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             return data
 
+    def _collection_route(self):
         @self.router.get(
             "/collections/{collectionId}",
             response_model=model.Collection,
@@ -688,6 +695,7 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             return data
 
+    def _queryables_route(self):
         @self.router.get(
             "/collections/{collectionId}/queryables",
             response_model=model.Queryables,
@@ -731,6 +739,7 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             return data
 
+    def _items_route(self):  # noqa: C901
         @self.router.get(
             "/collections/{collectionId}/items",
             response_class=GeoJSONResponse,
@@ -1005,6 +1014,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             # Default to GeoJSON Response
             return GeoJSONResponse(data)
 
+    def _item_route(self):
         @self.router.get(
             "/collections/{collectionId}/items/{itemId}",
             response_class=GeoJSONResponse,
@@ -1247,7 +1257,13 @@ class OGCTilesFactory(EndpointsFactory):
 
     def register_routes(self):  # noqa: C901
         """Register OGC Tiles endpoints."""
+        self._tilematrixsets_routes()
+        self._tilesets_routes()
+        self._tile_routes()
+        self._tilejson_routes()
+        self._stylejson_routes()
 
+    def _tilematrixsets_routes(self):
         @self.router.get(
             r"/tileMatrixSets",
             response_model=model.TileMatrixSetList,
@@ -1344,6 +1360,7 @@ class OGCTilesFactory(EndpointsFactory):
 
             return data
 
+    def _tilesets_routes(self):
         @self.router.get(
             "/collections/{collectionId}/tiles",
             response_model=model.TileSetList,
@@ -1547,6 +1564,7 @@ class OGCTilesFactory(EndpointsFactory):
 
             return data
 
+    def _tile_routes(self):
         @self.router.get(
             "/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}",
             response_class=Response,
@@ -1619,6 +1637,8 @@ class OGCTilesFactory(EndpointsFactory):
             )
 
             return Response(bytes(tile), media_type=MediaType.mvt.value)
+
+    def _tilejson_routes(self):
 
         ############################################################################
         # ADDITIONAL ENDPOINTS NOT IN OGC Tiles API (tilejson, style.json, viewer) #
@@ -1721,6 +1741,7 @@ class OGCTilesFactory(EndpointsFactory):
 
             return tile_json
 
+    def _stylejson_routes(self):
         @self.router.get(
             "/collections/{collectionId}/{tileMatrixSetId}/style.json",
             response_model=model.StyleJSON,
