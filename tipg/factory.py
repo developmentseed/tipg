@@ -219,7 +219,8 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         """Post Init: register route and configure specific options."""
         self.register_routes()
         if self.with_common:
-            self.register_common_routes()
+            self._conformances_route()
+            self._landing_route()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -269,8 +270,8 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         """Register factory Routes."""
         ...
 
-    def register_common_routes(self):
-        """Register Landing (/) and Conformance (/conformance) routes."""
+    def _conformance_route(self):
+        """Register Conformance (/conformance) route."""
 
         @self.router.get(
             "/conformance",
@@ -302,6 +303,9 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
                 )
 
             return data
+
+    def _landing_route(self):
+        """Register Landing (/) and Conformance (/conformance) routes."""
 
         @self.router.get(
             "/",
