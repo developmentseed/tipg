@@ -219,7 +219,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         """Post Init: register route and configure specific options."""
         self.register_routes()
         if self.with_common:
-            self._conformances_route()
+            self._conformance_route()
             self._landing_route()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
