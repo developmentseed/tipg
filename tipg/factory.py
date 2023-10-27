@@ -9,7 +9,6 @@ from urllib.parse import urlencode
 
 import jinja2
 import orjson
-from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
@@ -110,45 +109,6 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
         yield writer.writerow(row)
 
 
-def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
-    """Check if bbox intersects with spatial extent."""
-    return (
-        (bbox[0] < spatial_extent[2])
-        and (bbox[2] > spatial_extent[0])
-        and (bbox[3] > spatial_extent[1])
-        and (bbox[1] < spatial_extent[3])
-    )
-
-
-def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
-    """Check if dates intersect with temporal extent."""
-    if len(interval) == 1:
-        start = end = parse_rfc3339(interval[0])
-
-    else:
-        start = parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
-        end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
-
-    mint, maxt = temporal_extent
-    min_ext = parse_rfc3339(mint) if mint is not None else None
-    max_ext = parse_rfc3339(maxt) if maxt is not None else None
-
-    if len(interval) == 1:
-        if start == min_ext or start == max_ext:
-            return True
-
-    if not start:
-        return max_ext <= end or min_ext <= end
-
-    elif not end:
-        return min_ext >= start or max_ext >= start
-
-    else:
-        return min_ext >= start and max_ext <= end
-
-    return False
-
-
 def create_html_response(
     request: Request,
     data: str,
@@ -201,7 +161,6 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     router: APIRouter = field(default_factory=APIRouter)
 
     # collection dependency
-    catalog_dependency: Callable[..., Catalog] = CatalogParams
     collection_dependency: Callable[..., Collection] = CollectionParams
 
     # Router Prefix is needed to find the path for routes when prefixed
@@ -372,6 +331,9 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 class OGCFeaturesFactory(EndpointsFactory):
     """OGC Features Endpoints Factory."""
 
+    # catalog dependency
+    catalog_dependency: Callable[..., Catalog] = CatalogParams
+
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
@@ -448,73 +410,18 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             },
         )
-        def collections(  # noqa: C901
+        def collections(
             request: Request,
-            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
-            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
-            type_filter: Annotated[
-                Optional[Literal["Function", "Table"]],
-                Query(alias="type", description="Filter based on Collection type."),
+            catalog: Annotated[
+                Catalog,
+                Depends(self.catalog_dependency),
+            ],
+            output_type: Annotated[
+                Optional[MediaType],
+                Depends(OutputType),
             ] = None,
-            limit: Annotated[
-                Optional[int],
-                Query(
-                    ge=0,
-                    le=1000,
-                    description="Limits the number of collection in the response.",
-                ),
-            ] = None,
-            offset: Annotated[
-                Optional[int],
-                Query(
-                    ge=0,
-                    description="Starts the response at an offset.",
-                ),
-            ] = None,
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
-            collection_catalog=Depends(self.catalog_dependency),
         ):
             """List of collections."""
-            collections_list = list(collection_catalog["collections"].values())
-
-            limit = limit or 0
-            offset = offset or 0
-
-            # type filter
-            if type_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.type == type_filter
-                ]
-
-            # bbox filter
-            if bbox_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.bounds is not None
-                    and s_intersects(bbox_filter, collection.bounds)
-                ]
-
-            # datetime filter
-            if datetime_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.dt_bounds is not None
-                    and t_intersects(datetime_filter, collection.dt_bounds)
-                ]
-
-            matched_items = len(collections_list)
-
-            if limit:
-                collections_list = collections_list[offset : offset + limit]
-            else:
-                collections_list = collections_list[offset:]
-
-            items_returned = len(collections_list)
-
             links: list = [
                 model.Link(
                     href=self.url_for(request, "collections"),
@@ -523,10 +430,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ]
 
-            if (matched_items - items_returned) > offset:
-                next_offset = offset + items_returned
+            if catalog.next:
                 query_params = QueryParams(
-                    {**request.query_params, "offset": next_offset}
+                    {**request.query_params, "offset": catalog.next}
                 )
                 url = self.url_for(request, "collections") + f"?{query_params}"
                 links.append(
@@ -538,12 +444,11 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                 )
 
-            if offset:
+            if catalog.prev is not None:
                 qp = dict(request.query_params)
-                qp.pop("offset")
-                prev_offset = max(offset - items_returned, 0)
-                if prev_offset:
-                    query_params = QueryParams({**qp, "offset": prev_offset})
+                qp.pop("offset", None)
+                if catalog.prev:
+                    query_params = QueryParams({**qp, "offset": catalog.prev})
                 else:
                     query_params = QueryParams({**qp})
 
@@ -562,8 +467,8 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             data = model.Collections(
                 links=links,
-                numberMatched=matched_items,
-                numberReturned=items_returned,
+                numberMatched=catalog.matched,
+                numberReturned=len(catalog.collections),
                 collections=[
                     model.Collection(
                         id=collection.id,
@@ -600,7 +505,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             ),
                         ],
                     )
-                    for collection in collections_list
+                    for collection in catalog.collections.values()
                 ],
             )
 
@@ -1947,6 +1852,9 @@ class OGCTilesFactory(EndpointsFactory):
 class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
 
+    # OGC Features dependency
+    catalog_dependency: Callable[..., Catalog] = CatalogParams
+
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
     with_tiles_viewer: bool = True
@@ -1982,7 +1890,6 @@ class Endpoints(EndpointsFactory):
         self.router.include_router(self.ogc_features.router, tags=["OGC Features API"])
 
         self.ogc_tiles = OGCTilesFactory(
-            catalog_dependency=self.catalog_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,

@@ -3,6 +3,7 @@
 import re
 from typing import Dict, List, Literal, Optional, Tuple, get_args
 
+from ciso8601 import parse_rfc3339
 from morecantile import Tile
 from morecantile import tms as default_tms
 from pygeofilter.ast import AstType
@@ -15,7 +16,7 @@ from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionPa
 from tipg.resources.enums import MediaType
 from tipg.settings import TMSSettings
 
-from fastapi import HTTPException, Path, Query
+from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
@@ -30,41 +31,43 @@ VectorType = Literal["pbf", "mvt"]
 FilterLang = Literal["cql2-text", "cql2-json"]
 
 
-def CollectionParams(
-    request: Request,
-    collectionId: Annotated[str, Path(description="Collection identifier")],
-) -> Collection:
-    """Return Layer Object."""
-    collection_pattern = re.match(  # type: ignore
-        r"^(?P<schema>.+)\.(?P<collection>.+)$", collectionId
-    )
-    if not collection_pattern:
-        raise HTTPException(
-            status_code=422, detail=f"Invalid Collection format '{collectionId}'."
-        )
-
-    assert collection_pattern.groupdict()["schema"]
-    assert collection_pattern.groupdict()["collection"]
-
-    collection_catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
-    if not collection_catalog:
-        raise MissingCollectionCatalog("Could not find collections catalog.")
-
-    if collectionId in collection_catalog["collections"]:
-        return collection_catalog["collections"][collectionId]
-
-    raise HTTPException(
-        status_code=404, detail=f"Table/Function '{collectionId}' not found."
+def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
+    """Check if bbox intersects with spatial extent."""
+    return (
+        (bbox[0] < spatial_extent[2])
+        and (bbox[2] > spatial_extent[0])
+        and (bbox[3] > spatial_extent[1])
+        and (bbox[1] < spatial_extent[3])
     )
 
 
-def CatalogParams(request: Request) -> Catalog:
-    """Return Collections Catalog."""
-    collection_catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
-    if not collection_catalog:
-        raise MissingCollectionCatalog("Could not find collections catalog.")
+def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
+    """Check if dates intersect with temporal extent."""
+    if len(interval) == 1:
+        start = end = parse_rfc3339(interval[0])
 
-    return collection_catalog
+    else:
+        start = parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
+        end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
+
+    mint, maxt = temporal_extent
+    min_ext = parse_rfc3339(mint) if mint is not None else None
+    max_ext = parse_rfc3339(maxt) if maxt is not None else None
+
+    if len(interval) == 1:
+        if start == min_ext or start == max_ext:
+            return True
+
+    if not start:
+        return max_ext <= end or min_ext <= end
+
+    elif not end:
+        return min_ext >= start or max_ext >= start
+
+    else:
+        return min_ext >= start and max_ext <= end
+
+    return False
 
 
 def accept_media_type(accept: str, mediatypes: List[MediaType]) -> Optional[MediaType]:
@@ -397,3 +400,109 @@ def function_parameters_query(  # noqa: C901
         )
 
     return function_parameters
+
+
+def CollectionParams(
+    request: Request,
+    collectionId: Annotated[str, Path(description="Collection identifier")],
+) -> Collection:
+    """Return Layer Object."""
+    collection_pattern = re.match(  # type: ignore
+        r"^(?P<schema>.+)\.(?P<collection>.+)$", collectionId
+    )
+    if not collection_pattern:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid Collection format '{collectionId}'."
+        )
+
+    assert collection_pattern.groupdict()["schema"]
+    assert collection_pattern.groupdict()["collection"]
+
+    catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+    if not catalog:
+        raise MissingCollectionCatalog("Could not find collections catalog.")
+
+    if collectionId in catalog.collections:
+        return catalog.collections[collectionId]
+
+    raise HTTPException(
+        status_code=404, detail=f"Table/Function '{collectionId}' not found."
+    )
+
+
+def CatalogParams(
+    request: Request,
+    bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
+    datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+    type_filter: Annotated[
+        Optional[Literal["Function", "Table"]],
+        Query(alias="type", description="Filter based on Collection type."),
+    ] = None,
+    limit: Annotated[
+        Optional[int],
+        Query(
+            ge=0,
+            le=1000,
+            description="Limits the number of collection in the response.",
+        ),
+    ] = None,
+    offset: Annotated[
+        Optional[int],
+        Query(
+            ge=0,
+            description="Starts the response at an offset.",
+        ),
+    ] = None,
+) -> Catalog:
+    """Return Collections Catalog."""
+    limit = limit or 0
+    offset = offset or 0
+
+    catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+    if not catalog:
+        raise MissingCollectionCatalog("Could not find collections catalog.")
+
+    collections_list = list(catalog.collections.values())
+
+    # type filter
+    if type_filter is not None:
+        collections_list = [
+            collection
+            for collection in collections_list
+            if collection.type == type_filter
+        ]
+
+    # bbox filter
+    if bbox_filter is not None:
+        collections_list = [
+            collection
+            for collection in collections_list
+            if collection.bounds is not None
+            and s_intersects(bbox_filter, collection.bounds)
+        ]
+
+    # datetime filter
+    if datetime_filter is not None:
+        collections_list = [
+            collection
+            for collection in collections_list
+            if collection.dt_bounds is not None
+            and t_intersects(datetime_filter, collection.dt_bounds)
+        ]
+
+    matched = len(collections_list)
+
+    if limit:
+        collections_list = collections_list[offset : offset + limit]
+    else:
+        collections_list = collections_list[offset:]
+
+    returned = len(collections_list)
+
+    return Catalog(
+        collections={col.id: col for col in collections_list},
+        last_updated=catalog.last_updated,
+        matched=matched,
+        next=offset + returned if matched - returned > offset else None,
+        prev=max(offset - returned, 0) if offset else None,
+    )

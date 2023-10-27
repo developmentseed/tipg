@@ -876,11 +876,21 @@ class Collection(BaseModel):
         return {**geoms, **props}
 
 
-class Catalog(TypedDict):
+class Catalog(BaseModel):
     """Collection Catalog."""
 
     collections: Dict[str, Collection]
     last_updated: datetime.datetime
+    matched: Optional[int] = None
+    next: Optional[int] = None
+    prev: Optional[int] = None
+
+    @model_validator(mode="after")
+    def compute_matched(self):
+        """Compute matched if it does not exist."""
+        if self.matched is None:
+            self.matched = len(self.collections)
+        return self
 
 
 async def get_collection_index(  # noqa: C901

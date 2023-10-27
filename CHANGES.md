@@ -8,8 +8,42 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+### fixed
+
 - hide map element in HTML pages when collections/items do not have spatial component
+
+### changed
+
 - split endpoints registration for more customization
+
+- make `Catalog` a Pydantic model and add `matched`, `next` and `prev` attributes
+
+    ```python
+    # Before
+    class Catalog(TypedDict):
+        """Collection Catalog."""
+
+        collections: Dict[str, Collection]
+        last_updated: datetime.datetime
+
+    # Now
+    class Catalog(BaseModel):
+        """Collection Catalog."""
+
+        collections: Dict[str, Collection]
+        last_updated: datetime.datetime
+        matched: Optional[int] = None
+        next: Optional[int] = None
+        prev: Optional[int] = None
+    ```
+
+- move `/collections` QueryParameters in the `CatalogParams` dependency
+
+- the `CatalogParams` now returns a `Catalog` object
+
+- move `s_intersects` and `t_intersects` functions from `tipg.factory` to `tipg.dependencies`
+
+- move the `catalog_dependency` attribute from the `EndpointsFactory` to `OGCFeaturesFactory` class
 
 ## [0.4.4] - 2023-10-03
 

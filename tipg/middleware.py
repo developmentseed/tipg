@@ -4,6 +4,8 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Optional, Protocol, Set
 
+from tipg.collections import Catalog
+from tipg.errors import MissingCollectionCatalog
 from tipg.logger import logger
 
 from starlette.background import BackgroundTask
@@ -97,8 +99,11 @@ class CatalogUpdateMiddleware:
         request = Request(scope)
         background: Optional[BackgroundTask] = None
 
-        collection_catalog = getattr(request.app.state, "collection_catalog", {})
-        last_updated = collection_catalog.get("last_updated")
+        catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
+        if not catalog:
+            raise MissingCollectionCatalog("Could not find collections catalog.")
+
+        last_updated = catalog.last_updated
         if not last_updated or datetime.now() > (
             last_updated + timedelta(seconds=self.ttl)
         ):
