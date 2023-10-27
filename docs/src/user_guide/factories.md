@@ -61,6 +61,8 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 
 #### Creation Options
 
+- **catalog_dependency** (Callable[..., tipg.collections.Catalog]): Callable which return a Catalog instance
+
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
 - **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
@@ -140,6 +142,8 @@ app.include_router(endpoints.router)
 ```
 
 #### Creation Options
+
+- **catalog_dependency** (Callable[..., tipg.collections.Catalog]): Callable which return a Catalog instance
 
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
