@@ -9,6 +9,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ## [unreleased]
 
 - hide map element in HTML pages when collections/items do not have spatial component
+- split endpoints registration for more customization
 
 ## [0.4.4] - 2023-10-03
 
