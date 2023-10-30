@@ -246,10 +246,11 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND relkind IN ('r','v', 'm', 'f', 'p')
             AND has_table_privilege(c.oid, 'SELECT')
             AND c.relname::text NOT IN ('spatial_ref_sys','geometry_columns','geography_columns')
-            AND (exclude_tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) != ANY (exclude_tables))
-            AND (tables IS NULL OR concat(c.relnamespace::regnamespace::text,'.',c.relname::text) = ANY (tables))
+            AND (exclude_tables IS NULL OR concat(pg_temp.nspname(relnamespace),'.',c.relname::text) <> ALL (exclude_tables))
+            AND (tables IS NULL OR concat(pg_temp.nspname(relnamespace),'.',c.relname::text) = ANY (tables))
 
         UNION ALL
+
         SELECT
             pg_temp.tipg_fproperties(p) as meta
         FROM
@@ -262,8 +263,8 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
             AND '' != ANY(proargnames)
             AND has_function_privilege(oid, 'execute')
             AND provariadic=0
-            AND (functions IS NULL OR concat(p.pronamespace::regnamespace::text, '.', proname::text) = ANY (functions))
-            AND (exclude_functions IS NULL OR concat(p.pronamespace::regnamespace::text,'.',proname::text) != ANY (exclude_functions))
+            AND (exclude_functions IS NULL OR concat(pg_temp.nspname(pronamespace),'.', proname::text) <> ALL (exclude_functions))
+            AND (functions IS NULL OR concat(pg_temp.nspname(pronamespace),'.', proname::text) = ANY (functions))
             AND p.proname::text NOT ILIKE 'tipg_%'
     )
     SELECT meta FROM a

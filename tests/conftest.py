@@ -181,11 +181,11 @@ def app(database_url, monkeypatch):
 
 @pytest.fixture
 def app_excludes(database_url, monkeypatch):
-    """Create APP with but excludes `public.nongeo_data` table."""
+    """Create APP with but excludes `public.nongeo_data` and `public.minnesota` tables."""
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
         schemas=["public"],
-        exclude_tables=["public.nongeo_data"],
+        exclude_tables=["public.nongeo_data", "public.minnesota"],
         functions=[],
         only_spatial_tables=False,
     )
@@ -203,13 +203,76 @@ def app_excludes(database_url, monkeypatch):
 
 @pytest.fixture
 def app_includes(database_url, monkeypatch):
-    """Create APP with only `public.nongeo_data` table."""
+    """Create APP with only `public.nongeo_data` and `public.minnesota` table."""
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(
         schemas=["public"],
-        tables=["public.nongeo_data"],
+        tables=["public.nongeo_data", "public.minnesota"],
         functions=[],
         only_spatial_tables=False,
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_excludes_function(database_url, monkeypatch):
+    """Create APP with but excludes `pg_temp.squares` and `public.st_squaregrid` functions."""
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["public"],
+        tables=[],
+        exclude_functions=["pg_temp.squares", "public.st_squaregrid"],
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_includes_function(database_url, monkeypatch):
+    """Create APP with only `public.nongeo_data` table."""
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=[],
+        tables=[],
+        functions=["pg_temp.hexagons"],
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_empty(database_url, monkeypatch):
+    """Create APP with only no table nor function."""
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=[],
+        tables=[],
+        functions=[],
     )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
