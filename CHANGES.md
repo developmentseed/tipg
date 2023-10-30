@@ -8,13 +8,44 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+### added
+
+- add `py.typed` file
+
 ### fixed
 
-- hide map element in HTML pages when collections/items do not have spatial component
+- hide map element in HTML pages when collections/items do not have spatial component (https://github.com/developmentseed/tipg/issues/132)
+
+- exclude/include tables and functions (https://github.com/developmentseed/tipg/issues/130)
 
 ### changed
 
 - split endpoints registration for more customization
+
+    ```python
+    # before
+    class OGCFeaturesFactory(EndpointsFactory):
+
+        def register_routes(self):
+            @self.router.get("/collections", ...)
+            @self.router.get("/collections/{collectionId}", ...)
+            ...
+
+    # now
+    class OGCFeaturesFactory(EndpointsFactory):
+
+        def register_routes(self):
+            self._collections_route()
+            self._collection_route()
+            self._queryables_route()
+            self._items_route()
+            self._item_route()
+
+        def _collections_route(self):
+            @self.router.get("/collections", ...)
+
+        ...
+    ```
 
 - make `Catalog` a Pydantic model and add `matched`, `next` and `prev` attributes
 
