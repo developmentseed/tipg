@@ -76,12 +76,13 @@ class Feature(TypedDict, total=False):
     bbox: Optional[List[float]]
 
 
-class FeatureCollection(TypedDict, total=False):
-    """Simple FeatureCollection model."""
+class ItemList(TypedDict):
+    """Items."""
 
-    type: str
-    features: List[Feature]
-    bbox: Optional[List[float]]
+    items: List[Feature]
+    matched: Optional[int]
+    next: Optional[int]
+    prev: Optional[int]
 
 
 class Column(BaseModel):
@@ -739,8 +740,9 @@ class Collection(BaseModel):
         simplify: Optional[float] = None,
         geom_as_wkt: bool = False,
         function_parameters: Optional[Dict[str, str]] = None,
-    ) -> Tuple[FeatureCollection, int]:
+    ) -> ItemList:
         """Build and run Pg query."""
+        offset = offset or 0
         function_parameters = function_parameters or {}
 
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
@@ -751,7 +753,7 @@ class Collection(BaseModel):
                 f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
             )
 
-        count = await self._features_count_query(
+        matched = await self._features_count_query(
             pool=pool,
             ids_filter=ids_filter,
             datetime_filter=datetime_filter,
@@ -784,10 +786,13 @@ class Collection(BaseModel):
                 function_parameters=function_parameters,
             )
         ]
+        returned = len(features)
 
-        return (
-            FeatureCollection(type="FeatureCollection", features=features),
-            count,
+        return ItemList(
+            items=features,
+            matched=matched,
+            next=offset + returned if matched - returned > offset else None,
+            prev=max(offset - returned, 0) if offset else None,
         )
 
     async def get_tile(
@@ -876,21 +881,20 @@ class Collection(BaseModel):
         return {**geoms, **props}
 
 
-class Catalog(BaseModel):
-    """Collection Catalog."""
+class CollectionList(TypedDict):
+    """Collections."""
+
+    collections: List[Collection]
+    matched: Optional[int]
+    next: Optional[int]
+    prev: Optional[int]
+
+
+class Catalog(TypedDict):
+    """Internal Collection Catalog."""
 
     collections: Dict[str, Collection]
     last_updated: datetime.datetime
-    matched: Optional[int] = None
-    next: Optional[int] = None
-    prev: Optional[int] = None
-
-    @model_validator(mode="after")
-    def compute_matched(self):
-        """Compute matched if it does not exist."""
-        if self.matched is None:
-            self.matched = len(self.collections)
-        return self
 
 
 async def get_collection_index(  # noqa: C901

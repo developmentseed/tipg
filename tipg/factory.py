@@ -16,7 +16,7 @@ from pygeofilter.ast import AstType
 from typing_extensions import Annotated
 
 from tipg import model
-from tipg.collections import Catalog, Collection
+from tipg.collections import Collection, CollectionList
 from tipg.dependencies import (
     CatalogParams,
     CollectionParams,
@@ -332,7 +332,7 @@ class OGCFeaturesFactory(EndpointsFactory):
     """OGC Features Endpoints Factory."""
 
     # catalog dependency
-    catalog_dependency: Callable[..., Catalog] = CatalogParams
+    catalog_dependency: Callable[..., CollectionList] = CatalogParams
 
     @property
     def conforms_to(self) -> List[str]:
@@ -412,8 +412,8 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def collections(
             request: Request,
-            catalog: Annotated[
-                Catalog,
+            collection_list: Annotated[
+                CollectionList,
                 Depends(self.catalog_dependency),
             ],
             output_type: Annotated[
@@ -430,9 +430,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ]
 
-            if catalog.next:
+            if next_token := collection_list["next"]:
                 query_params = QueryParams(
-                    {**request.query_params, "offset": catalog.next}
+                    {**request.query_params, "offset": next_token}
                 )
                 url = self.url_for(request, "collections") + f"?{query_params}"
                 links.append(
@@ -444,13 +444,11 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                 )
 
-            if catalog.prev is not None:
+            if collection_list["prev"] is not None:
+                prev_token = collection_list["prev"]
                 qp = dict(request.query_params)
                 qp.pop("offset", None)
-                if catalog.prev:
-                    query_params = QueryParams({**qp, "offset": catalog.prev})
-                else:
-                    query_params = QueryParams({**qp})
+                query_params = QueryParams({**qp, "offset": prev_token})
 
                 url = self.url_for(request, "collections")
                 if qp:
@@ -467,8 +465,8 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             data = model.Collections(
                 links=links,
-                numberMatched=catalog.matched,
-                numberReturned=len(catalog.collections),
+                numberMatched=collection_list["matched"],
+                numberReturned=len(collection_list["collections"]),
                 collections=[
                     model.Collection(
                         id=collection.id,
@@ -505,7 +503,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             ),
                         ],
                     )
-                    for collection in catalog.collections.values()
+                    for collection in collection_list["collections"]
                 ],
             )
 
@@ -730,7 +728,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            items, matched_items = await collection.features(
+            item_list = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
@@ -754,29 +752,19 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if (
-                    items["features"]
-                    and items["features"][0].get("geometry") is not None
-                ):
-                    rows = (
-                        {
+                rows = (
+                    {
+                        k: v
+                        for k, v in {
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": f["geometry"],
-                        }
-                        for f in items["features"]
-                    )
-
-                else:
-                    rows = (
-                        {
-                            "collectionId": collection.id,
-                            "itemId": f.get("id"),
-                            **f.get("properties", {}),
-                        }
-                        for f in items["features"]
-                    )
+                            "geometry": f.get("geometry", None),
+                        }.items()
+                        if v is not None
+                    }
+                    for f in item_list["items"]
+                )
 
                 # CSV Response
                 if output_type == MediaType.csv:
@@ -821,12 +809,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             ]
 
-            items_returned = len(items["features"])
-
-            if (matched_items - items_returned) > offset:
-                next_offset = offset + items_returned
+            if next_token := item_list["next"]:
                 query_params = QueryParams(
-                    {**request.query_params, "offset": next_offset}
+                    {**request.query_params, "offset": next_token}
                 )
                 url = (
                     self.url_for(request, "items", collectionId=collection.id)
@@ -841,15 +826,11 @@ class OGCFeaturesFactory(EndpointsFactory):
                     },
                 )
 
-            if offset:
+            if item_list["prev"] is not None:
+                prev_token = item_list["prev"]
                 qp = dict(request.query_params)
                 qp.pop("offset")
-                prev_offset = max(offset - items_returned, 0)
-                if prev_offset:
-                    query_params = QueryParams({**qp, "offset": prev_offset})
-                else:
-                    query_params = QueryParams({**qp})
-
+                query_params = QueryParams({**qp, "offset": prev_token})
                 url = self.url_for(request, "items", collectionId=collection.id)
                 if qp:
                     url += f"?{query_params}"
@@ -870,8 +851,8 @@ class OGCFeaturesFactory(EndpointsFactory):
                 "description": collection.description
                 or collection.title
                 or collection.id,
-                "numberMatched": matched_items,
-                "numberReturned": items_returned,
+                "numberMatched": item_list["matched"],
+                "numberReturned": len(item_list["items"]),
                 "links": links,
                 "features": [
                     {
@@ -900,7 +881,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             },
                         ],
                     }
-                    for feature in items["features"]
+                    for feature in item_list["items"]
                 ],
             }
 
@@ -987,7 +968,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            items, _ = await collection.features(
+            item_list = await collection.features(
                 pool=request.app.state.pool,
                 bbox_only=bbox_only,
                 simplify=simplify,
@@ -999,41 +980,26 @@ class OGCFeaturesFactory(EndpointsFactory):
                 geom_as_wkt=geom_as_wkt,
             )
 
-            features = items.get("features", [])
-            if not features:
+            if not item_list["items"]:
                 raise NotFound(
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
 
-            feature = features[0]
+            feature = item_list["items"][0]
 
             if output_type in (
                 MediaType.csv,
                 MediaType.json,
                 MediaType.ndjson,
             ):
+                row = {
+                    "collectionId": collection.id,
+                    "itemId": feature.get("id"),
+                    **feature.get("properties", {}),
+                }
                 if feature.get("geometry") is not None:
-                    rows = iter(
-                        [
-                            {
-                                "collectionId": collection.id,
-                                "itemId": feature.get("id"),
-                                **feature.get("properties", {}),
-                                "geometry": feature["geometry"],
-                            },
-                        ]
-                    )
-
-                else:
-                    rows = iter(
-                        [
-                            {
-                                "collectionId": collection.id,
-                                "itemId": feature.get("id"),
-                                **feature.get("properties", {}),
-                            },
-                        ]
-                    )
+                    row["geometry"] = (feature["geometry"],)
+                rows = iter([row])
 
                 # CSV Response
                 if output_type == MediaType.csv:
@@ -1853,7 +1819,7 @@ class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
 
     # OGC Features dependency
-    catalog_dependency: Callable[..., Catalog] = CatalogParams
+    catalog_dependency: Callable[..., CollectionList] = CatalogParams
 
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms

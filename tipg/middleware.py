@@ -103,7 +103,7 @@ class CatalogUpdateMiddleware:
         if not catalog:
             raise MissingCollectionCatalog("Could not find collections catalog.")
 
-        last_updated = catalog.last_updated
+        last_updated = catalog["last_updated"]
         if not last_updated or datetime.now() > (
             last_updated + timedelta(seconds=self.ttl)
         ):

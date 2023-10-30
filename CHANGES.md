@@ -12,6 +12,26 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - add `py.typed` file
 
+- add `ItemList` and `CollectionList` *TypedDict*
+
+    ```python
+    class ItemList(TypedDict):
+        """Items."""
+
+        items: List[Feature]
+        matched: Optional[int]
+        next: Optional[int]
+        prev: Optional[int]
+
+    class CollectionList(TypedDict):
+        """Collections."""
+
+        collections: List[Collection]
+        matched: Optional[int]
+        next: Optional[int]
+        prev: Optional[int]
+    ```
+
 ### fixed
 
 - hide map element in HTML pages when collections/items do not have spatial component (https://github.com/developmentseed/tipg/issues/132)
@@ -47,30 +67,24 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
         ...
     ```
 
-- make `Catalog` a Pydantic model and add `matched`, `next` and `prev` attributes
+- `Collection.features()` method now returns an `ItemList` dict
 
     ```python
-    # Before
-    class Catalog(TypedDict):
-        """Collection Catalog."""
+    #before
+    collection = Collection()
+    features_collection, matched = collection.features(...)
 
-        collections: Dict[str, Collection]
-        last_updated: datetime.datetime
-
-    # Now
-    class Catalog(BaseModel):
-        """Collection Catalog."""
-
-        collections: Dict[str, Collection]
-        last_updated: datetime.datetime
-        matched: Optional[int] = None
-        next: Optional[int] = None
-        prev: Optional[int] = None
+    #now
+    collection = Collection()
+    items_list = collection.features(...)
+    print(items_list["matched"])  # Number of matched items for the query
+    print(items_list["next"])  # Next Offset
+    print(items_list["prev"])  # Previous Offset
     ```
 
 - move `/collections` QueryParameters in the `CatalogParams` dependency
 
-- the `CatalogParams` now returns a `Catalog` object
+- the `CatalogParams` now returns a `CollectionList` object
 
 - move `s_intersects` and `t_intersects` functions from `tipg.factory` to `tipg.dependencies`
 

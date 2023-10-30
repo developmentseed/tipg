@@ -11,7 +11,7 @@ from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 from typing_extensions import Annotated
 
-from tipg.collections import Catalog, Collection
+from tipg.collections import Catalog, Collection, CollectionList
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
 from tipg.resources.enums import MediaType
 from tipg.settings import TMSSettings
@@ -422,8 +422,8 @@ def CollectionParams(
     if not catalog:
         raise MissingCollectionCatalog("Could not find collections catalog.")
 
-    if collectionId in catalog.collections:
-        return catalog.collections[collectionId]
+    if collectionId in catalog["collections"]:
+        return catalog["collections"][collectionId]
 
     raise HTTPException(
         status_code=404, detail=f"Table/Function '{collectionId}' not found."
@@ -453,7 +453,7 @@ def CatalogParams(
             description="Starts the response at an offset.",
         ),
     ] = None,
-) -> Catalog:
+) -> CollectionList:
     """Return Collections Catalog."""
     limit = limit or 0
     offset = offset or 0
@@ -462,7 +462,7 @@ def CatalogParams(
     if not catalog:
         raise MissingCollectionCatalog("Could not find collections catalog.")
 
-    collections_list = list(catalog.collections.values())
+    collections_list = list(catalog["collections"].values())
 
     # type filter
     if type_filter is not None:
@@ -499,9 +499,8 @@ def CatalogParams(
 
     returned = len(collections_list)
 
-    return Catalog(
-        collections={col.id: col for col in collections_list},
-        last_updated=catalog.last_updated,
+    return CollectionList(
+        collections=collections_list,
         matched=matched,
         next=offset + returned if matched - returned > offset else None,
         prev=max(offset - returned, 0) if offset else None,
