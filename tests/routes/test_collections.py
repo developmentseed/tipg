@@ -272,7 +272,7 @@ def test_collections_include_functions(app_includes_function):
     assert response.status_code == 200
     body = response.json()
     ids = [x["id"] for x in body["collections"]]
-    assert ["pg_temp.hexagons", "pg_temp.squares"] == ids
+    assert ["pg_temp.hexagons"] == ids
 
 
 def test_collections_empty(app_empty):
