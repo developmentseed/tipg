@@ -18,8 +18,8 @@ from typing_extensions import Annotated
 from tipg import model
 from tipg.collections import Collection, CollectionList
 from tipg.dependencies import (
-    CatalogParams,
     CollectionParams,
+    CollectionsParams,
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
@@ -331,8 +331,8 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 class OGCFeaturesFactory(EndpointsFactory):
     """OGC Features Endpoints Factory."""
 
-    # catalog dependency
-    catalog_dependency: Callable[..., CollectionList] = CatalogParams
+    # collections dependency
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
     @property
     def conforms_to(self) -> List[str]:
@@ -414,7 +414,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             request: Request,
             collection_list: Annotated[
                 CollectionList,
-                Depends(self.catalog_dependency),
+                Depends(self.collections_dependency),
             ],
             output_type: Annotated[
                 Optional[MediaType],
@@ -1819,7 +1819,7 @@ class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
 
     # OGC Features dependency
-    catalog_dependency: Callable[..., CollectionList] = CatalogParams
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
@@ -1846,7 +1846,7 @@ class Endpoints(EndpointsFactory):
     def register_routes(self):
         """Register factory Routes."""
         self.ogc_features = OGCFeaturesFactory(
-            catalog_dependency=self.catalog_dependency,
+            collections_dependency=self.collections_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,

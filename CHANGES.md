@@ -81,14 +81,18 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
     print(items_list["next"])  # Next Offset
     print(items_list["prev"])  # Previous Offset
     ```
+- rename `catalog_dependency` attribute to `collections_dependency`
 
-- move `/collections` QueryParameters in the `CatalogParams` dependency
+- move the `collections_dependency` attribute from the `EndpointsFactory` to `OGCFeaturesFactory` class
 
-- the `CatalogParams` now returns a `CollectionList` object
+- move `/collections` QueryParameters in the `CollectionsParams` dependency
+
+- rename `CatalogParams` to `CollectionsParams`
+
+- the `CollectionsParams` now returns a `CollectionList` object
 
 - move `s_intersects` and `t_intersects` functions from `tipg.factory` to `tipg.dependencies`
 
-- move the `catalog_dependency` attribute from the `EndpointsFactory` to `OGCFeaturesFactory` class
 
 ## [0.4.4] - 2023-10-03
 

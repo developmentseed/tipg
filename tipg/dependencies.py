@@ -430,7 +430,7 @@ def CollectionParams(
     )
 
 
-def CatalogParams(
+def CollectionsParams(
     request: Request,
     bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
     datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
