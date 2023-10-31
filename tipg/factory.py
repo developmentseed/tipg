@@ -9,7 +9,6 @@ from urllib.parse import urlencode
 
 import jinja2
 import orjson
-from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
@@ -17,10 +16,10 @@ from pygeofilter.ast import AstType
 from typing_extensions import Annotated
 
 from tipg import model
-from tipg.collections import Catalog, Collection
+from tipg.collections import Collection, CollectionList
 from tipg.dependencies import (
-    CatalogParams,
     CollectionParams,
+    CollectionsParams,
     ItemsOutputType,
     OutputType,
     QueryablesOutputType,
@@ -110,45 +109,6 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
         yield writer.writerow(row)
 
 
-def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
-    """Check if bbox intersects with spatial extent."""
-    return (
-        (bbox[0] < spatial_extent[2])
-        and (bbox[2] > spatial_extent[0])
-        and (bbox[3] > spatial_extent[1])
-        and (bbox[1] < spatial_extent[3])
-    )
-
-
-def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
-    """Check if dates intersect with temporal extent."""
-    if len(interval) == 1:
-        start = end = parse_rfc3339(interval[0])
-
-    else:
-        start = parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
-        end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
-
-    mint, maxt = temporal_extent
-    min_ext = parse_rfc3339(mint) if mint is not None else None
-    max_ext = parse_rfc3339(maxt) if maxt is not None else None
-
-    if len(interval) == 1:
-        if start == min_ext or start == max_ext:
-            return True
-
-    if not start:
-        return max_ext <= end or min_ext <= end
-
-    elif not end:
-        return min_ext >= start or max_ext >= start
-
-    else:
-        return min_ext >= start and max_ext <= end
-
-    return False
-
-
 def create_html_response(
     request: Request,
     data: str,
@@ -201,7 +161,6 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     router: APIRouter = field(default_factory=APIRouter)
 
     # collection dependency
-    catalog_dependency: Callable[..., Catalog] = CatalogParams
     collection_dependency: Callable[..., Collection] = CollectionParams
 
     # Router Prefix is needed to find the path for routes when prefixed
@@ -372,6 +331,9 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 class OGCFeaturesFactory(EndpointsFactory):
     """OGC Features Endpoints Factory."""
 
+    # collections dependency
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams
+
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
@@ -448,73 +410,18 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             },
         )
-        def collections(  # noqa: C901
+        def collections(
             request: Request,
-            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
-            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
-            type_filter: Annotated[
-                Optional[Literal["Function", "Table"]],
-                Query(alias="type", description="Filter based on Collection type."),
+            collection_list: Annotated[
+                CollectionList,
+                Depends(self.collections_dependency),
+            ],
+            output_type: Annotated[
+                Optional[MediaType],
+                Depends(OutputType),
             ] = None,
-            limit: Annotated[
-                Optional[int],
-                Query(
-                    ge=0,
-                    le=1000,
-                    description="Limits the number of collection in the response.",
-                ),
-            ] = None,
-            offset: Annotated[
-                Optional[int],
-                Query(
-                    ge=0,
-                    description="Starts the response at an offset.",
-                ),
-            ] = None,
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
-            collection_catalog=Depends(self.catalog_dependency),
         ):
             """List of collections."""
-            collections_list = list(collection_catalog["collections"].values())
-
-            limit = limit or 0
-            offset = offset or 0
-
-            # type filter
-            if type_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.type == type_filter
-                ]
-
-            # bbox filter
-            if bbox_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.bounds is not None
-                    and s_intersects(bbox_filter, collection.bounds)
-                ]
-
-            # datetime filter
-            if datetime_filter is not None:
-                collections_list = [
-                    collection
-                    for collection in collections_list
-                    if collection.dt_bounds is not None
-                    and t_intersects(datetime_filter, collection.dt_bounds)
-                ]
-
-            matched_items = len(collections_list)
-
-            if limit:
-                collections_list = collections_list[offset : offset + limit]
-            else:
-                collections_list = collections_list[offset:]
-
-            items_returned = len(collections_list)
-
             links: list = [
                 model.Link(
                     href=self.url_for(request, "collections"),
@@ -523,10 +430,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ]
 
-            if (matched_items - items_returned) > offset:
-                next_offset = offset + items_returned
+            if next_token := collection_list["next"]:
                 query_params = QueryParams(
-                    {**request.query_params, "offset": next_offset}
+                    {**request.query_params, "offset": next_token}
                 )
                 url = self.url_for(request, "collections") + f"?{query_params}"
                 links.append(
@@ -538,14 +444,11 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                 )
 
-            if offset:
+            if collection_list["prev"] is not None:
+                prev_token = collection_list["prev"]
                 qp = dict(request.query_params)
-                qp.pop("offset")
-                prev_offset = max(offset - items_returned, 0)
-                if prev_offset:
-                    query_params = QueryParams({**qp, "offset": prev_offset})
-                else:
-                    query_params = QueryParams({**qp})
+                qp.pop("offset", None)
+                query_params = QueryParams({**qp, "offset": prev_token})
 
                 url = self.url_for(request, "collections")
                 if qp:
@@ -562,8 +465,8 @@ class OGCFeaturesFactory(EndpointsFactory):
 
             data = model.Collections(
                 links=links,
-                numberMatched=matched_items,
-                numberReturned=items_returned,
+                numberMatched=collection_list["matched"],
+                numberReturned=len(collection_list["collections"]),
                 collections=[
                     model.Collection(
                         id=collection.id,
@@ -600,7 +503,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             ),
                         ],
                     )
-                    for collection in collections_list
+                    for collection in collection_list["collections"]
                 ],
             )
 
@@ -816,8 +719,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
-            offset = offset or 0
-
             output_type = output_type or MediaType.geojson
             geom_as_wkt = output_type not in [
                 MediaType.geojson,
@@ -825,7 +726,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            items, matched_items = await collection.features(
+            item_list = await collection.features(
                 request.app.state.pool,
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
@@ -849,29 +750,19 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if (
-                    items["features"]
-                    and items["features"][0].get("geometry") is not None
-                ):
-                    rows = (
-                        {
+                rows = (
+                    {
+                        k: v
+                        for k, v in {
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": f["geometry"],
-                        }
-                        for f in items["features"]
-                    )
-
-                else:
-                    rows = (
-                        {
-                            "collectionId": collection.id,
-                            "itemId": f.get("id"),
-                            **f.get("properties", {}),
-                        }
-                        for f in items["features"]
-                    )
+                            "geometry": f.get("geometry", None),
+                        }.items()
+                        if v is not None
+                    }
+                    for f in item_list["items"]
+                )
 
                 # CSV Response
                 if output_type == MediaType.csv:
@@ -916,12 +807,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                 },
             ]
 
-            items_returned = len(items["features"])
-
-            if (matched_items - items_returned) > offset:
-                next_offset = offset + items_returned
+            if next_token := item_list["next"]:
                 query_params = QueryParams(
-                    {**request.query_params, "offset": next_offset}
+                    {**request.query_params, "offset": next_token}
                 )
                 url = (
                     self.url_for(request, "items", collectionId=collection.id)
@@ -936,15 +824,11 @@ class OGCFeaturesFactory(EndpointsFactory):
                     },
                 )
 
-            if offset:
+            if item_list["prev"] is not None:
+                prev_token = item_list["prev"]
                 qp = dict(request.query_params)
                 qp.pop("offset")
-                prev_offset = max(offset - items_returned, 0)
-                if prev_offset:
-                    query_params = QueryParams({**qp, "offset": prev_offset})
-                else:
-                    query_params = QueryParams({**qp})
-
+                query_params = QueryParams({**qp, "offset": prev_token})
                 url = self.url_for(request, "items", collectionId=collection.id)
                 if qp:
                     url += f"?{query_params}"
@@ -965,8 +849,8 @@ class OGCFeaturesFactory(EndpointsFactory):
                 "description": collection.description
                 or collection.title
                 or collection.id,
-                "numberMatched": matched_items,
-                "numberReturned": items_returned,
+                "numberMatched": item_list["matched"],
+                "numberReturned": len(item_list["items"]),
                 "links": links,
                 "features": [
                     {
@@ -995,7 +879,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             },
                         ],
                     }
-                    for feature in items["features"]
+                    for feature in item_list["items"]
                 ],
             }
 
@@ -1082,7 +966,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            items, _ = await collection.features(
+            item_list = await collection.features(
                 pool=request.app.state.pool,
                 bbox_only=bbox_only,
                 simplify=simplify,
@@ -1094,41 +978,26 @@ class OGCFeaturesFactory(EndpointsFactory):
                 geom_as_wkt=geom_as_wkt,
             )
 
-            features = items.get("features", [])
-            if not features:
+            if not item_list["items"]:
                 raise NotFound(
                     f"Item {itemId} in Collection {collection.id} does not exist."
                 )
 
-            feature = features[0]
+            feature = item_list["items"][0]
 
             if output_type in (
                 MediaType.csv,
                 MediaType.json,
                 MediaType.ndjson,
             ):
+                row = {
+                    "collectionId": collection.id,
+                    "itemId": feature.get("id"),
+                    **feature.get("properties", {}),
+                }
                 if feature.get("geometry") is not None:
-                    rows = iter(
-                        [
-                            {
-                                "collectionId": collection.id,
-                                "itemId": feature.get("id"),
-                                **feature.get("properties", {}),
-                                "geometry": feature["geometry"],
-                            },
-                        ]
-                    )
-
-                else:
-                    rows = iter(
-                        [
-                            {
-                                "collectionId": collection.id,
-                                "itemId": feature.get("id"),
-                                **feature.get("properties", {}),
-                            },
-                        ]
-                    )
+                    row["geometry"] = (feature["geometry"],)
+                rows = iter([row])
 
                 # CSV Response
                 if output_type == MediaType.csv:
@@ -1947,6 +1816,9 @@ class OGCTilesFactory(EndpointsFactory):
 class Endpoints(EndpointsFactory):
     """OGC Features and Tiles Endpoints Factory."""
 
+    # OGC Features dependency
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams
+
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
     with_tiles_viewer: bool = True
@@ -1972,7 +1844,7 @@ class Endpoints(EndpointsFactory):
     def register_routes(self):
         """Register factory Routes."""
         self.ogc_features = OGCFeaturesFactory(
-            catalog_dependency=self.catalog_dependency,
+            collections_dependency=self.collections_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,
@@ -1982,7 +1854,6 @@ class Endpoints(EndpointsFactory):
         self.router.include_router(self.ogc_features.router, tags=["OGC Features API"])
 
         self.ogc_tiles = OGCTilesFactory(
-            catalog_dependency=self.catalog_dependency,
             collection_dependency=self.collection_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,

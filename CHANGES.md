@@ -12,6 +12,26 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - add `py.typed` file
 
+- add `tipg.collections.ItemList` and `tipg.collections.CollectionList` *TypedDict*
+
+    ```python
+    class ItemList(TypedDict):
+        """Items."""
+
+        items: List[Feature]
+        matched: Optional[int]
+        next: Optional[int]
+        prev: Optional[int]
+
+    class CollectionList(TypedDict):
+        """Collections."""
+
+        collections: List[Collection]
+        matched: Optional[int]
+        next: Optional[int]
+        prev: Optional[int]
+    ```
+
 ### fixed
 
 - hide map element in HTML pages when collections/items do not have spatial component (https://github.com/developmentseed/tipg/issues/132)
@@ -46,6 +66,33 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
         ...
     ```
+
+- `Collection.features()` method now returns an `ItemList` dict
+
+    ```python
+    #before
+    collection = Collection()
+    features_collection, matched = collection.features(...)
+
+    #now
+    collection = Collection()
+    items_list = collection.features(...)
+    print(items_list["matched"])  # Number of matched items for the query
+    print(items_list["next"])  # Next Offset
+    print(items_list["prev"])  # Previous Offset
+    ```
+- rename `catalog_dependency` attribute to `collections_dependency`
+
+- move the `collections_dependency` attribute from the `EndpointsFactory` to `OGCFeaturesFactory` class
+
+- move `/collections` QueryParameters in the `CollectionsParams` dependency
+
+- rename `CatalogParams` to `CollectionsParams`
+
+- the `CollectionsParams` now returns a `CollectionList` object
+
+- move `s_intersects` and `t_intersects` functions from `tipg.factory` to `tipg.dependencies`
+
 
 ## [0.4.4] - 2023-10-03
 
