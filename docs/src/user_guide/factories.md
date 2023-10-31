@@ -36,7 +36,7 @@ class Factory:
             request: Request,
             collection=Depends(self.collection_dependency),
         ):
-            item_list = collection.items(...)
+            item_list = collection.features(...)
             ...
 
         @self.router.get("/collections/{collectionId}/items/{itemId}")
@@ -45,7 +45,7 @@ class Factory:
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
         ):
-            item_list = collection.items(item_id=[itemId])
+            item_list = collection.features(ids_filter=[itemId])
             ...
 
 
