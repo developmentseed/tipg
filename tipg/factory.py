@@ -719,8 +719,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
-            offset = offset or 0
-
             output_type = output_type or MediaType.geojson
             geom_as_wkt = output_type not in [
                 MediaType.geojson,
