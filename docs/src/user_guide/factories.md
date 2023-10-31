@@ -5,15 +5,24 @@
 # pseudo code
 class Factory:
 
+    collections_dependency: Callable
     collection_dependency: Callable
 
-    def __init__(self, collection_dependency: Callable):
+    def __init__(self, collections_dependency: Callable, collection_dependency: Callable):
+        self.collections_dependency = collections_dependency
         self.collection_dependency = collection_dependency
         self.router = APIRouter()
 
         self.register_routes()
 
     def register_routes(self):
+
+        @self.router.get("/collections")
+        def collections(
+            request: Request,
+            collection_list=Depends(self.collections_dependency),
+        ):
+            ...
 
         @self.router.get("/collections/{collectionId}")
         def collection(
@@ -27,6 +36,7 @@ class Factory:
             request: Request,
             collection=Depends(self.collection_dependency),
         ):
+            item_list = collection.items(...)
             ...
 
         @self.router.get("/collections/{collectionId}/items/{itemId}")
@@ -35,6 +45,7 @@ class Factory:
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
         ):
+            item_list = collection.items(item_id=[itemId])
             ...
 
 
@@ -61,7 +72,7 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 
 #### Creation Options
 
-- **catalog_dependency** (Callable[..., tipg.collections.Catalog]): Callable which return a Catalog instance
+- **collections_dependency** (Callable[..., tipg.collections.CollectionList]): Callable which return a CollectionList dictionary
 
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
@@ -143,7 +154,7 @@ app.include_router(endpoints.router)
 
 #### Creation Options
 
-- **catalog_dependency** (Callable[..., tipg.collections.Catalog]): Callable which return a Catalog instance
+- **collections_dependency** (Callable[..., tipg.collections.CollectionList]): Callable which return a CollectionList dictionary
 
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
 
