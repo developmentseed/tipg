@@ -7,10 +7,21 @@ class Factory:
 
     collections_dependency: Callable
     collection_dependency: Callable
+    items_dependency: Callable
+    item_dependency: Callable
 
-    def __init__(self, collections_dependency: Callable, collection_dependency: Callable):
+    def __init__(
+        self,
+        collections_dependency: Callable,
+        collection_dependency: Callable,
+        items_dependency: Callable,
+        item_dependency: Callable,
+    ):
         self.collections_dependency = collections_dependency
         self.collection_dependency = collection_dependency
+        self.items_dependency = items_dependency
+        self.item_dependency = item_dependency
+
         self.router = APIRouter()
 
         self.register_routes()
@@ -35,17 +46,16 @@ class Factory:
         def items(
             request: Request,
             collection=Depends(self.collection_dependency),
+            item_list=Depends(self.items_dependency),
         ):
-            item_list = collection.features(...)
             ...
 
         @self.router.get("/collections/{collectionId}/items/{itemId}")
         def item(
             request: Request,
             collection=Depends(self.collection_dependency),
-            itemId: str = Path(..., description="Item identifier"),
+            feature=Depends(self.item_dependency)
         ):
-            item_list = collection.features(ids_filter=[itemId])
             ...
 
 
@@ -75,6 +85,10 @@ app.include_router(endpoints.router, tags=["OGC Features API"])
 - **collections_dependency** (Callable[..., tipg.collections.CollectionList]): Callable which return a CollectionList dictionary
 
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
+
+- **items_dependency** (Callable[..., tipg.collections.ItemList]): Callable which return a ItemList dictionary
+
+- **item_dependency** (Callable[..., tipg.collections.Feature]): Callable which return a Feature dictionary
 
 - **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
@@ -157,6 +171,10 @@ app.include_router(endpoints.router)
 - **collections_dependency** (Callable[..., tipg.collections.CollectionList]): Callable which return a CollectionList dictionary
 
 - **collection_dependency** (Callable[..., tipg.collections.Collection]): Callable which return a Collection instance
+
+- **items_dependency** (Callable[..., tipg.collections.ItemList]): Callable which return a ItemList dictionary
+
+- **item_dependency** (Callable[..., tipg.collections.Feature]): Callable which return a Feature dictionary
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 

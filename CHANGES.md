@@ -32,6 +32,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
         prev: Optional[int]
     ```
 
+- add `tipg.dependencies.ItemsParams` and `tipg.dependencies.ItemParams`
+
 ### fixed
 
 - hide map element in HTML pages when collections/items do not have spatial component (https://github.com/developmentseed/tipg/issues/132)
@@ -93,6 +95,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - move `s_intersects` and `t_intersects` functions from `tipg.factory` to `tipg.dependencies`
 
+- add `items_dependency` and `item_dependency` attributes in `OGCFeaturesFactory` class. Those new dependencies define the input for the `/items` and `/items/{itemId}` endpoints
 
 ## [0.4.4] - 2023-10-03
 

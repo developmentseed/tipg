@@ -11,16 +11,23 @@ from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 from typing_extensions import Annotated
 
-from tipg.collections import Catalog, Collection, CollectionList
-from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
+from tipg.collections import Catalog, Collection, CollectionList, Feature, ItemList
+from tipg.errors import (
+    InvalidBBox,
+    MissingCollectionCatalog,
+    MissingFunctionParameter,
+    NoPrimaryKey,
+    NotFound,
+)
 from tipg.resources.enums import MediaType
-from tipg.settings import TMSSettings
+from tipg.settings import FeaturesSettings, TMSSettings
 
 from fastapi import Depends, HTTPException, Path, Query
 
 from starlette.requests import Request
 
 tms_settings = TMSSettings()
+features_settings = FeaturesSettings()
 
 ResponseType = Literal["json", "html"]
 QueryablesResponseType = Literal["schemajson", "html"]
@@ -505,3 +512,149 @@ def CollectionsParams(
         next=offset + returned if matched - returned > offset else None,
         prev=max(offset - returned, 0) if offset else None,
     )
+
+
+async def ItemsParams(
+    request: Request,
+    collection: Annotated[Collection, Depends(CollectionParams)],
+    ids_filter: Annotated[Optional[List[str]], Depends(ids_query)],
+    bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
+    datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+    properties: Annotated[Optional[List[str]], Depends(properties_query)],
+    cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
+    sortby: Annotated[Optional[str], Depends(sortby_query)],
+    geom_column: Annotated[
+        Optional[str],
+        Query(
+            description="Select geometry column.",
+            alias="geom-column",
+        ),
+    ] = None,
+    datetime_column: Annotated[
+        Optional[str],
+        Query(
+            description="Select datetime column.",
+            alias="datetime-column",
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(
+            ge=0,
+            le=features_settings.max_features_per_query,
+            description="Limits the number of features in the response.",
+        ),
+    ] = features_settings.default_features_limit,
+    offset: Annotated[
+        Optional[int],
+        Query(
+            ge=0,
+            description="Starts the response at an offset.",
+        ),
+    ] = None,
+    bbox_only: Annotated[
+        Optional[bool],
+        Query(
+            description="Only return the bounding box of the feature.",
+            alias="bbox-only",
+        ),
+    ] = None,
+    simplify: Annotated[
+        Optional[float],
+        Query(
+            description="Simplify the output geometry to given threshold in decimal degrees.",
+        ),
+    ] = None,
+    output_type: Annotated[Optional[MediaType], Depends(ItemsOutputType)] = None,
+) -> ItemList:
+    """Get list of Items."""
+    output_type = output_type or MediaType.geojson
+    geom_as_wkt = output_type not in [
+        MediaType.geojson,
+        MediaType.geojsonseq,
+        MediaType.html,
+    ]
+
+    item_list = await collection.features(
+        request.app.state.pool,
+        ids_filter=ids_filter,
+        bbox_filter=bbox_filter,
+        datetime_filter=datetime_filter,
+        properties_filter=properties_filter_query(request, collection),
+        function_parameters=function_parameters_query(request, collection),
+        cql_filter=cql_filter,
+        sortby=sortby,
+        properties=properties,
+        limit=limit,
+        offset=offset,
+        geom=geom_column,
+        dt=datetime_column,
+        bbox_only=bbox_only,
+        simplify=simplify,
+        geom_as_wkt=geom_as_wkt,
+    )
+
+    return item_list
+
+
+async def ItemParams(
+    request: Request,
+    collection: Annotated[Collection, Depends(CollectionParams)],
+    itemId: Annotated[str, Path(description="Item identifier")],
+    bbox_only: Annotated[
+        Optional[bool],
+        Query(
+            description="Only return the bounding box of the feature.",
+            alias="bbox-only",
+        ),
+    ] = None,
+    simplify: Annotated[
+        Optional[float],
+        Query(
+            description="Simplify the output geometry to given threshold in decimal degrees.",
+        ),
+    ] = None,
+    geom_column: Annotated[
+        Optional[str],
+        Query(
+            description="Select geometry column.",
+            alias="geom-column",
+        ),
+    ] = None,
+    datetime_column: Annotated[
+        Optional[str],
+        Query(
+            description="Select datetime column.",
+            alias="datetime-column",
+        ),
+    ] = None,
+    properties: Optional[List[str]] = Depends(properties_query),
+    output_type: Annotated[Optional[MediaType], Depends(ItemsOutputType)] = None,
+) -> Feature:
+    """Get Item by id."""
+    if collection.id_column is None:
+        raise NoPrimaryKey("No primary key is set on this table")
+
+    output_type = output_type or MediaType.geojson
+    geom_as_wkt = output_type not in [
+        MediaType.geojson,
+        MediaType.geojsonseq,
+        MediaType.html,
+    ]
+
+    item_list = await collection.features(
+        pool=request.app.state.pool,
+        bbox_only=bbox_only,
+        simplify=simplify,
+        ids_filter=[itemId],
+        properties=properties,
+        function_parameters=function_parameters_query(request, collection),
+        geom=geom_column,
+        dt=datetime_column,
+        geom_as_wkt=geom_as_wkt,
+    )
+
+    if not item_list["items"]:
+        raise NotFound(f"Item {itemId} in Collection {collection.id} does not exist.")
+
+    return item_list["items"][0]

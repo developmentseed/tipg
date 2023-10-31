@@ -16,11 +16,13 @@ from pygeofilter.ast import AstType
 from typing_extensions import Annotated
 
 from tipg import model
-from tipg.collections import Collection, CollectionList
+from tipg.collections import Collection, CollectionList, Feature, ItemList
 from tipg.dependencies import (
     CollectionParams,
     CollectionsParams,
+    ItemParams,
     ItemsOutputType,
+    ItemsParams,
     OutputType,
     QueryablesOutputType,
     TileParams,
@@ -33,7 +35,7 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
+from tipg.errors import MissingGeometryColumn
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
@@ -334,6 +336,10 @@ class OGCFeaturesFactory(EndpointsFactory):
     # collections dependency
     collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
+    items_dependency: Callable[..., ItemList] = ItemsParams  # type: ignore
+
+    item_dependency: Callable[..., Feature] = ItemParams  # type: ignore
+
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
@@ -412,10 +418,7 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def collections(
             request: Request,
-            collection_list: Annotated[
-                CollectionList,
-                Depends(self.collections_dependency),
-            ],
+            collection_list=Depends(self.collections_dependency),
             output_type: Annotated[
                 Optional[MediaType],
                 Depends(OutputType),
@@ -533,7 +536,7 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def collection(
             request: Request,
-            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            collection=Depends(self.collection_dependency),
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
@@ -620,7 +623,7 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         def queryables(
             request: Request,
-            collection: Annotated[Collection, Depends(self.collection_dependency)],
+            collection=Depends(self.collection_dependency),
             output_type: Annotated[
                 Optional[MediaType], Depends(QueryablesOutputType)
             ] = None,
@@ -666,85 +669,13 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         async def items(  # noqa: C901
             request: Request,
-            collection: Annotated[Collection, Depends(self.collection_dependency)],
-            ids_filter: Annotated[Optional[List[str]], Depends(ids_query)],
-            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
-            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
-            properties: Annotated[Optional[List[str]], Depends(properties_query)],
-            cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
-            sortby: Annotated[Optional[str], Depends(sortby_query)],
-            geom_column: Annotated[
-                Optional[str],
-                Query(
-                    description="Select geometry column.",
-                    alias="geom-column",
-                ),
-            ] = None,
-            datetime_column: Annotated[
-                Optional[str],
-                Query(
-                    description="Select datetime column.",
-                    alias="datetime-column",
-                ),
-            ] = None,
-            limit: Annotated[
-                int,
-                Query(
-                    ge=0,
-                    le=features_settings.max_features_per_query,
-                    description="Limits the number of features in the response.",
-                ),
-            ] = features_settings.default_features_limit,
-            offset: Annotated[
-                Optional[int],
-                Query(
-                    ge=0,
-                    description="Starts the response at an offset.",
-                ),
-            ] = None,
-            bbox_only: Annotated[
-                Optional[bool],
-                Query(
-                    description="Only return the bounding box of the feature.",
-                    alias="bbox-only",
-                ),
-            ] = None,
-            simplify: Annotated[
-                Optional[float],
-                Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
-                ),
-            ] = None,
+            collection=Depends(self.collection_dependency),
+            item_list=Depends(self.items_dependency),
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
             output_type = output_type or MediaType.geojson
-            geom_as_wkt = output_type not in [
-                MediaType.geojson,
-                MediaType.geojsonseq,
-                MediaType.html,
-            ]
-
-            item_list = await collection.features(
-                request.app.state.pool,
-                ids_filter=ids_filter,
-                bbox_filter=bbox_filter,
-                datetime_filter=datetime_filter,
-                properties_filter=properties_filter_query(request, collection),
-                function_parameters=function_parameters_query(request, collection),
-                cql_filter=cql_filter,
-                sortby=sortby,
-                properties=properties,
-                limit=limit,
-                offset=offset,
-                geom=geom_column,
-                dt=datetime_column,
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
-            )
-
             if output_type in (
                 MediaType.csv,
                 MediaType.json,
@@ -922,69 +853,13 @@ class OGCFeaturesFactory(EndpointsFactory):
         )
         async def item(
             request: Request,
-            collection: Annotated[Collection, Depends(self.collection_dependency)],
-            itemId: Annotated[str, Path(description="Item identifier")],
-            bbox_only: Annotated[
-                Optional[bool],
-                Query(
-                    description="Only return the bounding box of the feature.",
-                    alias="bbox-only",
-                ),
-            ] = None,
-            simplify: Annotated[
-                Optional[float],
-                Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
-                ),
-            ] = None,
-            geom_column: Annotated[
-                Optional[str],
-                Query(
-                    description="Select geometry column.",
-                    alias="geom-column",
-                ),
-            ] = None,
-            datetime_column: Annotated[
-                Optional[str],
-                Query(
-                    description="Select datetime column.",
-                    alias="datetime-column",
-                ),
-            ] = None,
-            properties: Optional[List[str]] = Depends(properties_query),
+            collection=Depends(self.collection_dependency),
+            feature=Depends(self.item_dependency),
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
-            if collection.id_column is None:
-                raise NoPrimaryKey("No primary key is set on this table")
-
             output_type = output_type or MediaType.geojson
-            geom_as_wkt = output_type not in [
-                MediaType.geojson,
-                MediaType.geojsonseq,
-                MediaType.html,
-            ]
-
-            item_list = await collection.features(
-                pool=request.app.state.pool,
-                bbox_only=bbox_only,
-                simplify=simplify,
-                ids_filter=[itemId],
-                properties=properties,
-                function_parameters=function_parameters_query(request, collection),
-                geom=geom_column,
-                dt=datetime_column,
-                geom_as_wkt=geom_as_wkt,
-            )
-
-            if not item_list["items"]:
-                raise NotFound(
-                    f"Item {itemId} in Collection {collection.id} does not exist."
-                )
-
-            feature = item_list["items"][0]
-
             if output_type in (
                 MediaType.csv,
                 MediaType.json,
@@ -992,7 +867,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             ):
                 row = {
                     "collectionId": collection.id,
-                    "itemId": feature.get("id"),
+                    "itemId": feature["id"],
                     **feature.get("properties", {}),
                 }
                 if feature.get("geometry") is not None:
@@ -1038,7 +913,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             request,
                             "item",
                             collectionId=collection.id,
-                            itemId=itemId,
+                            itemId=feature["id"],
                         ),
                         "rel": "self",
                         "type": "application/geo+json",
@@ -1819,6 +1694,10 @@ class Endpoints(EndpointsFactory):
     # OGC Features dependency
     collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
+    items_dependency: Callable[..., ItemList] = ItemsParams  # type: ignore
+
+    item_dependency: Callable[..., Feature] = ItemParams  # type: ignore
+
     # OGC Tiles dependency
     supported_tms: TileMatrixSets = default_tms
     with_tiles_viewer: bool = True
@@ -1846,6 +1725,8 @@ class Endpoints(EndpointsFactory):
         self.ogc_features = OGCFeaturesFactory(
             collections_dependency=self.collections_dependency,
             collection_dependency=self.collection_dependency,
+            items_dependency=self.items_dependency,
+            item_dependency=self.item_dependency,
             router_prefix=self.router_prefix,
             templates=self.templates,
             # We do not want `/` and `/conformance` from the factory
