@@ -12,7 +12,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - add `py.typed` file
 
-- add `ItemList` and `CollectionList` *TypedDict*
+- add `tipg.collections.ItemList` and `tipg.collections.CollectionList` *TypedDict*
 
     ```python
     class ItemList(TypedDict):
