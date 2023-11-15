@@ -327,6 +327,31 @@ def test_items_properties_filter_cql2(app):
     assert body["features"][0]["properties"]["row"] == 10
     Items.model_validate(body)
 
+    filter_query = {"op": "isNull", "args": [{"property": "numeric"}]}
+    response = app.get(
+        f"/collections/public.my_data/items?filter-lang=cql2-json&filter=&filter={json.dumps(filter_query)}"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["id"] == "5"
+    Items.model_validate(body)
+
+    response = app.get(
+        "/collections/public.my_data/items?filter-lang=cql2-text&filter=&filter=numeric IS NULL"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 1
+    assert body["numberMatched"] == 1
+    assert body["numberReturned"] == 1
+    assert body["features"][0]["properties"]["id"] == "5"
+    Items.model_validate(body)
+
 
 def test_items_geo_filter_cql2(app):
     """Test CQL2 geo filter."""

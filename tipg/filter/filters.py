@@ -35,8 +35,6 @@ class Operator:
     """Filter Operators."""
 
     OPERATORS: Dict[str, Callable] = {
-        "is_null": lambda f, a=None: f.is_(None),
-        "is_not_null": lambda f, a=None: f.isnot(None),
         "==": lambda f, a: f == a,
         "=": lambda f, a: f == a,
         "eq": lambda f, a: f == a,
@@ -315,6 +313,11 @@ def attribute(name: str, fields: List[str]):
         return False
     else:
         raise TypeError(f"Field {name} not in table.")
+
+
+def isnull(lhs):
+    """null value."""
+    return lhs.is_(V("NULL"))
 
 
 def literal(value):
