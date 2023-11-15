@@ -54,7 +54,9 @@ class BuildPGEvaluator(Evaluator):  # noqa: D101
 
     @handle(ast.IsNull)
     def null(self, node, lhs):  # noqa: D102
-        return filters.runop(lhs, None, "is_null", node.not_)
+        if isinstance(lhs, list):
+            lhs = filters.attribute(lhs[0].name, self.field_mapping)
+        return filters.isnull(lhs)
 
     # @handle(ast.ExistsPredicateNode)
     # def exists(self, node, lhs):
