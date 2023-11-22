@@ -52,6 +52,8 @@ async def lifespan(app: FastAPI):
         exclude_functions=db_settings.exclude_functions,
         exclude_function_schemas=db_settings.exclude_function_schemas,
         spatial=db_settings.only_spatial_tables,
+        spatial_extent=db_settings.spatial_extent,
+        datetime_extent=db_settings.datetime_extent,
     )
 
     yield
