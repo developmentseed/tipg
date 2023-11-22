@@ -281,3 +281,36 @@ def test_collections_empty(app_empty):
     assert response.status_code == 200
     body = response.json()
     assert not body["collections"]
+
+
+def test_collections_no_extents(app_no_extents):
+    """Test /collections endpoint."""
+    response = app_no_extents.get("/collections/public.landsat_wrs")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["crs"] == ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+    assert body["extent"].get("spatial").get("bbox") == [
+        [
+            -180,
+            -90,
+            180,
+            90,
+        ]
+    ]  # default value
+    assert not body["extent"].get("temporal")
+
+
+def test_collections_no_spatial_extent(app_no_spatial_extent):
+    """Test /collections endpoint."""
+    response = app_no_spatial_extent.get("/collections/public.canada")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["crs"] == ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+    assert body["extent"].get("spatial").get("bbox") == [
+        [
+            -180,
+            -90,
+            180,
+            90,
+        ]
+    ]

@@ -119,6 +119,8 @@ def create_tipg_app(
             exclude_functions=db_settings.exclude_functions,
             exclude_function_schemas=db_settings.exclude_function_schemas,
             spatial=db_settings.only_spatial_tables,
+            spatial_extent=db_settings.spatial_extent,
+            datetime_extent=db_settings.datetime_extent,
         )
         yield
         await close_db_connection(app)
@@ -320,6 +322,56 @@ def app_myschema_public(database_url, monkeypatch):
         schemas=["myschema", "public"],
         exclude_function_schemas=["public"],
         only_spatial_tables=False,
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_no_extents(database_url, monkeypatch):
+    """Create APP with tables from `myschema` and `public` schema but without
+    calculating the spatial/datetime extents.
+
+    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
+    """
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["myschema", "public"],
+        spatial_extent=False,
+        datetime_extent=False,
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def app_no_spatial_extent(database_url, monkeypatch):
+    """Create APP with tables from `myschema` and `public` schema but without
+    calculating the spatial/datetime extents.
+
+    Available tables should come from `myschema` and `public` and functions from `pg_temp`.
+    """
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["myschema", "public"],
+        spatial_extent=False,
+        datetime_extent=True,
     )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
