@@ -299,6 +299,12 @@ def test_collections_no_extents(app_no_extents):
     ]  # default value
     assert not body["extent"].get("temporal")
 
+    # check a table with datetime column
+    response = app_no_extents.get("/collections/public.nongeo_data")
+    assert response.status_code == 200
+    body = response.json()
+    assert not body.get("extent")
+
 
 def test_collections_no_spatial_extent(app_no_spatial_extent):
     """Test /collections endpoint."""
@@ -314,3 +320,10 @@ def test_collections_no_spatial_extent(app_no_spatial_extent):
             90,
         ]
     ]
+
+    # check a table with datetime column
+    response = app_no_spatial_extent.get("/collections/public.nongeo_data")
+    assert response.status_code == 200
+    body = response.json()
+    assert not body["extent"].get("spatial")
+    assert body["extent"].get("temporal")

@@ -347,6 +347,7 @@ def app_no_extents(database_url, monkeypatch):
         schemas=["myschema", "public"],
         spatial_extent=False,
         datetime_extent=False,
+        only_spatial_tables=False,
     )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
@@ -372,6 +373,7 @@ def app_no_spatial_extent(database_url, monkeypatch):
         schemas=["myschema", "public"],
         spatial_extent=False,
         datetime_extent=True,
+        only_spatial_tables=False,
     )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
