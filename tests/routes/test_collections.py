@@ -344,7 +344,7 @@ def test_collections_temporal_extent_datetime_column(app):
     intervals = body["extent"]["temporal"]["interval"]
     assert len(intervals) == 4
     assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
-    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
+    assert intervals[0][1] == "2007-10-24T00:00:00+00:00"
 
     response = app.get("/collections/public.my_data_alt")
     assert response.status_code == 200
@@ -352,7 +352,7 @@ def test_collections_temporal_extent_datetime_column(app):
     intervals = body["extent"]["temporal"]["interval"]
     assert len(intervals) == 4
     assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
-    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
+    assert intervals[0][1] == "2007-10-24T00:00:00+00:00"
 
     response = app.get("/collections/public.my_data_date")
     assert response.status_code == 200
@@ -360,4 +360,4 @@ def test_collections_temporal_extent_datetime_column(app):
     intervals = body["extent"]["temporal"]["interval"]
     assert len(intervals) == 4
     assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
-    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
+    assert intervals[0][1] == "2007-10-24T00:00:00+00:00"
