@@ -50,6 +50,8 @@ class: `tipg.settings.DatabaseSettings`
 prefix: **`TIPG_DB_`**
 
 - **SCHEMAS** (list of string): Named schemas, `tipg` can look for `Tables` or `Functions`. Default is `["public"]`
+- **SPATIAL_EXTENT** (bool): Calculate spatial extent of records. Default is `True`.
+- **DATETIME_EXTENT** (bool): Calculate temporal extent of records. Default is `True`.
 
 #### `Tables`
 

@@ -907,6 +907,8 @@ async def get_collection_index(  # noqa: C901
     exclude_functions: Optional[List[str]] = None,
     exclude_function_schemas: Optional[List[str]] = None,
     spatial: bool = True,
+    spatial_extent: bool = True,
+    datetime_extent: bool = True,
 ) -> Catalog:
     """Fetch Table and Functions index."""
     schemas = schemas or ["public"]
@@ -920,7 +922,9 @@ async def get_collection_index(  # noqa: C901
             :functions,
             :exclude_functions,
             :exclude_function_schemas,
-            :spatial
+            :spatial,
+            :spatial_extent,
+            :datetime_extent
         );
     """  # noqa: W605
 
@@ -935,6 +939,8 @@ async def get_collection_index(  # noqa: C901
             exclude_functions=exclude_functions,
             exclude_function_schemas=exclude_function_schemas,
             spatial=spatial,
+            spatial_extent=spatial_extent,
+            datetime_extent=datetime_extent,
         )
 
         catalog: Dict[str, Collection] = {}

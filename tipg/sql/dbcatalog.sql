@@ -31,7 +31,9 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_pk(
 $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_properties(
-    att pg_attribute
+    att pg_attribute,
+    spatial_extent boolean,
+    datetime_extent boolean
 ) RETURNS jsonb AS $$
 DECLARE
     attname text := att.attname;
@@ -48,7 +50,7 @@ DECLARE
     bounds_geom geometry;
     bounds float[];
 BEGIN
-    IF atttype IN ('timestamp', 'timestamptz') THEN
+    IF atttype IN ('timestamp', 'timestamptz') AND datetime_extent THEN
         EXECUTE FORMAT(
             $q$
                 SELECT to_json(min(%I::timestamptz)), to_json(max(%I::timestamptz))
@@ -62,28 +64,30 @@ BEGIN
         geometry_type := postgis_typmod_type(att.atttypmod);
         srid = coalesce(nullif(postgis_typmod_srid(att.atttypmod),0), 4326);
 
-        SELECT schemaname, relname, n_live_tup, n_mod_since_analyze
-        INTO _schemaname, _relname, _n_live_tup, _n_mod_since_analyze
-        FROM pg_stat_user_tables
-        WHERE relid = att.attrelid;
+        IF spatial_extent THEN
+            SELECT schemaname, relname, n_live_tup, n_mod_since_analyze
+            INTO _schemaname, _relname, _n_live_tup, _n_mod_since_analyze
+            FROM pg_stat_user_tables
+            WHERE relid = att.attrelid;
 
-        IF _n_live_tup > 0 AND _n_mod_since_analyze = 0 THEN
-            bounds_geom := st_setsrid(st_estimatedextent(_schemaname, _relname, attname), srid);
-        END IF;
-
-        IF bounds_geom IS NULL THEN
-            IF atttype = 'geography' THEN
-                EXECUTE format('SELECT ST_SetSRID(ST_Extent(%I::geometry), %L) FROM %s', attname, srid, att.attrelid::regclass::text) INTO bounds_geom;
-            ELSE
-                EXECUTE format('SELECT ST_SetSRID(ST_Extent(%I), %L) FROM %s', attname, srid, att.attrelid::regclass::text) INTO bounds_geom;
+            IF _n_live_tup > 0 AND _n_mod_since_analyze = 0 THEN
+                bounds_geom := st_setsrid(st_estimatedextent(_schemaname, _relname, attname), srid);
             END IF;
-        END IF;
 
-        IF bounds_geom IS NOT NULL THEN
-            IF srid != 4326 THEN
-                bounds_geom := st_transform(bounds_geom, 4326);
+            IF bounds_geom IS NULL THEN
+                IF atttype = 'geography' THEN
+                    EXECUTE format('SELECT ST_SetSRID(ST_Extent(%I::geometry), %L) FROM %s', attname, srid, att.attrelid::regclass::text) INTO bounds_geom;
+                ELSE
+                    EXECUTE format('SELECT ST_SetSRID(ST_Extent(%I), %L) FROM %s', attname, srid, att.attrelid::regclass::text) INTO bounds_geom;
+                END IF;
             END IF;
-            bounds = ARRAY[ st_xmin(bounds_geom), st_ymin(bounds_geom), st_xmax(bounds_geom), st_ymax(bounds_geom) ];
+
+            IF bounds_geom IS NOT NULL THEN
+                IF srid != 4326 THEN
+                    bounds_geom := st_transform(bounds_geom, 4326);
+                END IF;
+                bounds = ARRAY[ st_xmin(bounds_geom), st_ymin(bounds_geom), st_xmax(bounds_geom), st_ymax(bounds_geom) ];
+            END IF;
         END IF;
     END IF;
 
@@ -101,11 +105,13 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_tproperties(
-    c pg_class
+    c pg_class,
+    spatial_extent boolean,
+    datetime_extent boolean
 ) RETURNS jsonb AS $$
     WITH t AS (
         SELECT
-            jsonb_agg(pg_temp.tipg_properties(a)) as properties
+            jsonb_agg(pg_temp.tipg_properties(a, spatial_extent, datetime_extent)) as properties
         FROM
             pg_attribute a
         WHERE
@@ -123,9 +129,11 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_tproperties(
 $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_tproperties(
-    tabl text
+    tabl text,
+    spatial_extent boolean,
+    datetime_extent boolean
 ) RETURNS jsonb AS $$
-    SELECT pg_temp.tipg_tproperties(pg_class) FROM pg_class WHERE oid=tabl::regclass;
+    SELECT pg_temp.tipg_tproperties(pg_class, spatial_extent, datetime_extent) FROM pg_class WHERE oid=tabl::regclass;
 $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION pg_temp.tipg_fun_defaults(defaults pg_node_tree) RETURNS text[] AS $$
@@ -235,11 +243,13 @@ CREATE OR REPLACE FUNCTION pg_temp.tipg_catalog(
     functions text[] DEFAULT NULL,
     exclude_functions text[] DEFAULT NULL,
     exclude_function_schemas text[] DEFAULT NULL,
-    spatial boolean DEFAULT FALSE
+    spatial boolean DEFAULT FALSE,
+    spatial_extent boolean DEFAULT TRUE,
+    datetime_extent boolean DEFAULT TRUE
 ) RETURNS SETOF jsonb AS $$
     WITH a AS (
         SELECT
-            pg_temp.tipg_tproperties(c) as meta
+            pg_temp.tipg_tproperties(c, spatial_extent, datetime_extent) as meta
         FROM pg_class c, pg_temp.tipg_get_schemas(schemas,exclude_table_schemas) s
         WHERE
             c.relnamespace=s

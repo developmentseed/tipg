@@ -50,7 +50,6 @@ class TableSettings(BaseSettings):
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
-    datetime_extent: bool = True
 
     model_config = {
         "env_prefix": "TIPG_",
@@ -158,6 +157,8 @@ class DatabaseSettings(BaseSettings):
     functions: Optional[List[str]] = None
     exclude_functions: Optional[List[str]] = None
     exclude_function_schemas: Optional[List[str]] = None
+    datetime_extent: bool = True
+    spatial_extent: bool = True
 
     only_spatial_tables: bool = True
 
