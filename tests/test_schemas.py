@@ -57,7 +57,7 @@ def test_myschema_and_public_functions(app_myschema_public_functions):
 def test_myschema_and_public(app_myschema_public):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
     collection_number = (
-        14  # 5 custom functions + 1 tables from myschema + 8 tables from public
+        15  # 5 custom functions + 1 tables from myschema + 8 tables from public
     )
 
     response = app_myschema_public.get("/collections")
@@ -78,6 +78,7 @@ def test_myschema_and_public(app_myschema_public):
     # tables from public
     assert "public.my_data" in ids
     assert "public.my_data_alt" in ids
+    assert "public.my_data_date" in ids
     assert "public.minnesota" in ids
     assert "public.canada" in ids
     assert "public.landsat" in ids
@@ -122,7 +123,7 @@ def test_public_functions(app_only_public_functions):
 def test_myschema_and_public_order(app_myschema_public_order):
     """Available tables should come from `myschema` and `public` and functions from `pg_temp`"""
     collection_number = (
-        14  # 5 custom functions + 1 tables from myschema + 8 tables from public
+        15  # 5 custom functions + 1 tables from myschema + 8 tables from public
     )
 
     response = app_myschema_public_order.get("/collections")

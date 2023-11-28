@@ -157,6 +157,7 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__geomcol", "othergeom")
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_alt__pk", "id")
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat__geomcol", "geom")
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_my_data_date__datetimecol", "datedt")
 
     # OGC Tiles Settings
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))

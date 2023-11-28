@@ -1,7 +1,7 @@
 """Test /collections endpoints."""
 
 collection_number = (
-    16  # 5 custom functions + 8 public tables + (N) functions from public
+    17  # 5 custom functions + 8 public tables + (N) functions from public
 )
 
 
@@ -79,13 +79,14 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"datetime": "../2022-12-31T23:59:59Z"})
     body = response.json()
-    assert body["numberMatched"] == 4
+    assert body["numberMatched"] == 5
     ids = [x["id"] for x in body["collections"]]
     assert sorted(
         [
             "public.my_data",
             "public.my_data_alt",
             "public.my_data_geo",
+            "public.my_data_date",
             "public.nongeo_data",
         ]
     ) == sorted(ids)
@@ -96,23 +97,29 @@ def test_collections_search(app):
 
     response = app.get("/collections", params={"datetime": "2003-12-31T23:59:59Z/.."})
     body = response.json()
-    assert body["numberMatched"] == 4
+    assert body["numberMatched"] == 5
     ids = [x["id"] for x in body["collections"]]
     assert sorted(
         [
             "public.my_data",
             "public.my_data_alt",
             "public.my_data_geo",
+            "public.my_data_date",
             "public.nongeo_data",
         ]
     ) == sorted(ids)
 
     response = app.get("/collections", params={"datetime": "2004-12-31T23:59:59Z/.."})
     body = response.json()
-    assert body["numberMatched"] == 3
+    assert body["numberMatched"] == 4
     ids = [x["id"] for x in body["collections"]]
     assert sorted(
-        ["public.my_data", "public.my_data_alt", "public.my_data_geo"]
+        [
+            "public.my_data",
+            "public.my_data_alt",
+            "public.my_data_date",
+            "public.my_data_geo",
+        ]
     ) == sorted(ids)
 
     response = app.get(
@@ -327,3 +334,30 @@ def test_collections_no_spatial_extent(app_no_spatial_extent):
     body = response.json()
     assert not body["extent"].get("spatial")
     assert body["extent"].get("temporal")
+
+
+def test_collections_temporal_extent_datetime_column(app):
+    """Test /collections endpoint."""
+    response = app.get("/collections/public.my_data")
+    assert response.status_code == 200
+    body = response.json()
+    intervals = body["extent"]["temporal"]["interval"]
+    assert len(intervals) == 4
+    assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
+    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
+
+    response = app.get("/collections/public.my_data_alt")
+    assert response.status_code == 200
+    body = response.json()
+    intervals = body["extent"]["temporal"]["interval"]
+    assert len(intervals) == 4
+    assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
+    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
+
+    response = app.get("/collections/public.my_data_date")
+    assert response.status_code == 200
+    body = response.json()
+    intervals = body["extent"]["temporal"]["interval"]
+    assert len(intervals) == 4
+    assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
+    assert intervals[0][0] == "2007-10-24T00:00:00+00:00"
