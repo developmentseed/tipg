@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.5.2] - 2023-11-28
+
+- add `TIPG_DB_SPATIAL_EXTENT` and `TIPG_DB_DATETIME_EXTENT` environment options to control if `tipg` will scan the tables for spatio-temporal extents (author @hrodmn, https://github.com/developmentseed/tipg/pull/143)
+
 ## [0.5.1] - 2023-11-15
 
 ### fixed
