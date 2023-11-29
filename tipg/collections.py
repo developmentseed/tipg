@@ -145,7 +145,7 @@ class Column(BaseModel):
     @property
     def is_datetime(self) -> bool:
         """Returns true if this property is a datetime column."""
-        return self.type in ("timestamp", "timestamptz")
+        return self.type in ("timestamp", "timestamptz", "date")
 
 
 class Parameter(Column):
@@ -528,7 +528,7 @@ class Collection(BaseModel):
         if datetime:
             if not self.datetime_columns:
                 raise MissingDatetimeColumn(
-                    "Must have timestamp typed column to filter with datetime."
+                    "Must have timestamp/timestamptz/date typed column to filter with datetime."
                 )
 
             datetime_column = self.get_datetime_column(dt)
@@ -976,7 +976,7 @@ async def get_collection_index(  # noqa: C901
             geometry_column = None
 
             for c in properties:
-                if c.get("type") in ("timestamp", "timestamptz"):
+                if c.get("type") in ("timestamp", "timestamptz", "date"):
                     if (
                         table_conf.get("datetimecol") == c["name"]
                         or datetime_column is None

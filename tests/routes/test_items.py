@@ -525,7 +525,10 @@ def test_items_datetime(app):
     assert response.status_code == 500
     assert response.headers["content-type"] == "application/json"
     body = response.json()
-    assert body["detail"] == "Must have timestamp typed column to filter with datetime."
+    assert (
+        body["detail"]
+        == "Must have timestamp/timestamptz/date typed column to filter with datetime."
+    )
 
     # Invalid datetime column
     response = app.get(
@@ -883,3 +886,30 @@ def test_items_env_table_config_alt(app, monkeypatch):
     body = response.json()
     assert body["features"][0]["id"] == "0"
     Items.model_validate(body)
+
+    # There should NOT be items > 2005-10-19 for `my_data`
+    response = app.get(
+        "/collections/public.my_data/items?datetime=2005-10-19T00:00:00Z/.."
+    )
+    body = response.json()
+    assert body["numberMatched"] == 0
+
+    # There should be items > 2004-12-31 for `my_data_alt`
+    response = app.get(
+        "/collections/public.my_data_alt/items?datetime=2004-12-31T00:00:00Z/.."
+    )
+    body = response.json()
+    assert body["numberMatched"] == 6
+    assert body["features"][0]["properties"]["datetime"] == "2004-10-19T10:23:54"
+    assert body["features"][0]["properties"]["otherdt"] == "2005-10-19T10:23:54+00:00"
+    assert body["features"][0]["properties"]["datedt"] == "2007-10-19"
+
+    # There should be items > 2005-10-19 for `my_data_date`
+    response = app.get(
+        "/collections/public.my_data_date/items?datetime=2005-10-19T00:00:00Z/.."
+    )
+    body = response.json()
+    assert body["numberMatched"] == 6
+    assert body["features"][0]["properties"]["datetime"] == "2004-10-19T10:23:54"
+    assert body["features"][0]["properties"]["otherdt"] == "2005-10-19T10:23:54+00:00"
+    assert body["features"][0]["properties"]["datedt"] == "2007-10-19"

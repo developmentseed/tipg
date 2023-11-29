@@ -50,7 +50,7 @@ DECLARE
     bounds_geom geometry;
     bounds float[];
 BEGIN
-    IF atttype IN ('timestamp', 'timestamptz') AND datetime_extent THEN
+    IF atttype IN ('timestamp', 'timestamptz', 'date') AND datetime_extent THEN
         EXECUTE FORMAT(
             $q$
                 SELECT to_json(min(%I::timestamptz)), to_json(max(%I::timestamptz))
