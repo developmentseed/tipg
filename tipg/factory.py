@@ -886,7 +886,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request, orjson.dumps(data).decode(), template_name="items"
+                    request, orjsonDumps(data).decode(), template_name="items"
                 )
 
             # GeoJSONSeq Response
@@ -1050,7 +1050,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    orjson.dumps(data).decode(),
+                    orjsonDumps(data).decode(),
                     template_name="item",
                 )
 
