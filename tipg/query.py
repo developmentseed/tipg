@@ -1,22 +1,24 @@
 """Helpers for using pgmini."""
-import pgmini
-from typing import List, Optional, Union, Tuple, Any
 import re
+from contextvars import copy_context
+from typing import List
+from typing import Literal as TypeLiteral
+from typing import Optional, Tuple, Union
+
+import pgmini
 from pgmini import Param as P
-from pgmini import Literal as L
-from pgmini import build
+from pgmini.utils import (
+    CTX_ALIAS_ONLY,
+    CTX_CTE,
+    CTX_DISABLE_TABLE_IN_COLUMN,
+    CTX_FORCE_CAST_BRACKETS,
+    CTX_TABLES,
+    CompileABC,
+)
 
 
 def is_integer(n):
-    """
-    Check if a value is an integer.
-
-    Args:
-        n: The value to check.
-
-    Returns:
-        True if the value is an integer, False otherwise.
-    """
+    """Check if a value is an integer."""
     try:
         float(n)
     except ValueError:
@@ -26,15 +28,7 @@ def is_integer(n):
 
 
 def NULL(type: Optional[str] = None):
-    """
-    Return typed null.
-
-    Args:
-        type (Optional[str]): The type of the null value. Defaults to None.
-
-    Returns:
-        pgmini.literal.NULL: The typed null value.
-    """
+    """Return typed NULL."""
     if type is None:
         return pgmini.literal.NULL
     return pgmini.literal.NULL.As(type)
@@ -42,9 +36,7 @@ def NULL(type: Optional[str] = None):
 
 def quote_ident_part(s: str) -> str:
     """Quote Identifiers."""
-    print('quoting', s)
     s = strip_ident(s)
-    print(s, type(s))
     if re.match(r"^[a-z]+$", s):
         return s
     if re.match(r"^[a-zA-Z][\w\d_]*$", s):
@@ -66,13 +58,11 @@ def strip_ident(s: str) -> str:
 
 def F(name: str, *args):
     """Run Postgres Function."""
-    print('createing function', name, args)
     if re.match(r"^[a-zA-Z_]+$", name):
         return pgmini.func._Func(x_name=name, x_params=args)
     else:
         raise TypeError(
-            f"Cannot Create {name}"
-            "Only functions that match ^[a-zA-Z_]+ allowed"
+            f"Cannot Create {name}" "Only functions that match ^[a-zA-Z_]+ allowed",
         )
 
 
@@ -85,22 +75,7 @@ def Transform(g, srid: Union[int, str] = 4326):
 
 
 def Bbox(box, srid: int = 4326):
-    """
-    Return a bounding box (bbox) as a geometry object.
-
-    Args:
-        box (list or object): The bounding box coordinates. If a list is provided,
-            it should contain either 4 or 6 elements representing the left, bottom,
-            right, top coordinates of the bbox. If an object is provided, it should
-            have attributes `left`, `bottom`, `right`, and `top` representing the
-            bbox coordinates.
-        srid (int, optional): The spatial reference identifier (SRID) of the bbox.
-            Defaults to 4326, which corresponds to WGS84 coordinate system.
-
-    Returns:
-        F: A geometry object representing the bbox.
-
-    """
+    """Return Bounding Box."""
     if isinstance(box, list):
         if len(list) == 4:
             left, bottom, right, top = box
@@ -135,15 +110,7 @@ class Table(pgmini.Table):
         return F("row_number").Over()
 
     def tipg_id(self, id_column: str):
-        """
-        Return an id column using existing pkey if available.
-
-        Args:
-            id_column (str): The name of the id column.
-
-        Returns:
-            The id column as an alias "tipg_id" if available, otherwise the row number as an alias "tipg_id".
-        """
+        """Create ID column using existing primary key or row number."""
         if id_column:
             return self.get(id_column).As("tipg_id")
         return self.row_num().As("tipg_id")
@@ -164,3 +131,51 @@ class Column(pgmini.column.Column):
 def C(name: str, table: Optional[Table] = Table("t")):
     """Return a pgmini column."""
     return table.get(name)
+
+
+def raw_query(q, *p):
+    """Utility to print raw statement to use for debugging."""
+    qsub = re.sub(r"\$([0-9]+)", r"{\1}", q)
+
+    def quote_str(s):
+        """Quote strings."""
+        if s is None:
+            return "null"
+        elif isinstance(s, str):
+            return f"'{s}'"
+        else:
+            return s
+
+    p = [quote_str(s) for s in p]
+    return qsub.format(None, *p)
+
+
+def build(
+    item: CompileABC,
+    driver: TypeLiteral["asyncpg", "psycopg", "raw"] = "asyncpg",
+    table_in_column: bool = False,
+) -> Union[Tuple[str, list], str]:
+    """Build a SQL Query from  CQL2 pydantic model.
+    Return as raw SQL or as a tuple of sql and parameters
+    ready for asyncpg or psycopg parameter binding.
+    """
+
+    def run():
+        CTX_FORCE_CAST_BRACKETS.set(False)
+        CTX_CTE.set(())
+        CTX_TABLES.set(())
+        CTX_ALIAS_ONLY.set(False)
+        CTX_DISABLE_TABLE_IN_COLUMN.set(not table_in_column)
+
+        if driver == "psycopg":
+            params = {}
+        else:
+            params = []
+
+        query = item._build(params)
+        if driver == "raw":
+            return raw_query(query, *params)
+        else:
+            return query, params
+
+    return copy_context().run(run)
