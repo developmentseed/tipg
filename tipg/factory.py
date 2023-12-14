@@ -35,7 +35,7 @@ from tipg.dependencies import (
 )
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
-from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse, orjsonDumps
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -781,7 +781,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -892,7 +892,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    (orjson.dumps(f) + b"\n" for f in data["features"]),  # type: ignore
+                    (orjsonDumps(f) + b"\n" for f in data["features"]),  # type: ignore
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -1016,7 +1016,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -1512,7 +1512,6 @@ class OGCTilesFactory(EndpointsFactory):
             return Response(bytes(tile), media_type=MediaType.mvt.value)
 
     def _tilejson_routes(self):
-
         ############################################################################
         # ADDITIONAL ENDPOINTS NOT IN OGC Tiles API (tilejson, style.json, viewer) #
         ############################################################################

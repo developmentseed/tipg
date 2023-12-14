@@ -14,16 +14,20 @@ def default(obj):
         return str(obj)
 
 
+def orjsonDumps(content: Any):
+    return orjson.dumps(
+        content,
+        default=default,
+        option=orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY,
+    )
+
+
 class ORJSONResponse(JSONResponse):
     """Custom response handler for using orjson"""
 
     def render(self, content: Any) -> bytes:
         """Render the content into a JSON response using orjson"""
-        return orjson.dumps(
-            content,
-            default=default,
-            option=orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY,
-        )
+        return orjsonDumps(content)
 
 
 class GeoJSONResponse(ORJSONResponse):
