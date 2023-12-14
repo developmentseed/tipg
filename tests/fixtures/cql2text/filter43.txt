@@ -1,1 +1,0 @@
-CASEI("owner") = CASEI('somebody else')

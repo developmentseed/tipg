@@ -1,1 +1,0 @@
-ACCENTI("owner") = ACCENTI('Beyoncé')

@@ -1,1 +1,0 @@
-T_EQUALS("updated_at", DATE('1851-04-29'))

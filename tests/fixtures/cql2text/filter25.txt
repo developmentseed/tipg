@@ -1,1 +1,0 @@
-T_AFTER("updated_at", DATE('2010-02-10'))
