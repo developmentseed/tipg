@@ -15,6 +15,7 @@ def default(obj):
 
 
 def orjsonDumps(content: Any):
+    """Small wrapper function to run the orjson.dumps with the additional options we want"""
     return orjson.dumps(
         content,
         default=default,
