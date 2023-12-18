@@ -6,9 +6,8 @@ from typing import Dict, List, Literal, Optional, Tuple, get_args
 from ciso8601 import parse_rfc3339
 from morecantile import Tile
 from morecantile import tms as default_tms
-from pygeofilter.ast import AstType
-from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
-from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
+from pycql2.cql2_transformer import parser, transformer
+from pycql2.cql2_pydantic import BooleanExpression
 from typing_extensions import Annotated
 
 from tipg.collections import Catalog, Collection, CollectionList
@@ -189,7 +188,7 @@ def bbox_query(
     bbox: Annotated[
         Optional[str],
         Query(description="Spatial Filter."),
-    ] = None
+    ] = None,
 ) -> Optional[List[float]]:
     """BBox dependency."""
     if bbox:
@@ -290,14 +289,19 @@ def filter_query(
             alias="filter-lang",
         ),
     ] = None,
-) -> Optional[AstType]:
+) -> Optional[BooleanExpression]:
     """Parse Filter Query."""
+    print('PARSING CQL2', type(query), filter_lang, query)
     if query is not None:
         if filter_lang == "cql2-json":
-            return cql2_json_parser(query)
+            print('PARSING AS JSON')
+            model = BooleanExpression.model_validate_json(query)
+            print('MODEL', model)
+            return model
 
         # default to cql2-text
-        return cql2_text_parser(query)
+        print('PARSING AS TEXT')
+        return transformer.transform(parser.parse(query))
 
     return None
 

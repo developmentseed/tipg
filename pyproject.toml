@@ -131,6 +131,7 @@ ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
     "B905",  # ignore zip() without an explicit strict= parameter, only support with python >3.10
+    "F811", # ignore multiple definitions, handled by mypy
 ]
 
 

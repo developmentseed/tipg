@@ -247,6 +247,7 @@ def test_items_filter_cql_ids(app):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
+    print(body)
     assert len(body["features"]) == 1
     assert body["numberMatched"] == 1
     assert body["numberReturned"] == 1
@@ -257,7 +258,7 @@ def test_items_filter_cql_ids(app):
     response = app.get(
         "/collections/public.landsat_wrs/items?filter-lang=cql2-text&filter=ogc_fid IN (1,2)"
     )
-
+    print(response.json())
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
     body = response.json()
@@ -327,7 +328,7 @@ def test_items_properties_filter_cql2(app):
     assert body["features"][0]["properties"]["row"] == 10
     Items.model_validate(body)
 
-    filter_query = {"op": "isNull", "args": [{"property": "numeric"}]}
+    filter_query = {"op": "isNull", "args": {"property": "numeric"}}
     response = app.get(
         f"/collections/public.my_data/items?filter-lang=cql2-json&filter=&filter={json.dumps(filter_query)}"
     )

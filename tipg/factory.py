@@ -899,8 +899,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                     },
                 )
 
-            elif output_type == MediaType.geoparquet
-
             # Default to GeoJSON Response
             return GeoJSONResponse(data)
 

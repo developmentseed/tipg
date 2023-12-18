@@ -1,14 +1,12 @@
-
-# ruff noqa: F811
 """Tools to convert CQL2 into PostgreSQL SQL."""
 from datetime import date, datetime
 from inspect import signature
+import re
 from typing import Any, Callable, Dict, List
 from typing import Literal as TypeLiteral
 from typing import Optional, Tuple, Union
 
 import pgmini
-from pgmini import Param as P
 from pgmini.utils import CompileABC
 from plum import dispatch, overload
 from pycql2.cql2_pydantic import (
@@ -42,25 +40,15 @@ from pycql2.cql2_pydantic import (
 )
 from pycql2.cql2_transformer import parser, transformer
 from pydantic import BaseModel
+from tipg import collections
 
-from tipg.collections import Collection
-from tipg.query import NULL, F, Table, build, strip_ident
+from tipg.query import NULL, F, Table, build, strip_ident, ensure_list, P, Param
 
 transform = transformer.transform
 parse = parser.parse
 
 
-def ensure_list(s) -> list:
-    """Makes sure that variable is treated as list."""
-    if s is None:
-        return []
-    if isinstance(s, list):
-        return s
-    if isinstance(s, set):
-        return list(s)
-    if isinstance(s, tuple):
-        return list(s)
-    return [s]
+
 
 
 class Operator:
@@ -98,7 +86,6 @@ class Operator:
         if operator not in self.OPERATORS:
             msg = f"Operator `{operator}` not valid."
             raise Exception(msg)
-
         self.operator = operator
         self.function = self.OPERATORS[operator]
         self.arity = len(signature(self.function).parameters)
@@ -111,10 +98,17 @@ class CQL2SQL:
         """Init Class."""
         if collection is not None:
             self.collection = collection
+            cols={}
+            for ccol in collection.properties:
+                print('CCOL', ccol)
+                cols[ccol.name] = ccol.type
+            # cols = {f'{ccol.name}': ccol.type for ccol in collection.properties}
+            print(cols)
+            self._cols=cols
             tablecls = type(
                 self.collection.table,
                 (Table,),
-                {f'"{c.name}"': c.type for c in self.collection.properties},
+                cols,
             )
             self.table = tablecls(self.collection.table)
         else:
@@ -134,7 +128,7 @@ class CQL2SQL:
         return []
 
     @overload
-    def sql(self, e: NotExpression) -> CompileABC:
+    def sql(self, e: NotExpression) -> CompileABC:  # type: ignore[no-redef]
         """Get Not Expression."""
         args = self.get_args(e)
         return pgmini.operators.Not(args[0])
@@ -168,7 +162,7 @@ class CQL2SQL:
         return args, any(casei), any(accenti)
 
     @overload
-    def sql(self, e: IsLikePredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: IsLikePredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get Like Expression."""
         args, useilike, unaccent = self.get_args_casei_accenti(e)
         if unaccent:
@@ -179,27 +173,31 @@ class CQL2SQL:
         return left.Like(right)
 
     @overload
-    def sql(self, e: IsBetweenPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: IsBetweenPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get Between Expression."""
         left, low, high = self.get_args(e)
         return left.Between(low, high)
 
     @overload
-    def sql(self, e: IsInListPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: IsInListPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get In Expression."""
         left = self.sql(e.args[0])
-        args = pgmini.array.Array([self.sql(arg) for arg in e.args[1]])
-        return left.Any(args)
+        args = [(left == self.sql(arg)) for arg in e.args[1]]
+        # args = pgmini.array.Array([self.sql(arg) for arg in e.args[1]])
+        # return left.Any(args)
+        return pgmini.Or(*args)
 
     @overload
-    def sql(self, e: IsNullPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: IsNullPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get Null Expression."""
+        print('getting null expression', e)
         left = self.get_args(e)[0]
         return left.Is(NULL())
 
     @overload
-    def sql(self, e: BinaryComparisonPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: BinaryComparisonPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get binary comparisons expression."""
+        print('getting binary comparison predicate', e)
         args, casei, unaccent = self.get_args_casei_accenti(e)
         if casei:
             args = [F("lower", arg) for arg in args]
@@ -209,23 +207,25 @@ class CQL2SQL:
         return op.function(*args)
 
     @overload
-    def sql(self, e: ArithmeticExpression) -> CompileABC:  # type: ignore
+    def sql(self, e: ArithmeticExpression) -> CompileABC:  # type: ignore[no-redef]
         """Get operators expression."""
         args = self.get_args(e)
         op = Operator(e.op)
         return op.function(*args)
 
     @overload
-    def sql(self, e: AndOrExpression) -> CompileABC:  # type: ignore
+    def sql(self, e: AndOrExpression) -> CompileABC:  # type: ignore[no-redef]
         """Get and/or expression."""
+        print('getting and/or', e)
         args = self.get_args(e)
         if e.op == "or":
             return pgmini.Or(*args)
         return pgmini.And(*args)
 
     @overload
-    def sql(self, e: BooleanExpression) -> CompileABC:  # type: ignore
+    def sql(self, e: BooleanExpression) -> CompileABC:  # type: ignore[no-redef]
         """Get boolean expression."""
+        print('getting boolean', e)
         if isinstance(e.root, bool):
             if e.root:
                 return P(True)
@@ -233,29 +233,48 @@ class CQL2SQL:
         return self.sql(e.root)
 
     @overload
-    def sql(self, e: PropertyRef) -> CompileABC:  # type: ignore
+    def sql(self, e: PropertyRef) -> CompileABC:  # type: ignore[no-redef]
         """Get property expression."""
         return self.col(e.property)
 
     @overload
-    def sql(  # type: ignore
+    def sql(  # type: ignore[no-redef]
+        self,
+        e:  NumericExpression,
+    ) -> CompileABC:
+        """Get buildsql for character expression."""
+        print('BUILDING Numeric EXPRESSION')
+        print(self, e, type(e))
+        if isinstance(e, float):
+            if e.is_integer():
+                print('Is Integer')
+                e = int(e)
+        if hasattr(e, "root"):
+            print(e.root, type(e.root))
+            if isinstance(e.root, PropertyRef):
+                return self.sql(e.root)
+            return P(e.root)
+        return P(e)
+    @overload
+    def sql(  # type: ignore[no-redef]
         self,
         e: Union[
             CharacterExpression,
-            PatternExpression,
-            NumericExpression,
-            ArithmeticExpression,
+            PatternExpression
         ],
     ) -> CompileABC:
         """Get buildsql for character expression."""
+        print('BUILDING EXPRESSION')
+        print(e, type(e))
         if hasattr(e, "root"):
+            print(e.root, type(e.root))
             if isinstance(e.root, PropertyRef):
                 return self.sql(e.root)
             return P(e.root)
         return P(e)
 
     @overload
-    def sql(self, e: BboxLiteral) -> CompileABC:  # type: ignore
+    def sql(self, e: BboxLiteral) -> CompileABC:  # type: ignore[no-redef]
         """Get BBox expression."""
         box = e.bbox
         if len(box) == 4:
@@ -272,7 +291,7 @@ class CQL2SQL:
         return None
 
     @overload
-    def sql(self, e: GeometryLiteral) -> CompileABC:  # type: ignore
+    def sql(self, e: GeometryLiteral) -> CompileABC:  # type: ignore[no-redef]
         """Get wkt expression for geometry."""
         wkt = e.root.wkt
         if not wkt.startswith("SRID"):
@@ -281,26 +300,35 @@ class CQL2SQL:
 
     def get_collection_geom_info(
         self,
-        col: Optional[pgmini.column.Column] = None,
+        col = None,
     ) -> Union[Tuple[None, None], Tuple[int, str]]:
         """Get geometry/geography and srid from collectin."""
-        if self.collection and col:
+        print('get_collection_geom', col, type(col))
+        if self.collection and col and hasattr(col, '_name'):
             name = col._name
             ccol = self.collection.get_column(strip_ident(name))
             if ccol:
                 return ccol.srid, ccol.type
+        elif isinstance(col, Param):
+            matches = re.match(r'SRID=(\d+);.*', col._value)
+            print('MATCHES', matches)
+            if matches:
+                return int(matches.group(1)), 'geometry'
         return None, None
 
     @overload
-    def sql(self, e: SpatialPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: SpatialPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get buildsql for spatial predicate."""
+        print('getting spatial args', e.model_dump_json())
         op = e.op.upper().replace("S_", "ST_")
         args = self.get_args(e)
         left = args[0]
         right = args[1]
+        print(left, right)
 
         lsrid, ltyp = self.get_collection_geom_info(left)
         rsrid, rtyp = self.get_collection_geom_info(right)
+        print('Types/SRIDS', lsrid, ltyp, rsrid, rtyp)
 
         if (
             (lsrid == rsrid and ltyp == rtyp)
@@ -348,27 +376,27 @@ class CQL2SQL:
     }
 
     @overload
-    def sql(self, e: DateInstant) -> CompileABC:  # type: ignore
+    def sql(self, e: DateInstant) -> CompileABC:  # type: ignore[no-redef]
         """Get date instant date."""
         return self.sql(e.date)
 
     @overload
-    def sql(self, e: TimestampInstant) -> CompileABC:  # type: ignore
+    def sql(self, e: TimestampInstant) -> CompileABC:  # type: ignore[no-redef]
         """Get TimestampInstant datetime."""
         return self.sql(e.timestamp)
 
     @overload
-    def sql(self, e: date) -> CompileABC:  # type: ignore
+    def sql(self, e: date) -> CompileABC:  # type: ignore[no-redef]
         """Get date expression."""
         return P(e.isoformat()).Cast("date")
 
     @overload
-    def sql(self, e: datetime) -> CompileABC:  # type: ignore
+    def sql(self, e: datetime) -> CompileABC:  # type: ignore[no-redef]
         """Get datetime expression."""
         return P(e.isoformat()).Cast("timestamptz")
 
     @overload
-    def sql(self, e: IntervalInstance) -> Tuple[CompileABC, CompileABC]:  # type: ignore
+    def sql(self, e: IntervalInstance) -> Tuple[CompileABC, CompileABC]:  # type: ignore[no-redef]
         """Get Interval Expression."""
         if e.interval[0].root == "..":
             lower = P("-infinity").Cast("timestamptz")
@@ -405,7 +433,7 @@ class CQL2SQL:
         return None
 
     @overload
-    def sql(self, e: TemporalPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: TemporalPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get buildsql for temporal predicate."""
         op = e.op.upper()
         left = self.get_temporal_args(e.args[0])
@@ -422,19 +450,21 @@ class CQL2SQL:
         return self.temporal_ops[op](ll, lh, rl, rh)
 
     @overload
-    def sql(self, e: Array) -> CompileABC:  # type: ignore
+    def sql(self, e: Array) -> CompileABC:  # type: ignore[no-redef]
         """Get Array Expression."""
+        print('Getting Array Expression', e.root)
         vals = [self.sql(val) for val in e.root]
         return pgmini.array.Array(vals)
 
     @overload
-    def sql(self, e: ArrayExpression) -> Tuple[CompileABC, CompileABC]:  # type: ignore
+    def sql(self, e: ArrayExpression) -> Tuple[CompileABC, CompileABC]:  # type: ignore[no-redef]
         """Get root of array expression."""
+        print('getting root of array expression', e)
         tuple = e.root
         return self.sql(tuple[0]), self.sql(tuple[1])
 
     @overload
-    def sql(self, e: ArrayPredicate) -> CompileABC:  # type: ignore
+    def sql(self, e: ArrayPredicate) -> CompileABC:  # type: ignore[no-redef]
         """Get Array predicate expression."""
         op = e.op.upper()
         left, right = self.sql(e.args)
@@ -449,32 +479,41 @@ class CQL2SQL:
         return None
 
     @overload
-    def sql(self, e: FunctionRef) -> CompileABC:  # type: ignore
+    def sql(self, e: FunctionRef) -> CompileABC:  # type: ignore[no-redef]
         """Get reference to function."""
         return self.sql(e.function)
 
     @overload
-    def sql(self, e: Function) -> CompileABC:  # type: ignore
+    def sql(self, e: Function) -> CompileABC:  # type: ignore[no-redef]
         """Get Function Expression."""
         op = e.name if hasattr(e, "name") else e.op
         args = self.get_args(e)
         return F(op, *args)
 
     @dispatch
-    def sql(self, e):  # type: ignore
+    def sql(self, e):  # type: ignore[no-redef]
         """Fall through."""
         pass
 
 
+def cql2pgmini(
+    query: str,
+    collection: Optional["Collection"] = None
+) -> Union[Tuple[str, List[Any]], str]:
+    """Convert cql2 text into Pgmini expression."""
+    print('PARSING:', query)
+    cql = transform(parse(query))
+    T = CQL2SQL(collection)
+    return T.sql(cql)
+
+
 def cql2sql(
     query: str,
-    collection: Optional[Collection] = None,
+    collection: Optional["Collection"] = None,
     driver: TypeLiteral["asyncpg", "psycopg", "raw"] = "asyncpg",
     table_in_column: bool = False,
 ) -> Union[Tuple[str, List[Any]], str]:
     """Convert cql2 text into Postgres SQL."""
-    cql = transform(parse(query))
-    T = CQL2SQL(collection)
-    out = T.sql(cql)
+    out = cql2pgmini(query, collection)
 
     return build(out, driver=driver, table_in_column=table_in_column)
