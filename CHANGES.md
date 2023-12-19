@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.5.4] - 2023-12-19
+
+- Fix decimal error for streaming responses (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/148)
+
 ## [0.5.3] - 2023-11-29
 
 - add Postgres `date` type as valid datetime column type

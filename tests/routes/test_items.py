@@ -866,6 +866,21 @@ def test_items_env_table_config_main(app, monkeypatch):
     assert isinstance(body["features"][0]["properties"]["numeric"], str)
 
     response = app.get(
+        "/collections/public.my_data/items",
+        params={"limit": 1},
+        headers={"accept": "application/geo+json-seq"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json-seq"
+    body = response.text.splitlines()
+
+    assert len(body) == 1
+    feature = json.loads(body[0])
+    # Make sure that Postgres Decimal and Numeric are converted to str
+    assert isinstance(feature["properties"]["decimal"], str)
+    assert isinstance(feature["properties"]["numeric"], str)
+
+    response = app.get(
         "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"
     )
     body = response.json()
