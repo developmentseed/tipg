@@ -35,7 +35,7 @@ from tipg.dependencies import (
 )
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
-from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
+from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse, orjsonDumps
 from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -781,7 +781,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -886,13 +886,13 @@ class OGCFeaturesFactory(EndpointsFactory):
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request, orjson.dumps(data).decode(), template_name="items"
+                    request, orjsonDumps(data).decode(), template_name="items"
                 )
 
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    (orjson.dumps(f) + b"\n" for f in data["features"]),  # type: ignore
+                    (orjsonDumps(f) + b"\n" for f in data["features"]),  # type: ignore
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -1016,7 +1016,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -1050,7 +1050,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    orjson.dumps(data).decode(),
+                    orjsonDumps(data).decode(),
                     template_name="item",
                 )
 
@@ -1512,7 +1512,6 @@ class OGCTilesFactory(EndpointsFactory):
             return Response(bytes(tile), media_type=MediaType.mvt.value)
 
     def _tilejson_routes(self):
-
         ############################################################################
         # ADDITIONAL ENDPOINTS NOT IN OGC Tiles API (tilejson, style.json, viewer) #
         ############################################################################
