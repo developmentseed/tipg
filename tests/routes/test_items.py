@@ -84,6 +84,31 @@ def test_items_limit_and_offset(app):
     response = app.get("/collections/public.landsat_wrs/items?limit=10001")
     assert response.status_code == 422
 
+    response = app.get("/collections/public.landsat_wrs/items?limit=100&offset=100")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 100
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 100
+    # Next
+    assert "limit=100&offset=200" in body["links"][2]["href"]
+    # Prev
+    assert "limit=100&offset=0" in body["links"][3]["href"]
+
+    # offset + limit overflow the total number of items
+    response = app.get("/collections/public.landsat_wrs/items?limit=100&offset=16200")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert len(body["features"]) == 69
+    assert body["numberMatched"] == 16269
+    assert body["numberReturned"] == 69
+    # No NEXT link
+    assert "next" not in [link["rel"] for link in body["links"]]
+    # Prev
+    assert "limit=100&offset=16100" in body["links"][2]["href"]
+
 
 def test_items_bbox(app):
     """Test /items endpoint with bbox options."""
