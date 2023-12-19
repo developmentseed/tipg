@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(openapi_url="/api", docs_url="/api.html", lifespan=lifespan)
 
 endpoints = OGCFeaturesFactory(with_common=True)
-app.include_router(endpoints.router, tags=["OGC Features API"])
+app.include_router(endpoints.router)
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 ```
