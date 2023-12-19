@@ -742,7 +742,9 @@ class Collection(BaseModel):
         function_parameters: Optional[Dict[str, str]] = None,
     ) -> ItemList:
         """Build and run Pg query."""
+        limit = limit or features_settings.default_features_limit
         offset = offset or 0
+
         function_parameters = function_parameters or {}
 
         if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
@@ -792,7 +794,7 @@ class Collection(BaseModel):
             items=features,
             matched=matched,
             next=offset + returned if matched - returned > offset else None,
-            prev=max(offset - returned, 0) if offset else None,
+            prev=max(offset - limit, 0) if offset else None,
         )
 
     async def get_tile(

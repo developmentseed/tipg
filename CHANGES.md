@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.5.5] - 2023-12-19
+
+- Fix `prev` offset value
+
 ## [0.5.4] - 2023-12-19
 
 - Fix decimal error for streaming responses (author @RemcoMeeuwissen, https://github.com/developmentseed/tipg/pull/148)
@@ -247,7 +251,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.5.4...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.5.5...HEAD
+[0.5.5]: https://github.com/developmentseed/tipg/compare/0.5.4...0.5.5
 [0.5.4]: https://github.com/developmentseed/tipg/compare/0.5.3...0.5.4
 [0.5.3]: https://github.com/developmentseed/tipg/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/developmentseed/tipg/compare/0.5.1...0.5.2
