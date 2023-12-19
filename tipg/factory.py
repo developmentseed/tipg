@@ -449,9 +449,8 @@ class OGCFeaturesFactory(EndpointsFactory):
                 qp = dict(request.query_params)
                 qp.pop("offset", None)
                 query_params = QueryParams({**qp, "offset": prev_token})
-
                 url = self.url_for(request, "collections")
-                if qp:
+                if query_params:
                     url += f"?{query_params}"
 
                 links.append(
@@ -830,7 +829,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 qp.pop("offset")
                 query_params = QueryParams({**qp, "offset": prev_token})
                 url = self.url_for(request, "items", collectionId=collection.id)
-                if qp:
+                if query_params:
                     url += f"?{query_params}"
 
                 links.append(
