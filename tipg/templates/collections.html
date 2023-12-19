@@ -83,7 +83,7 @@ $(function() {
     // paging
     //
     var offset = 0; // defaults
-    var limit = 0;
+    var limit = 10;
 
     {% if "offset" in template.params %}
     offset = {{ template.params.offset }};
@@ -94,7 +94,7 @@ $(function() {
 
     var current_page = 1;
     if (limit > 0) {
-      current_page = (offset + limit)/limit;
+      current_page = Math.ceil((offset + limit) / limit);
     }
     $("#current_page").html(current_page);
 
