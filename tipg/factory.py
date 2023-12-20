@@ -409,6 +409,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
+            tags=["OGC Features API"],
         )
         def collections(
             request: Request,
@@ -529,6 +530,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
+            tags=["OGC Features API"],
         )
         def collection(
             request: Request,
@@ -616,6 +618,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     }
                 },
             },
+            tags=["OGC Features API"],
         )
         def queryables(
             request: Request,
@@ -662,6 +665,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "model": model.Items,
                 },
             },
+            tags=["OGC Features API"],
         )
         async def items(  # noqa: C901
             request: Request,
@@ -918,6 +922,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     "model": model.Item,
                 },
             },
+            tags=["OGC Features API"],
         )
         async def item(
             request: Request,
@@ -1150,6 +1155,7 @@ class OGCTilesFactory(EndpointsFactory):
                     },
                 },
             },
+            tags=["OGC Tiles API"],
         )
         async def tilematrixsets(
             request: Request,
@@ -1202,6 +1208,7 @@ class OGCTilesFactory(EndpointsFactory):
                     },
                 },
             },
+            tags=["OGC Tiles API"],
         )
         async def tilematrixset(
             request: Request,
@@ -1248,6 +1255,7 @@ class OGCTilesFactory(EndpointsFactory):
             },
             summary="Retrieve a list of available vector tilesets for the specified collection.",
             operation_id=".collection.vector.getTileSetsList",
+            tags=["OGC Tiles API"],
         )
         async def collection_tileset_list(
             request: Request,
@@ -1331,6 +1339,7 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"content": {MediaType.json.value: {}}}},
             summary="Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set).",
             operation_id=".collection.vector.getTileSet",
+            tags=["OGC Tiles API"],
         )
         async def collection_tileset(
             request: Request,
@@ -1442,12 +1451,14 @@ class OGCTilesFactory(EndpointsFactory):
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
             operation_id=".collection.vector.getTileTms",
+            tags=["OGC Tiles API"],
         )
         @self.router.get(
             "/collections/{collectionId}/tiles/{z}/{x}/{y}",
             response_class=Response,
             responses={200: {"content": {MediaType.mvt.value: {}}}},
             operation_id=".collection.vector.getTile",
+            tags=["OGC Tiles API"],
         )
         async def collection_get_tile(
             request: Request,
@@ -1521,6 +1532,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getTileJSONTms",
+            tags=["OGC Tiles API"],
         )
         @self.router.get(
             "/collections/{collectionId}/tilejson.json",
@@ -1529,6 +1541,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getTileJSON",
+            tags=["OGC Tiles API"],
         )
         async def collection_tilejson(
             request: Request,
@@ -1620,6 +1633,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getStyleJSONTms",
+            tags=["OGC Tiles API"],
         )
         @self.router.get(
             "/collections/{collectionId}/style.json",
@@ -1628,6 +1642,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_model_exclude_none=True,
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getStyleJSON",
+            tags=["OGC Tiles API"],
         )
         async def collection_stylejson(
             request: Request,
@@ -1849,7 +1864,7 @@ class Endpoints(EndpointsFactory):
             # We do not want `/` and `/conformance` from the factory
             with_common=False,
         )
-        self.router.include_router(self.ogc_features.router, tags=["OGC Features API"])
+        self.router.include_router(self.ogc_features.router)
 
         self.ogc_tiles = OGCTilesFactory(
             collection_dependency=self.collection_dependency,
@@ -1860,4 +1875,4 @@ class Endpoints(EndpointsFactory):
             # We do not want `/` and `/conformance` from the factory
             with_common=False,
         )
-        self.router.include_router(self.ogc_tiles.router, tags=["OGC Tiles API"])
+        self.router.include_router(self.ogc_tiles.router)
