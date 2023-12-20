@@ -77,10 +77,12 @@
 </div>
 
 <script>
-  var currentURL = "{{ template.api_root }}/collections/{{ response.id }}/items"
+var currentURL = "{{ template.api_root }}/collections/{{ response.id }}/items"
 function changePageSize() {
   var url = "{{ template.api_root }}/collections/{{ response.id }}/items?";
-  url += "limit=" + $("#limit").val();
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.set('limit', $("#limit").val());
+  url += searchParams.toString();
   window.location.href = url;
 }
 $(function() {

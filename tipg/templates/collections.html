@@ -75,7 +75,9 @@
 <script>
 function changePageSize() {
   var url = "{{ template.api_root }}/collections?";
-  url += "limit=" + $("#limit").val();
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.set('limit', $("#limit").val());
+  url += searchParams.toString();
   window.location.href = url;
 }
 $(function() {
