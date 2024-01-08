@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [unreleased]
+## [0.5.7] - 2024-01-08
 
 - add `tags` to all routes
 - fix `collections` and `items` HTML templates to keep query-parameters when changing the `page size`
@@ -261,7 +261,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.5.6...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.5.7...HEAD
+[0.5.7]: https://github.com/developmentseed/tipg/compare/0.5.6...0.5.7
 [0.5.6]: https://github.com/developmentseed/tipg/compare/0.5.5...0.5.6
 [0.5.5]: https://github.com/developmentseed/tipg/compare/0.5.4...0.5.5
 [0.5.4]: https://github.com/developmentseed/tipg/compare/0.5.3...0.5.4
