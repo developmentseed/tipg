@@ -51,10 +51,11 @@ tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
-DEFAULT_TEMPLATES = Jinja2Templates(
-    directory="",
-    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
-)  # type:ignore
+
+jinja2_env = jinja2.Environment(
+    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")])
+)
+DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
 
 COMMON_CONFORMS = [

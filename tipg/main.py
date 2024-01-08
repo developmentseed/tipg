@@ -79,10 +79,8 @@ templates_location: List[Any] = (
 # default template directory
 templates_location.append(jinja2.PackageLoader(__package__, "templates"))
 
-templates = Jinja2Templates(
-    directory="",  # we need to set a dummy directory variable, see https://github.com/encode/starlette/issues/1214
-    loader=jinja2.ChoiceLoader(templates_location),
-)  # type: ignore
+jinja2_env = jinja2.Environment(loader=jinja2.ChoiceLoader(templates_location))
+templates = Jinja2Templates(env=jinja2_env)
 
 ogc_api = Endpoints(
     title=settings.name,
