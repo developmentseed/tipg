@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [unreleased]
+
+- update FastAPI version lower limit to `>0.107.0` and adapt for new starlette version
+
 ## [0.5.7] - 2024-01-08
 
 - add `tags` to all routes
