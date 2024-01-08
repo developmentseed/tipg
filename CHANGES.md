@@ -10,6 +10,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - add `tags` to all routes
 - fix `collections` and `items` HTML templates to keep query-parameters when changing the `page size`
+- update FastAPI version upper limit to `<0.107.0` to avoid starlette breaking change (0.28)
 
 ## [0.5.6] - 2023-12-19
 
