@@ -9,6 +9,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ## [unreleased]
 
 - update FastAPI version lower limit to `>0.107.0` and adapt for new starlette version
+- fix invalid streaming response formatting
 
 ## [0.5.7] - 2024-01-08
 
