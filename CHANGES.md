@@ -6,10 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [unreleased]
+## [0.6.0] - 2024-01-09
 
 - update FastAPI version lower limit to `>0.107.0` and adapt for new starlette version
 - fix invalid streaming response formatting
+- refactor internal table properties handling
+- fix sub-model Table settings (https://github.com/developmentseed/tipg/issues/154)
 
 ## [0.5.7] - 2024-01-08
 
