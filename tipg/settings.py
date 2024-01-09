@@ -1,9 +1,11 @@
 """tipg config."""
 
+import json
 import pathlib
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import (
+    BaseModel,
     DirectoryPath,
     Field,
     PostgresDsn,
@@ -12,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings
-from typing_extensions import TypedDict
 
 
 class APISettings(BaseSettings):
@@ -36,13 +37,23 @@ class APISettings(BaseSettings):
         return [origin.strip() for origin in v.split(",")]
 
 
-class TableConfig(TypedDict, total=False):
+class TableConfig(BaseModel):
     """Configuration to add table options with env variables."""
 
-    geomcol: Optional[str]
-    datetimecol: Optional[str]
-    pk: Optional[str]
-    properties: Optional[List[str]]
+    geomcol: Optional[str] = None
+    datetimecol: Optional[str] = None
+    pk: Optional[str] = None
+    properties: Optional[List[str]] = None
+
+    model_config = {"extra": "ignore"}
+
+    @field_validator("properties", mode="before")
+    def _properties(cls, v: Any) -> Any:
+        """set geometry from geo interface or input"""
+        if isinstance(v, str):
+            return json.loads(v)
+        else:
+            return v
 
 
 class TableSettings(BaseSettings):

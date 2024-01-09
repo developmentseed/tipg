@@ -558,3 +558,25 @@ def app_functions(database_url, monkeypatch):
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def app_public_table(database_url, monkeypatch):
+    """Create app with connection to the pytest database."""
+    monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat_wrs__properties", '["pr"]')
+
+    postgres_settings = PostgresSettings(database_url=database_url)
+    db_settings = DatabaseSettings(
+        schemas=["public"],
+        functions=[],
+    )
+    sql_settings = CustomSQLSettings(custom_sql_directory=None)
+
+    app = create_tipg_app(
+        postgres_settings=postgres_settings,
+        db_settings=db_settings,
+        sql_settings=sql_settings,
+    )
+
+    with TestClient(app) as client:
+        yield client
