@@ -49,5 +49,5 @@ def test_item_with_property_config(app_public_table):
     assert body["type"] == "Feature"
     assert body["id"] == 1
     assert body["links"]
-    print(body["properties"])
+    assert list(body["properties"]) == ["pr"]
     Item.model_validate(body)
