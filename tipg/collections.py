@@ -25,7 +25,7 @@ from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
-from tipg.settings import FeaturesSettings, MVTSettings, TableSettings
+from tipg.settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
 
 from fastapi import FastAPI
 
@@ -958,16 +958,16 @@ async def get_collection_index(  # noqa: C901
             if table_id == "pg_temp.tipg_catalog":
                 continue
 
-            table_conf = table_confs.get(confid, {})
+            table_conf = table_confs.get(confid, TableConfig())
 
             # Make sure that any properties set in conf exist in table
             properties = sorted(table.get("properties", []), key=lambda d: d["name"])
-            properties_setting = table_conf.get("properties", [])
+            properties_setting = table_conf.properties or []
             if properties_setting:
                 properties = [p for p in properties if p["name"] in properties_setting]
 
             # ID Column
-            id_column = table_conf.get("pk") or table.get("pk")
+            id_column = table_conf.pk or table.get("pk")
             if not id_column and fallback_key_names:
                 for p in properties:
                     if p["name"] in fallback_key_names:
@@ -979,17 +979,11 @@ async def get_collection_index(  # noqa: C901
 
             for c in properties:
                 if c.get("type") in ("timestamp", "timestamptz", "date"):
-                    if (
-                        table_conf.get("datetimecol") == c["name"]
-                        or datetime_column is None
-                    ):
+                    if table_conf.datetimecol == c["name"] or datetime_column is None:
                         datetime_column = c
 
                 if c.get("type") in ("geometry", "geography"):
-                    if (
-                        table_conf.get("geomcol") == c["name"]
-                        or geometry_column is None
-                    ):
+                    if table_conf.geomcol == c["name"] or geometry_column is None:
                         geometry_column = c
 
             catalog[table_id] = Collection(

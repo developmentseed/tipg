@@ -38,3 +38,16 @@ def test_item(app):
     # not found
     response = app.get("/collections/public.landsat_wrs/items/50000")
     assert response.status_code == 404
+
+
+def test_item_with_property_config(app_public_table):
+    """Test /items/{item id} endpoint."""
+    response = app_public_table.get("/collections/public.landsat_wrs/items/1")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["type"] == "Feature"
+    assert body["id"] == 1
+    assert body["links"]
+    print(body["properties"])
+    Item.model_validate(body)
