@@ -756,14 +756,16 @@ class OGCFeaturesFactory(EndpointsFactory):
             ):
                 rows = (
                     {
-                        k: v
-                        for k, v in {
-                            "collectionId": collection.id,
-                            "itemId": f.get("id"),
-                            **f.get("properties", {}),
-                            "geometry": f.get("geometry", None),
-                        }.items()
-                        if v is not None
+                        **{
+                            k: v
+                            for k, v in {
+                                "collectionId": collection.id,
+                                "itemId": f.get("id"),
+                                "geometry": f.get("geometry", None),
+                            }.items()
+                            if v is not None
+                        },
+                        **f.get("properties", {}),
                     }
                     for f in item_list["items"]
                 )
