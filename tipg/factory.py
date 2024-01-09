@@ -753,19 +753,27 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                rows = (
-                    {
-                        k: v
-                        for k, v in {
+                if any(
+                    [f.get("geometry", None) is not None for f in item_list["items"]]
+                ):
+                    rows = (
+                        {
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
                             "geometry": f.get("geometry", None),
-                        }.items()
-                        if v is not None
-                    }
-                    for f in item_list["items"]
-                )
+                        }
+                        for f in item_list["items"]
+                    )
+                else:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
+                        }
+                        for f in item_list["items"]
+                    )
 
                 # CSV Response
                 if output_type == MediaType.csv:
