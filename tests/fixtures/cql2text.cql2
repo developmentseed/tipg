@@ -1,0 +1,69 @@
+"id" = 'fa7e1920-9107-422d-a3db-c468cbc5d6df'
+"id" <> 'fa7e1920-9107-422d-a3db-c468cbc5d6df'
+"value" < 10
+"value" > 10
+"value" <= 10
+"value" >= 10
+"name" LIKE 'foo%'
+"name" NOT LIKE 'foo%'
+NOT "name" LIKE 'foo%'
+"value" BETWEEN 10 AND 20
+"value" NOT BETWEEN 10 AND 20
+NOT "value" BETWEEN 10 AND 20
+"value" IN (1.0, 2.0, 3.0)
+"value" NOT IN ('a', 'b', 'c')
+NOT "value" IN ('a', 'b', 'c')
+"value" IS NULL
+"value" IS NOT NULL
+NOT "value" IS NULL
+"name" NOT LIKE 'foo%' AND "value" > 10
+(NOT "name" LIKE 'foo%' AND "value" > 10)
+"value" IS NULL OR "value" BETWEEN 10 AND 20
+("value" IS NULL OR "value" BETWEEN 10 AND 20)
+S_INTERSECTS("geometry", BBOX(-128.098193, -1.1, -99999.0, 180.0, 90.0, 100000.0))
+S_EQUALS( POLYGON ( (-0.333333 89.0, -102.723546 -0.5, -179.0 -89.0, -1.9 89.0, -0.0 89.0, 2.00001 -1.9, -0.333333 89.0) ), "geometry" )
+S_EQUALS(POLYGON ((-0.333333 89.0, -102.723546 -0.5, -179.0 -89.0, -1.9 89.0, -0.0 89.0, 2.00001 -1.9, -0.333333 89.0)), "geometry")
+S_DISJOINT("geometry", MULTIPOLYGON (((144.022387 45.176126, -1.1 0.0, 180.0 47.808086, 144.022387 45.176126))))
+S_TOUCHES("geometry", MULTILINESTRING ((-1.9 -0.99999, 75.292574 1.5, -0.5 -4.016458, -31.708594 -74.743801, 179.0 -90.0),(-1.9 -1.1, 1.5 8.547371)))
+S_WITHIN(POLYGON ((-49.88024 0.5 -75993.341684, -1.5 -0.99999 -100000.0, 0.0 0.5 -0.333333, -49.88024 0.5 -75993.341684), (-65.887123 2.00001 -100000.0, 0.333333 -53.017711 -79471.332949, 180.0 0.0 1852.616704, -65.887123 2.00001 -100000.0)), "geometry")
+S_WITHIN(POLYGON Z ((-49.88024 0.5 -75993.341684, -1.5 -0.99999 -100000.0, 0.0 0.5 -0.333333, -49.88024 0.5 -75993.341684), (-65.887123 2.00001 -100000.0, 0.333333 -53.017711 -79471.332949, 180.0 0.0 1852.616704, -65.887123 2.00001 -100000.0)), "geometry")
+S_OVERLAPS("geometry", BBOX(-179.912109, 1.9, 180.0, 16.897016))
+S_CROSSES("geometry", LINESTRING (172.03086 1.5, 1.1 -90.0, -159.757695 0.99999, -180.0 0.5, -12.111235 81.336403, -0.5 64.43958, 0.0 81.991815, -155.93831 90.0))
+S_CONTAINS("geometry", POINT (-3.508362 -1.754181))
+T_AFTER("updated_at", DATE('2010-02-10'))
+T_BEFORE(updated_at, TIMESTAMP('2012-08-10T05:30:00Z'))
+T_BEFORE("updated_at", TIMESTAMP('2012-08-10T05:30:00.000000Z'))
+T_CONTAINS(INTERVAL('2000-01-01T00:00:00Z', '2005-01-10T01:01:01.393216Z'), "updated_at")
+T_CONTAINS(INTERVAL('2000-01-01T00:00:00.000000Z', '2005-01-10T01:01:01.393216Z'), "updated_at")
+T_DISJOINT(INTERVAL('..', '2005-01-10T01:01:01.393216Z'), "coverage_date")
+T_DURING(INTERVAL("created_at", "updated_at"), INTERVAL('2005-01-10', '2010-02-10'))
+T_EQUALS("updated_at", DATE('1851-04-29'))
+T_FINISHEDBY("coverage_date", INTERVAL('1991-10-07T08:21:06.393262Z', '2010-02-10T05:29:20.073225Z'))
+T_FINISHES("coverage_dates", INTERVAL('1991-10-07', '2010-02-10T05:29:20.073225Z'))
+T_INTERSECTS("coverage_date", INTERVAL('1991-10-07T08:21:06.393262Z', '2010-02-10T05:29:20.073225Z'))
+T_MEETS(INTERVAL('2005-01-10', '2010-02-10'), "coverage_dates")
+T_METBY(INTERVAL('2010-02-10T05:29:20.073225Z', '2010-10-07'), "coverage_dates")
+T_OVERLAPPEDBY(INTERVAL('1991-10-07T08:21:06.393262Z', '2010-02-10T05:29:20.073225Z'), "coverage_dates")
+T_OVERLAPS("coverage_date", INTERVAL('1991-10-07T08:21:06.393262Z', '1992-10-09T08:08:08.393473Z'))
+T_STARTEDBY(INTERVAL('1991-10-07T08:21:06.393262Z', '2010-02-10T05:29:20.073225Z'), "coverage_dates")
+T_STARTS("coverage_dates", INTERVAL('1991-10-07T08:21:06.393262Z', '..'))
+Foo("geometry") = TRUE
+FALSE <> Bar("geometry", 100, 'a', 'b', FALSE)
+ACCENTI("owner") = ACCENTI('Beyoncé')
+CASEI("owner") = CASEI('somebody else')
+"value" > ("foo" + 10)
+"value" < ("foo" - 10)
+"value" <> (22.1 * "foo")
+"value" = (2 / "foo")
+"value" <= (2 ^ "foo")
+0 = ("foo" % 2)
+1 = ("foo" div 2)
+A_CONTAINEDBY("values", ('a', 'b', 'c'))
+A_CONTAINS("values", ('a', 'b', 'c'))
+A_EQUALS(('a', TRUE, 1.0, 8), "values")
+A_OVERLAPS("values", (TIMESTAMP('2012-08-10T05:30:00.000000Z'), DATE('2010-02-10'), FALSE))
+S_EQUALS(MULTIPOINT (180.0 -0.5, 179.0 -47.121701, 180.0 -0.0, 33.470475 -0.99999, 179.0 -15.333062), "geometry")
+S_EQUALS(GEOMETRYCOLLECTION (POINT (1.9 2.00001), POINT (0.0 -2.00001), MULTILINESTRING ((-2.00001 -0.0, -77.292642 -0.5, -87.515626 -0.0, -180.0 12.502773, 21.204842 -1.5, -21.878857 -90.0)), POINT (1.9 0.5), LINESTRING (179.0 1.179148, -148.192487 -65.007816, 0.5 0.333333)), "geometry")
+value = - foo * 2.0 + "bar" / 6.1234 - "x" ^ 2.0
+"value" = ((((-1 * "foo") * 2.0) + ("bar" / 6.1234)) - ("x" ^ 2.0))
+"name" LIKE CASEI('FOO%')
