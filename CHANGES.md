@@ -13,6 +13,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - refactor internal table properties handling
 - fix sub-model Table settings (https://github.com/developmentseed/tipg/issues/154)
 
+## [0.5.8] - 2024-01-10
+
+- fix invalid streaming response formatting [backported from 0.6.0]
+
 ## [0.5.7] - 2024-01-08
 
 - add `tags` to all routes
@@ -269,7 +273,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - Initial release
 
 [unreleased]: https://github.com/developmentseed/tipg/compare/0.6.0...HEAD
-[0.6.0]: https://github.com/developmentseed/tipg/compare/0.5.7...0.5.7
+[0.6.0]: https://github.com/developmentseed/tipg/compare/0.5.7...0.6.0
+[0.5.8]: https://github.com/developmentseed/tipg/compare/0.5.7...0.5.8
 [0.5.7]: https://github.com/developmentseed/tipg/compare/0.5.6...0.5.7
 [0.5.6]: https://github.com/developmentseed/tipg/compare/0.5.5...0.5.6
 [0.5.5]: https://github.com/developmentseed/tipg/compare/0.5.4...0.5.5
