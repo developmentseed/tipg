@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.6.1] - 2024-01-11
+
+- use `spatial_extent` and `datetime_extent` configuration options in `CatalogUpdateMiddleware` and `/refresh` endpoint (author @hrodmn, https://github.com/developmentseed/tipg/pull/164)
+
 ## [0.6.0] - 2024-01-09
 
 - update FastAPI version lower limit to `>0.107.0` and adapt for new starlette version
