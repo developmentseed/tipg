@@ -115,6 +115,8 @@ if settings.catalog_ttl:
         exclude_functions=db_settings.exclude_functions,
         exclude_function_schemas=db_settings.exclude_function_schemas,
         spatial=db_settings.only_spatial_tables,
+        spatial_extent=db_settings.spatial_extent,
+        datetime_extent=db_settings.datetime_extent,
     )
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
@@ -152,5 +154,7 @@ if settings.debug:
             exclude_functions=db_settings.exclude_functions,
             exclude_function_schemas=db_settings.exclude_function_schemas,
             spatial=db_settings.only_spatial_tables,
+            spatial_extent=db_settings.spatial_extent,
+            datetime_extent=db_settings.datetime_extent,
         )
         return request.app.state.collection_catalog
