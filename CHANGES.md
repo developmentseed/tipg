@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [0.6.2] - 2024-01-19
+
+- add `root_path` API settings
+- fix invalid `url` parsing in HTML responses
+
 ## [0.6.1] - 2024-01-11
 
 - use `spatial_extent` and `datetime_extent` configuration options in `CatalogUpdateMiddleware` and `/refresh` endpoint (author @hrodmn, https://github.com/developmentseed/tipg/pull/164)
@@ -276,7 +281,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.6.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.6.2...HEAD
+[0.6.2]: https://github.com/developmentseed/tipg/compare/0.6.1...0.6.2
+[0.6.1]: https://github.com/developmentseed/tipg/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/developmentseed/tipg/compare/0.5.7...0.6.0
 [0.5.8]: https://github.com/developmentseed/tipg/compare/0.5.7...0.5.8
 [0.5.7]: https://github.com/developmentseed/tipg/compare/0.5.6...0.5.7

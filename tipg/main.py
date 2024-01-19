@@ -68,6 +68,7 @@ app = FastAPI(
     openapi_url="/api",
     docs_url="/api.html",
     lifespan=lifespan,
+    root_path=settings.root_path,
 )
 
 # custom template directory
