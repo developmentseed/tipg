@@ -3,6 +3,7 @@
 import abc
 import csv
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generator, Iterable, List, Literal, Optional
 from urllib.parse import urlencode
@@ -119,6 +120,9 @@ def create_html_response(
 ) -> _TemplateResponse:
     """Create Template response."""
     urlpath = request.url.path
+    if root_path := request.app.root_path:
+        urlpath = re.sub(r"^" + root_path, "", urlpath)
+
     crumbs = []
     baseurl = str(request.base_url).rstrip("/")
 

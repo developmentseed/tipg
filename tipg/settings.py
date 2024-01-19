@@ -24,6 +24,7 @@ class APISettings(BaseSettings):
     cors_origins: str = "*"
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
+    root_path: str = ""
 
     add_tiles_viewer: bool = True
 
