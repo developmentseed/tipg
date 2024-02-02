@@ -160,7 +160,7 @@ class Collection(BaseModel):
     type: str
     id: str
     table: str
-    dbschema: str = Field(..., alias="schema")
+    dbschema: str = Field(alias="schema")
     title: Optional[str] = None
     description: Optional[str] = None
     table_columns: List[Column] = []

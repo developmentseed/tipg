@@ -139,9 +139,9 @@ def create_html_response(
         baseurl += router_prefix
 
     return templates.TemplateResponse(
-        f"{template_name}.html",
-        {
-            "request": request,
+        request,
+        name=f"{template_name}.html",
+        context={
             "response": orjson.loads(data),
             "template": {
                 "api_root": baseurl,
@@ -1829,9 +1829,9 @@ class OGCTilesFactory(EndpointsFactory):
                     tilejson_url += f"?{urlencode(request.query_params._list)}"
 
                 return self.templates.TemplateResponse(
+                    request,
                     name="map.html",
                     context={
-                        "request": request,
                         "tilejson_endpoint": tilejson_url,
                     },
                     media_type="text/html",
