@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## [unreleased]
+
+- update leaflet version
+
 ## [0.6.3] - 2024-02-02
 
 - update pydantic's `Field` usage to avoid 3.0 deprecation
