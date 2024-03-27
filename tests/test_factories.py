@@ -30,7 +30,9 @@ def test_features_factory():
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/"
         queryables_link = [
-            link for link in links if link["title"] == "Collection queryables"
+            link
+            for link in links
+            if link["title"] == "Collection queryables (Template URL)"
         ][0]
         assert (
             queryables_link["href"]
@@ -68,7 +70,9 @@ def test_features_factory():
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/features/"
         queryables_link = [
-            link for link in links if link["title"] == "Collection queryables"
+            link
+            for link in links
+            if link["title"] == "Collection queryables (Template URL)"
         ][0]
         assert (
             queryables_link["href"]
@@ -214,7 +218,9 @@ def test_endpoints_factory():
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/"
         queryables_link = [
-            link for link in links if link["title"] == "Collection queryables"
+            link
+            for link in links
+            if link["title"] == "Collection queryables (Template URL)"
         ][0]
         assert (
             queryables_link["href"]
@@ -256,7 +262,9 @@ def test_endpoints_factory():
         landing_link = [link for link in links if link["title"] == "Landing Page"][0]
         assert landing_link["href"] == "http://testserver/ogc/"
         queryables_link = [
-            link for link in links if link["title"] == "Collection queryables"
+            link
+            for link in links
+            if link["title"] == "Collection queryables (Template URL)"
         ][0]
         assert (
             queryables_link["href"]

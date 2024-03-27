@@ -2,7 +2,6 @@
 
 import abc
 import csv
-import json
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generator, Iterable, List, Literal, Optional
@@ -113,7 +112,7 @@ def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
 
 def create_html_response(
     request: Request,
-    data: str,
+    data: Any,
     templates: Jinja2Templates,
     template_name: str,
     router_prefix: Optional[str] = None,
@@ -142,7 +141,7 @@ def create_html_response(
         request,
         name=f"{template_name}.html",
         context={
-            "response": orjson.loads(data),
+            "response": data,
             "template": {
                 "api_root": baseurl,
                 "params": request.query_params,
@@ -207,7 +206,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     def _create_html_response(
         self,
         request: Request,
-        data: str,
+        data: Any,
         template_name: str,
     ) -> _TemplateResponse:
         return create_html_response(
@@ -262,7 +261,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="conformance",
                 )
 
@@ -325,7 +324,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="landing",
                 )
 
@@ -354,7 +353,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 rel="data",
             ),
             model.Link(
-                title="Collection metadata",
+                title="Collection metadata (Template URL)",
                 href=self.url_for(
                     request,
                     "collection",
@@ -362,9 +361,10 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
                 type=MediaType.json,
                 rel="data",
+                templated=True,
             ),
             model.Link(
-                title="Collection queryables",
+                title="Collection queryables (Template URL)",
                 href=self.url_for(
                     request,
                     "queryables",
@@ -372,15 +372,17 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
                 type=MediaType.schemajson,
                 rel="queryables",
+                templated=True,
             ),
             model.Link(
-                title="Collection Features",
+                title="Collection Features (Template URL)",
                 href=self.url_for(request, "items", collectionId="{collectionId}"),
                 type=MediaType.geojson,
                 rel="data",
+                templated=True,
             ),
             model.Link(
-                title="Collection Feature",
+                title="Collection Feature (Template URL)",
                 href=self.url_for(
                     request,
                     "item",
@@ -389,6 +391,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
                 type=MediaType.geojson,
                 rel="data",
+                templated=True,
             ),
         ]
 
@@ -515,7 +518,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="collections",
                 )
 
@@ -602,7 +605,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="collection",
                 )
 
@@ -647,7 +650,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="queryables",
                 )
 
@@ -902,7 +905,9 @@ class OGCFeaturesFactory(EndpointsFactory):
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request, orjsonDumps(data).decode(), template_name="items"
+                    request,
+                    orjson.loads(orjsonDumps(data).decode()),
+                    template_name="items",
                 )
 
             # GeoJSONSeq Response
@@ -1067,7 +1072,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    orjsonDumps(data).decode(),
+                    orjson.loads(orjsonDumps(data).decode()),
                     template_name="item",
                 )
 
@@ -1091,7 +1096,7 @@ class OGCTilesFactory(EndpointsFactory):
         """OGC Tiles API links."""
         return [
             model.Link(
-                title="Collection Vector Tiles",
+                title="Collection Vector Tiles (Template URL)",
                 href=self.url_for(
                     request,
                     "collection_get_tile",
@@ -1102,9 +1107,10 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
                 type=MediaType.mvt,
                 rel="data",
+                templated=True,
             ),
             model.Link(
-                title="Collection TileSets",
+                title="Collection TileSets (Template URL)",
                 href=self.url_for(
                     request,
                     "collection_tileset_list",
@@ -1112,9 +1118,10 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
                 type=MediaType.json,
                 rel="data",
+                templated=True,
             ),
             model.Link(
-                title="Collection TileSet",
+                title="Collection TileSet (Template URL)",
                 href=self.url_for(
                     request,
                     "collection_tileset",
@@ -1123,6 +1130,7 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
                 type=MediaType.json,
                 rel="data",
+                templated=True,
             ),
             model.Link(
                 title="TileMatrixSets",
@@ -1134,7 +1142,7 @@ class OGCTilesFactory(EndpointsFactory):
                 rel="data",
             ),
             model.Link(
-                title="TileMatrixSet",
+                title="TileMatrixSet (Template URL)",
                 href=self.url_for(
                     request,
                     "tilematrixset",
@@ -1142,6 +1150,7 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
                 type=MediaType.json,
                 rel="data",
+                templated=True,
             ),
         ]
 
@@ -1201,7 +1210,7 @@ class OGCTilesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="tilematrixsets",
                 )
 
@@ -1234,23 +1243,20 @@ class OGCTilesFactory(EndpointsFactory):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
             """
-            data = self.supported_tms.get(tileMatrixSetId)
+            tms = self.supported_tms.get(tileMatrixSetId)
 
             if output_type == MediaType.html:
-                # For visualization purpose we add the tms bbox
-                data = {
-                    **data.model_dump(exclude_none=True, mode="json"),
-                    "bbox": data.bbox,
-                }
                 return self._create_html_response(
                     request,
-                    json.dumps(
-                        data,
-                    ),
+                    {
+                        **tms.model_dump(exclude_none=True, mode="json"),
+                        # For visualization purpose we add the tms bbox
+                        "bbox": tms.bbox,
+                    },
                     template_name="tilematrixset",
                 )
 
-            return data
+            return tms
 
     def _tilesets_routes(self):
         @self.router.get(
@@ -1338,7 +1344,7 @@ class OGCTilesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="tilesets",
                 )
 
@@ -1452,7 +1458,7 @@ class OGCTilesFactory(EndpointsFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    data.model_dump_json(exclude_none=True),
+                    data.model_dump(exclude_none=True, mode="json"),
                     template_name="tileset",
                 )
 
@@ -1713,12 +1719,7 @@ class OGCTilesFactory(EndpointsFactory):
             minzoom = minzoom if minzoom is not None else tms.minzoom
             maxzoom = maxzoom if maxzoom is not None else tms.maxzoom
 
-            bounds = collection.bounds or [
-                180,
-                -85.05112877980659,
-                180,
-                85.0511287798066,
-            ]
+            bounds = list(collection.bounds) or list(tms.bbox)
 
             style_json = {
                 "name": "TiPg",
