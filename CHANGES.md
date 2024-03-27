@@ -9,6 +9,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ## [unreleased]
 
 - update leaflet version
+- add `templated=True` in template URL links
+- add `(Template URL)` in template URL links title
+- remove *deserialization* in `tipg.factory.create_html_response` function
 
 ## [0.6.3] - 2024-02-02
 
