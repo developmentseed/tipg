@@ -318,8 +318,6 @@ def TileParams(
     z: Annotated[
         int,
         Path(
-            ge=0,
-            le=30,
             description="Identifier (Z) selecting one of the scales defined in the TileMatrixSet and representing the scaleDenominator the tile.",
         ),
     ],

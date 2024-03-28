@@ -307,8 +307,8 @@ class TileJSON(BaseModel):
     vector_layers: Optional[List[LayerJSON]] = None
     grids: Optional[List[str]] = None
     data: Optional[List[str]] = None
-    minzoom: int = Field(0, ge=0, le=30)
-    maxzoom: int = Field(30, ge=0, le=30)
+    minzoom: int = Field(0)
+    maxzoom: int = Field(30)
     fillzoom: Optional[int] = None
     bounds: List[float] = [180, -85.05112877980659, 180, 85.0511287798066]
     center: Optional[Tuple[float, float, int]] = None
