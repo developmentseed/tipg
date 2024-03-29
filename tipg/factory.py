@@ -115,17 +115,28 @@ def create_html_response(
     data: Any,
     templates: Jinja2Templates,
     template_name: str,
+    title: Optional[str] = None,
     router_prefix: Optional[str] = None,
+    **kwargs: Any,
 ) -> _TemplateResponse:
     """Create Template response."""
     urlpath = request.url.path
     if root_path := request.app.root_path:
         urlpath = re.sub(r"^" + root_path, "", urlpath)
 
+    if router_prefix:
+        urlpath = re.sub(r"^" + router_prefix, "", urlpath)
+
     crumbs = []
     baseurl = str(request.base_url).rstrip("/")
 
+    if router_prefix:
+        baseurl += router_prefix
+
     crumbpath = str(baseurl)
+    if urlpath == "/":
+        urlpath = ""
+
     for crumb in urlpath.split("/"):
         crumbpath = crumbpath.rstrip("/")
         part = crumb
@@ -133,9 +144,6 @@ def create_html_response(
             part = "Home"
         crumbpath += f"/{crumb}"
         crumbs.append({"url": crumbpath.rstrip("/"), "part": part.capitalize()})
-
-    if router_prefix:
-        baseurl += router_prefix
 
     return templates.TemplateResponse(
         request,
@@ -145,13 +153,12 @@ def create_html_response(
             "template": {
                 "api_root": baseurl,
                 "params": request.query_params,
-                "title": "",
+                "title": title or template_name,
             },
             "crumbs": crumbs,
-            "url": str(request.url),
-            "baseurl": baseurl,
-            "urlpath": str(request.url.path),
-            "urlparams": str(request.url.query),
+            "url": baseurl + urlpath,
+            "params": str(request.url.query),
+            **kwargs,
         },
     )
 
@@ -208,13 +215,17 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         request: Request,
         data: Any,
         template_name: str,
+        title: Optional[str] = None,
+        **kwargs: Any,
     ) -> _TemplateResponse:
         return create_html_response(
             request,
             data,
             templates=self.templates,
             template_name=template_name,
+            title=title,
             router_prefix=self.router_prefix,
+            **kwargs,
         )
 
     @abc.abstractmethod
@@ -326,6 +337,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="landing",
+                    title=self.title,
                 )
 
             return data
@@ -520,6 +532,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="collections",
+                    title="Collections list",
                 )
 
             return data
@@ -607,6 +620,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="collection",
+                    title=f"{collection.id} collection",
                 )
 
             return data
@@ -652,6 +666,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="queryables",
+                    title=f"{collection.id} queryables",
                 )
 
             return data
@@ -908,6 +923,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     request,
                     orjson.loads(orjsonDumps(data).decode()),
                     template_name="items",
+                    title=f"{collection.id} items",
                 )
 
             # GeoJSONSeq Response
@@ -1074,6 +1090,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     request,
                     orjson.loads(orjsonDumps(data).decode()),
                     template_name="item",
+                    title=f"{collection.id}/{itemId} item",
                 )
 
             # Default to GeoJSON Response
@@ -1212,6 +1229,7 @@ class OGCTilesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="tilematrixsets",
+                    title="TileMatrixSets list",
                 )
 
             return data
@@ -1254,6 +1272,7 @@ class OGCTilesFactory(EndpointsFactory):
                         "bbox": tms.bbox,
                     },
                     template_name="tilematrixset",
+                    title=f"{tileMatrixSetId} TileMatrixSet",
                 )
 
             return tms
@@ -1346,6 +1365,7 @@ class OGCTilesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="tilesets",
+                    title=f"{collection.id} tilesets",
                 )
 
             return data
@@ -1460,6 +1480,7 @@ class OGCTilesFactory(EndpointsFactory):
                     request,
                     data.model_dump(exclude_none=True, mode="json"),
                     template_name="tileset",
+                    title=f"{collection.id} {tileMatrixSetId} tileset",
                 )
 
             return data

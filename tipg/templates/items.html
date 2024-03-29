@@ -2,8 +2,8 @@
 
 {% set show_prev_link = false %}
 {% set show_next_link = false %}
-{%  if 'items?' in url %}
-  {% set urlq = url + '&' %}
+{% if params %}
+  {% set urlq = url + '?' + params + '&' %}
   {% else %}
   {% set urlq = url + '?' %}
 {% endif %}
