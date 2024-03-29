@@ -187,10 +187,10 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 
     def __post_init__(self):
         """Post Init: register route and configure specific options."""
-        self.register_routes()
         if self.with_common:
-            self._conformance_route()
             self._landing_route()
+            self._conformance_route()
+        self.register_routes()
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -1111,7 +1111,7 @@ class OGCTilesFactory(EndpointsFactory):
 
     def links(self, request: Request) -> List[model.Link]:
         """OGC Tiles API links."""
-        return [
+        links = [
             model.Link(
                 title="Collection Vector Tiles (Template URL)",
                 href=self.url_for(
@@ -1149,6 +1149,25 @@ class OGCTilesFactory(EndpointsFactory):
                 rel="data",
                 templated=True,
             ),
+        ]
+
+        if self.with_viewer:
+            links.append(
+                model.Link(
+                    title="Collection Map viewer (Template URL)",
+                    href=self.url_for(
+                        request,
+                        "viewer_endpoint",
+                        collectionId="{collectionId}",
+                        tileMatrixSetId="{tileMatrixSetId}",
+                    ),
+                    type=MediaType.html,
+                    rel="data",
+                    templated=True,
+                )
+            )
+
+        links += [
             model.Link(
                 title="TileMatrixSets",
                 href=self.url_for(
@@ -1170,6 +1189,8 @@ class OGCTilesFactory(EndpointsFactory):
                 templated=True,
             ),
         ]
+
+        return links
 
     def register_routes(self):  # noqa: C901
         """Register OGC Tiles endpoints."""
@@ -1428,49 +1449,67 @@ class OGCTilesFactory(EndpointsFactory):
                     for matrix in tms
                 ]
 
+            links = [
+                {
+                    "href": self.url_for(
+                        request,
+                        "collection_tileset",
+                        collectionId=collection.id,
+                        tileMatrixSetId=tileMatrixSetId,
+                    ),
+                    "rel": "self",
+                    "type": "application/json",
+                    "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
+                },
+                {
+                    "href": self.url_for(
+                        request,
+                        "tilematrixset",
+                        tileMatrixSetId=tileMatrixSetId,
+                    ),
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                    "type": "application/json",
+                    "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
+                },
+                {
+                    "href": self.url_for(
+                        request,
+                        "collection_get_tile",
+                        tileMatrixSetId=tileMatrixSetId,
+                        collectionId=collection.id,
+                        z="{z}",
+                        x="{x}",
+                        y="{y}",
+                    ),
+                    "rel": "tile",
+                    "type": "application/vnd.mapbox-vector-tile",
+                    "title": "Templated link for retrieving Vector tiles",
+                    "templated": True,
+                },
+            ]
+
+            if self.with_viewer:
+                links.append(
+                    {
+                        "href": self.url_for(
+                            request,
+                            "viewer_endpoint",
+                            tileMatrixSetId=tileMatrixSetId,
+                            collectionId=collection.id,
+                        ),
+                        "type": "text/html",
+                        "rel": "data",
+                        "title": f"Map viewer for '{tileMatrixSetId}' tileMatrixSet",
+                    }
+                )
+
             data = model.TileSet.model_validate(
                 {
                     "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
                     "dataType": "vector",
                     "crs": tms.crs,
                     "boundingBox": collection_bbox,
-                    "links": [
-                        {
-                            "href": self.url_for(
-                                request,
-                                "collection_tileset",
-                                collectionId=collection.id,
-                                tileMatrixSetId=tileMatrixSetId,
-                            ),
-                            "rel": "self",
-                            "type": "application/json",
-                            "title": f"'{collection.id}' tileset tiled using {tileMatrixSetId} TileMatrixSet",
-                        },
-                        {
-                            "href": self.url_for(
-                                request,
-                                "tilematrixset",
-                                tileMatrixSetId=tileMatrixSetId,
-                            ),
-                            "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                            "type": "application/json",
-                            "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
-                        },
-                        {
-                            "href": self.url_for(
-                                request,
-                                "collection_get_tile",
-                                tileMatrixSetId=tileMatrixSetId,
-                                collectionId=collection.id,
-                                z="{z}",
-                                x="{x}",
-                                y="{y}",
-                            ),
-                            "rel": "tile",
-                            "type": "application/vnd.mapbox-vector-tile",
-                            "title": "Templated link for retrieving Vector tiles",
-                        },
-                    ],
+                    "links": links,
                     "tileMatrixSetLimits": tilematrix_limit,
                 }
             )
@@ -1499,6 +1538,7 @@ class OGCTilesFactory(EndpointsFactory):
             responses={200: {"content": {MediaType.mvt.value: {}}}},
             operation_id=".collection.vector.getTile",
             tags=["OGC Tiles API"],
+            deprecated=True,
         )
         async def collection_get_tile(
             request: Request,
@@ -1582,6 +1622,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getTileJSON",
             tags=["OGC Tiles API"],
+            deprecated=True,
         )
         async def collection_tilejson(
             request: Request,
@@ -1683,6 +1724,7 @@ class OGCTilesFactory(EndpointsFactory):
             response_class=ORJSONResponse,
             operation_id=".collection.vector.getStyleJSON",
             tags=["OGC Tiles API"],
+            deprecated=True,
         )
         async def collection_stylejson(
             request: Request,
@@ -1809,19 +1851,29 @@ class OGCTilesFactory(EndpointsFactory):
                 "/collections/{collectionId}/{tileMatrixSetId}/viewer",
                 response_class=HTMLResponse,
                 operation_id=".collection.vector.viewerTms",
+                deprecated=True,
+                tags=["Map Viewer"],
             )
             @self.router.get(
                 "/collections/{collectionId}/viewer",
                 response_class=HTMLResponse,
                 operation_id=".collection.vector.viewer",
+                deprecated=True,
+                tags=["Map Viewer"],
+            )
+            @self.router.get(
+                "/collections/{collectionId}/tiles/{tileMatrixSetId}/viewer",
+                response_class=HTMLResponse,
+                operation_id=".collection.vector.map",
+                tags=["Map Viewer"],
             )
             def viewer_endpoint(
                 request: Request,
                 collection: Annotated[Collection, Depends(self.collection_dependency)],
                 tileMatrixSetId: Annotated[
-                    Literal["WebMercatorQuad"],
-                    "Identifier selecting one of the TileMatrixSetId supported (default: 'WebMercatorQuad')",
-                ] = "WebMercatorQuad",
+                    Literal[tuple(self.supported_tms.list())],
+                    f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
+                ] = tms_settings.default_tms,
                 minzoom: Annotated[
                     Optional[int],
                     Query(description="Overwrite default minzoom."),
@@ -1839,7 +1891,7 @@ class OGCTilesFactory(EndpointsFactory):
                 ] = None,
             ):
                 """Return Simple HTML Viewer for a collection."""
-                self.supported_tms.get(tileMatrixSetId)
+                tms = self.supported_tms.get(tileMatrixSetId)
 
                 tilejson_url = self.url_for(
                     request,
@@ -1850,13 +1902,16 @@ class OGCTilesFactory(EndpointsFactory):
                 if request.query_params._list:
                     tilejson_url += f"?{urlencode(request.query_params._list)}"
 
-                return self.templates.TemplateResponse(
+                return self._create_html_response(
                     request,
-                    name="map.html",
-                    context={
+                    {
+                        "title": collection.id,
                         "tilejson_endpoint": tilejson_url,
+                        "tms": tms,
+                        "resolutions": [matrix.cellSize for matrix in tms],
                     },
-                    media_type="text/html",
+                    template_name="map",
+                    title=f"{collection.id} viewer",
                 )
 
 
