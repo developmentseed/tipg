@@ -1,4 +1,9 @@
 {% include "header.html" %}
+{% if params %}
+  {% set urlq = url + '?' + params + '&' %}
+  {% else %}
+  {% set urlq = url + '?' %}
+{% endif %}
 
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb bg-light">
@@ -11,7 +16,7 @@
     {% endif %} {% endfor %}
 
     <li class="ml-auto json-link">
-      <a target="_blank" href="{{ url }}?f=json">JSON</a>
+      <a target="_blank" href="{{ urlq }}f=json">JSON</a>
     </li>
   </ol>
 </nav>

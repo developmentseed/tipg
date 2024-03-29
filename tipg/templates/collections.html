@@ -2,8 +2,8 @@
 
 {% set show_prev_link = false %}
 {% set show_next_link = false %}
-{%  if 'items?' in url %}
-  {% set urlq = url + '&' %}
+{% if params %}
+  {% set urlq = url + '?' + params + '&' %}
   {% else %}
   {% set urlq = url + '?' %}
 {% endif %}
@@ -17,7 +17,7 @@
       {% endif %}
     {% endfor %}
 
-    <li class="ml-auto json-link"><a target="_blank" href="{{ url }}?f=json">JSON</a></li>
+    <li class="ml-auto json-link"><a target="_blank" href="{{ urlq }}f=json">JSON</a></li>
   </ol>
 </nav>
 
