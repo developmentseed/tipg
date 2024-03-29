@@ -12,6 +12,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - add `templated=True` in template URL links
 - add `(Template URL)` in template URL links title
 - remove *deserialization* in `tipg.factory.create_html_response` function
+- add `title` option to `create_html_response` method, in order to set the web page title
+- add `**kwargs` to `create_html_response` method to allow custom object to be passed to the template
+- fix url/path passed to the HTML template
+- fix HTML templates when passing Query Parameters
 
 ## [0.6.3] - 2024-02-02
 
