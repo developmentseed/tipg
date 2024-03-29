@@ -54,31 +54,57 @@ curl http://127.0.0.1:8081 | jq
       "href": "http://127.0.0.1:8081/collections/{collectionId}",
       "rel": "data",
       "type": "application/json",
-      "title": "Collection metadata"
+      "templated": true,
+      "title": "Collection metadata (Template URL)"
     },
     {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/queryables",
       "rel": "queryables",
       "type": "application/schema+json",
-      "title": "Collection queryables"
+      "templated": true,
+      "title": "Collection queryables (Template URL)"
     },
     {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/items",
       "rel": "data",
       "type": "application/geo+json",
-      "title": "Collection Features"
-    },
-    {
-      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{z}/{x}/{y}",
-      "rel": "data",
-      "type": "application/vnd.mapbox-vector-tile",
-      "title": "Collection Vector Tiles"
+      "templated": true,
+      "title": "Collection Features (Template URL)"
     },
     {
       "href": "http://127.0.0.1:8081/collections/{collectionId}/items/{itemId}",
       "rel": "data",
       "type": "application/geo+json",
-      "title": "Collection Feature"
+      "templated": true,
+      "title": "Collection Feature (Template URL)"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{z}/{x}/{y}",
+      "rel": "data",
+      "type": "application/vnd.mapbox-vector-tile",
+      "templated": true,
+      "title": "Collection Vector Tiles (Template URL)"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles",
+      "rel": "data",
+      "type": "application/json",
+      "templated": true,
+      "title": "Collection TileSets (Template URL)"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrixSetId}",
+      "rel": "data",
+      "type": "application/json",
+      "templated": true,
+      "title": "Collection TileSet (Template URL)"
+    },
+    {
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrixSetId}/viewer",
+      "rel": "data",
+      "type": "text/html",
+      "templated": true,
+      "title": "Collection Map viewer (Template URL)"
     },
     {
       "href": "http://127.0.0.1:8081/tileMatrixSets",
@@ -90,7 +116,8 @@ curl http://127.0.0.1:8081 | jq
       "href": "http://127.0.0.1:8081/tileMatrixSets/{tileMatrixSetId}",
       "rel": "data",
       "type": "application/json",
-      "title": "TileMatrixSet"
+      "templated": true,
+      "title": "TileMatrixSet (Template URL)"
     }
   ]
 }
@@ -117,22 +144,23 @@ curl http://127.0.0.1:8081/conformance | jq
 {
   "conformsTo": [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landing-page",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
-    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
-    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/req/core",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
-    "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-    "http://www.opengis.net/spec/tms/2.0/req/tilematrixset",
-    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/core",
-    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/oas30",
-    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/req/mvt"
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/mvt",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tileset",
+    "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tilesets-list"
   ]
 }
 ```
@@ -172,7 +200,7 @@ HeaderParams:
 Example:
 
 ```json
-curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
+curl http://127.0.0.1:8081/collections?limit=1&offset=2 | jq
 {
   "links": [
     {
@@ -181,37 +209,37 @@ curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
       "type": "application/json"
     },
     {
-      "href": "http://127.0.0.1:8081/collections?limit=1&offset=4",
+      "href": "http://127.0.0.1:8081/collections?limit=1&offset=3&f=json",
       "rel": "next",
       "type": "application/json",
       "title": "Next page"
     },
     {
-      "href": "http://127.0.0.1:8081/collections?limit=1&offset=2",
+      "href": "http://127.0.0.1:8081/collections?limit=1&f=json&offset=1",
       "rel": "prev",
       "type": "application/json",
       "title": "Previous page"
     }
   ],
-  "numberMatched": 10,
+  "numberMatched": 7,
   "numberReturned": 1,
   "collections": [
     {
-      "id": "public.countries_geo",
-      "title": "public.countries_geo",
+      "id": "public.gg_gemeindegrenze_mv",
+      "title": "public.gg_gemeindegrenze_mv",
       "links": [
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries_geo",
+          "href": "http://127.0.0.1:8081/collections/public.gg_gemeindegrenze_mv",
           "rel": "collection",
           "type": "application/json"
         },
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries_geo/items",
+          "href": "http://127.0.0.1:8081/collections/public.gg_gemeindegrenze_mv/items",
           "rel": "items",
           "type": "application/geo+json"
         },
         {
-          "href": "http://127.0.0.1:8081/collections/public.countries_geo/queryables",
+          "href": "http://127.0.0.1:8081/collections/public.gg_gemeindegrenze_mv/queryables",
           "rel": "queryables",
           "type": "application/schema+json"
         }
@@ -220,10 +248,10 @@ curl http://127.0.0.1:8081/collections?limit=1&offset=3 | jq
         "spatial": {
           "bbox": [
             [
-              -180,
-              -89.99892578125002,
-              180,
-              83.599609375
+              8.661115396174294,
+              47.367809019968455,
+              9.4846396724923,
+              47.69564287160094
             ]
           ],
           "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
@@ -262,6 +290,7 @@ Example:
 curl http://127.0.0.1:8081/collections/public.countries | jq
 {
   "id": "public.countries",
+  "title": "public.countries",
   "links": [
     {
       "href": "http://127.0.0.1:8081/collections/public.countries",
@@ -298,7 +327,7 @@ curl http://127.0.0.1:8081/collections/public.countries | jq
       "bbox": [
         [
           -180,
-          -89.99893188476562,
+          -89.99892578125002,
           180,
           83.599609375
         ]
@@ -342,21 +371,21 @@ curl http://127.0.0.1:8081/collections/public.landsat_wrs/queryables | jq
     "geom": {
       "$ref": "https://geojson.org/schema/Geometry.json"
     },
-    "ogc_fid": {
-      "name": "ogc_fid",
-      "type": "number"
-    },
     "id": {
       "name": "id",
       "type": "string"
     },
-    "pr": {
-      "name": "pr",
-      "type": "string"
+    "ogc_fid": {
+      "name": "ogc_fid",
+      "type": "number"
     },
     "path": {
       "name": "path",
       "type": "number"
+    },
+    "pr": {
+      "name": "pr",
+      "type": "string"
     },
     "row": {
       "name": "row",
@@ -472,18 +501,55 @@ HeaderParams:
 Example:
 
 ```json
+curl http://127.0.0.1:8081/collections/public.countries/items/6 | jq
 {
   "type": "Feature",
   "geometry": {
-    "coordinates": [...]
-    "type": "MultiPolygon"
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            12.439160156,
+            41.898388672
+          ],
+          [
+            12.430566406,
+            41.897558594
+          ],
+          [
+            12.427539063,
+            41.900732422
+          ],
+          [
+            12.430566406,
+            41.90546875
+          ],
+          [
+            12.438378906,
+            41.906201172
+          ],
+          [
+            12.439160156,
+            41.898388672
+          ]
+        ]
+      ]
+    ]
   },
+  "id": 6,
   "properties": {
-    "gid": 1,
-    "name": "Zimbabwe",
+    "abbrev": "Vat.",
+    "abbrev_len": 4,
+    "adm0_a3": "VAT",
+    "adm0_a3_is": "VAT",
+    "adm0_a3_un": -99,
+    "adm0_a3_us": "VAT",
+    "adm0_a3_wb": -99,
+    "adm0_dif": 0,
+    "admin": "Vatican",
     ...
   },
-  "id": "1",
   "links": [
     {
       "href": "http://127.0.0.1:8081/collections/public.countries",
@@ -491,7 +557,7 @@ Example:
       "type": "application/json"
     },
     {
-      "href": "http://127.0.0.1:8081/collections/public.countries/items/1",
+      "href": "http://127.0.0.1:8081/collections/public.countries/items/6",
       "rel": "self",
       "type": "application/geo+json"
     }
@@ -509,13 +575,12 @@ Ref: [https://docs.ogc.org/is/17-069r4/17-069r4.html#_feature_](https://docs.ogc
 
 Path:
 
-- `/collections/{collectionId}/tiles/{z}/{x}/{y}`
 - `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`
 
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
+- **tileMatrixSetId** (str): TileMatrixSet identifier
 - **z** (int): TMS's scale (tileMatrix) identifier
 - **x** (int): TMS's column (tileCol) identifier
 - **y** (int): TMS's row (tileRow) identifier
@@ -592,13 +657,12 @@ Return a TileJSON document. **Not in OGC Tile API specification**
 
 Path:
 
-- `/collections/{collectionId}/tilejson.json`
 - `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`
 
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
+- **tileMatrixSetId** (str): TileMatrixSet identifier
 
 QueryParams:
 
@@ -613,14 +677,14 @@ QueryParams:
 
 Example:
 ```json
-// http://127.0.0.1:8080/collections/public.landsat/tilejson.json
+curl http://127.0.0.1:8081/collections/public.landsat_wrs/WebMercatorQuad/tilejson.json | jq
 {
   "tilejson": "3.0.0",
-  "name": "public.landsat",
+  "name": "public.landsat_wrs",
   "version": "1.0.0",
   "scheme": "xyz",
   "tiles": [
-    "http://127.0.0.1:8080/collections/public.landsat/tiles/WebMercatorQuad/{tileMatrix}/{tileCol}/{tileRow}"
+    "http://127.0.0.1:8081/collections/public.landsat_wrs/tiles/WebMercatorQuad/{z}/{x}/{y}"
   ],
   "vector_layers": [
     {
@@ -639,10 +703,10 @@ Example:
   "minzoom": 0,
   "maxzoom": 22,
   "bounds": [
-    -181.8000030517578,
-    -83.46650695800781,
-    181.8000030517578,
-    83.46650695800781
+    -180,
+    -82.6401,
+    180,
+    82.6401
   ],
   "center": [
     0,
@@ -658,13 +722,12 @@ Return a mapbox/maplibre StyleJSON document. **Not in OGC Tile API specification
 
 Path:
 
-- `/collections/{collectionId}/style.json`
 - `/collections/{collectionId}/{tileMatrixSetId}/style.json`
 
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to `WebMercatorQuad`)
+- **tileMatrixSetId** (str): TileMatrixSet identifier
 
 QueryParams:
 
@@ -678,14 +741,14 @@ QueryParams:
 \*  **Not in OGC API Tiles Specification**
 
 ```json
-// http://127.0.0.1:8080/collections/public.landsat/style.json
+// http://127.0.0.1:8081/collections/public.landsat_wrs/WebMercatorQuad/style.json
 {
   "version": 8,
   "name": "TiPg",
   "layers": [
     {
-      "id": "public.landsat_fill",
-      "source": "public.landsat",
+      "id": "public.landsat_wrs_fill",
+      "source": "public.landsat_wrs",
       "source-layer": "default",
       "type": "fill",
       "filter": [
@@ -701,8 +764,8 @@ QueryParams:
       }
     },
     {
-      "id": "public.landsat_stroke",
-      "source": "public.landsat",
+      "id": "public.landsat_wrs_stroke",
+      "source": "public.landsat_wrs",
       "source-layer": "default",
       "type": "line",
       "filter": [
@@ -719,8 +782,8 @@ QueryParams:
       }
     },
     {
-      "id": "public.landsat_point",
-      "source": "public.landsat",
+      "id": "public.landsat_wrs_point",
+      "source": "public.landsat_wrs",
       "source-layer": "default",
       "type": "circle",
       "filter": [
@@ -738,17 +801,17 @@ QueryParams:
     }
   ],
   "sources": {
-    "public.landsat": {
+    "public.landsat_wrs": {
       "type": "vector",
       "scheme": "xyz",
       "tiles": [
-        "http://127.0.0.1:8080/collections/public.landsat/tiles/WebMercatorQuad/{tileMatrix}/{tileCol}/{tileRow}"
+        "http://127.0.0.1:8081/collections/public.landsat_wrs/tiles/WebMercatorQuad/{z}/{x}/{y}"
       ],
       "bounds": [
-        -181.8000030517578,
-        -83.46650695800781,
-        181.8000030517578,
-        83.46650695800781
+        -180,
+        -82.6401,
+        180,
+        82.6401
       ],
       "minzoom": 0,
       "maxzoom": 22
@@ -768,13 +831,12 @@ Simple Map viewer. **Not in OGC Tile API specification**
 
 Path:
 
-- `/collections/{collectionId}/viewer`
 - `/collections/{collectionId}/{tileMatrixSetId}/viewer`
 
 PathParams:
 
 - **collectionId** (str): Feature Collection Id
-- **tileMatrixSetId** (str): TileMatrixSet identifier. **Optional** (defaults to WebMercatorQuad)
+- **tileMatrixSetId** (str): TileMatrixSet identifier
 
 QueryParams:
 

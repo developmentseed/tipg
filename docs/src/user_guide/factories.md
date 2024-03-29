@@ -131,14 +131,14 @@ app.include_router(endpoints.router)
 
 | Method | Path                                                                                     | Output                        | Description
 | ------ | ---------------------------------------------------------------------------------------- |------------------------------ |--------------
-| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
 | `GET`  | `/collections/{collectionId}/tiles`                                                      | JSON                          | list of available vector tilesets
-| `GET`  | `/collections/{collectionId}/tiles/{TileMatrixSetId}]`                                   | JSON                          | vector tileset metadata
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}`                                    | JSON                          | vector tileset metadata
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`                        | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`                            | JSON                          | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/style.json`                               | JSON                          | Mapbox/Maplibre StyleJSON document
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/viewer`                                   | HTML                          | simple map viewer **[OPTIONAL]**
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
 | `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                          | TileMatrixSet document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/style.json`                             | JSON                          | Mapbox/Maplibre StyleJSON document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer **[OPTIONAL]**
 | `GET`  | `/conformance`                                                                           | HTML / JSON                   | conformance class landing Page
 | `GET`  | `/`                                                                                      | HTML / JSON                   | landing page
 
@@ -181,13 +181,13 @@ app.include_router(endpoints.router)
 | `GET`  | `/collections/{collectionId}/queryables`                                                 | HTML / SchemaJSON                                 | available queryable for a collection
 | `GET`  | `/collections/{collectionId}/items`                                                      | HTML / JSON / NDJSON / GeoJSON/ GeoJSONSeq / CSV  | a set of items for a collection
 | `GET`  | `/collections/{collectionId}/items/{itemId}`                                             | HTML / JSON/GeoJSON                               | one collection's item
-| `GET`  | `/collections/{collectionId}/tiles[/{TileMatrixSetId}]/{z}/{x}/{y}`                      | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
-| `GET`  | `/collections/{collectionId}/tiles`                                                      | JSON                          | list of available vector tilesets
-| `GET`  | `/collections/{collectionId}/tiles/{TileMatrixSetId}]`                                   | JSON                          | vector tileset metadata
-| `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
-| `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                          | TileMatrixSet document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/tilejson.json`                          | JSON                          | Mapbox TileJSON document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/style.json`                             | JSON                          | Mapbox/Maplibre StyleJSON document
-| `GET`  | `/collections/{collectionId}[/{TileMatrixSetId}]/viewer`                                 | HTML                          | simple map viewer
-| `GET`  | `/conformance`                                                                           | HTML / JSON                   | conformance class landing Page
-| `GET`  | `/`                                                                                      | HTML / JSON                   | landing page
+| `GET`  | `/collections/{collectionId}/tiles`                                                      | JSON                                              | list of available vector tilesets
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}`                                    | JSON                                              | vector tileset metadata
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`                        | Mapbox Vector Tile (Protobuf)                     | create a web map vector tile from collection's items
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`                            | JSON                                              | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/style.json`                               | JSON                                              | Mapbox/Maplibre StyleJSON document
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/viewer`                                   | HTML                                              | simple map viewer **[OPTIONAL]**
+| `GET`  | `/tileMatrixSets`                                                                        | JSON                                              | list of available TileMatrixSets
+| `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                                              | TileMatrixSet document
+| `GET`  | `/conformance`                                                                           | HTML / JSON                                       | conformance class landing Page
+| `GET`  | `/`                                                                                      | HTML / JSON                                       | landing page

@@ -69,10 +69,8 @@ templates_location = (
     ]
 )
 
-templates = Jinja2Templates(
-    directory="",
-    loader=jinja2.ChoiceLoader(templates_location),
-)  # type: ignore
+jinja2_env = jinja2.Environment(loader=jinja2.ChoiceLoader(templates_location))
+templates = Jinja2Templates(env=jinja2_env)
 
 ogc_api = Endpoints(templates=templates)
 app.include_router(ogc_api.router)
