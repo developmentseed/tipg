@@ -40,12 +40,11 @@ from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
-from fastapi.routing import APIRoute
 
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, StreamingResponse
-from starlette.routing import Match, compile_path, replace_params
+from starlette.routing import compile_path, replace_params
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tms_settings = TMSSettings()
@@ -210,17 +209,6 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
             base_url += prefix
 
         return str(url_path.make_absolute_url(base_url=base_url))
-
-    def find_route(self, path: str, method: str = "GET") -> Optional[APIRoute]:
-        """find route from scope."""
-        for route in self.router.routes:
-            match, _ = route.matches({"type": "http", "path": path, "method": method})
-            if match != Match.FULL:
-                continue
-
-            return route
-
-        return None
 
     def _create_html_response(
         self,
@@ -1500,14 +1488,12 @@ class OGCTilesFactory(EndpointsFactory):
                 },
             ]
 
-            if route := self.find_route(
-                f"/collections/{collection.id}/tiles/{tileMatrixSetId}/viewer"
-            ):
+            if self.with_viewer:
                 links.append(
                     {
                         "href": self.url_for(
                             request,
-                            route.name,
+                            "viewer_endpoint",
                             tileMatrixSetId=tileMatrixSetId,
                             collectionId=collection.id,
                         ),
@@ -1925,6 +1911,7 @@ class OGCTilesFactory(EndpointsFactory):
                         "resolutions": [matrix.cellSize for matrix in tms],
                     },
                     template_name="map",
+                    title=f"{collection.id} viewer",
                 )
 
 
