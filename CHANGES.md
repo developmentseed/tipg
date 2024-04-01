@@ -16,6 +16,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - add `**kwargs` to `create_html_response` method to allow custom object to be passed to the template
 - fix url/path passed to the HTML template
 - fix HTML templates when passing Query Parameters
+- replace `maplibre` with `leaflet+protomaps-leaflet` to support other TMS in the HTML `viewer`
+- deprecate non-tilematrixset prefixed endpoints for tiles/tilejson/stylejson/viewer to better match with the OGC Spec **breaking**
+- re-order endpoints
+- remove **Z** limit to support negative values
 
 ## [0.6.3] - 2024-02-02
 
