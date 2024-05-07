@@ -24,7 +24,7 @@ dependencies = [
     "orjson",
     "asyncpg>=0.23.0",
     "buildpg>=0.3",
-    "fastapi>=0.107.0",
+    "fastapi-slim",
     "jinja2>=2.11.2,<4.0.0",
     "morecantile>=5.0,<6.0",
     "pydantic>=2.4,<3.0",
