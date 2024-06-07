@@ -179,7 +179,7 @@ QueryParams:
 
 - **limit** (int): Limits the number of collections in the response.
 - **offset** (int): Collection's offset.
-- **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter collection in `minx,miny,maxx,maxy` form.
+- **bbox** (str): Comma (,) delimited bbox coordinates to spatially filter collection in `minx,miny,maxx,maxy` form.
 - **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
 
     - interval-bounded            = `date-time/date-time`
@@ -412,7 +412,7 @@ QueryParams:
 
 - **limit** (int): Limits the number of features in the response. Defaults to 10.
 - **offset** (int): Features offset.
-- **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
+- **bbox** (str): Comma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
 - **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
 
     - interval-bounded            = `date-time/date-time`
@@ -420,8 +420,8 @@ QueryParams:
     - interval-half-bounded-end   = `date-time/..`
     - datetime                    = `date-time`
 
-- **ids** * (str): Coma (,) delimited list of item Ids.
-- **properties** * (str): Coma (,) delimited list of item properties to return in each feature.
+- **ids** * (str): Comma (,) delimited list of item Ids.
+- **properties** * (str): Comma (,) delimited list of item properties to return in each feature.
 - **filter** (str): CQL2 filter as defined by https://docs.ogc.org/DRAFTS/19-079r1.html#rc_filter
 - **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
 - **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
@@ -588,7 +588,7 @@ PathParams:
 QueryParams:
 
 - **limit** (int): Limits the number of features in the response. Defaults to 10000.
-- **bbox** (str): Coma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
+- **bbox** (str): Comma (,) delimited bbox coordinates to spatially filter features in `minx,miny,maxx,maxy` form.
 - **datetime** (str): Single datetime or `/` delimited datetime intervals to temporally filter features.
 
     - interval-bounded            = `date-time/date-time`
@@ -596,8 +596,8 @@ QueryParams:
     - interval-half-bounded-end   = `date-time/..`
     - datetime                    = `date-time`
 
-- **ids** * (str): Coma (,) delimited list of item Ids.
-- **properties** * (str): Coma (,) delimited list of item properties to return in each feature.
+- **ids** * (str): Comma (,) delimited list of item Ids.
+- **properties** * (str): Comma (,) delimited list of item properties to return in each feature.
 - **filter** (str): CQL2 filter as defined by https://docs.ogc.org/DRAFTS/19-079r1.html#rc_filter
 - **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
 - **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
