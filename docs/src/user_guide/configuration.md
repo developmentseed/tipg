@@ -157,4 +157,6 @@ prefix: **`TIPG_`**
 - **CORS_ORIGIN** (str): Default is `*`
 - **CACHECONTROL** (str): Default is `public, max-age=3600`
 - **TEMPLATE_DIRECTORY** (str): Path to custom template directory to overwrite the HTML files.
+- **ROOT_PATH** (str): A path prefix handled by a proxy that is not seen by the application but is seen by external clients.
 - **ADD_TILES_VIEWER** (bool): Defaults is `True`
+- **CATALOG_TTL** (int, in seconds): Tables/Functions catalog **Time To Live** cache (default to 300 seconds).
