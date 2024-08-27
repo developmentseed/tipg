@@ -129,6 +129,7 @@ prefix: **`TIPG_`**
 
 - **DEFAULT_FEATURES_LIMIT** (int): Set the default `Limit` values for `/items` endpoint. Default is `10`
 - **MAX_FEATURES_PER_QUERY** (int): Set the maximum number of features the `/items` endpoint can return. Default is `10000`.
+- **SORT_COLUMNS** (bool): Sort the `columns` for a feature alphabetically. Default is `True`.
 
 ```bash
 TIPG_DEFAULT_FEATURES_LIMIT=1000 TIPG_MAX_FEATURES_PER_QUERY=2000
