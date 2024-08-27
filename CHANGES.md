@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## [0.7.1] - 2025-05-07
+## [0.7.2] - 2024-08-27
+
+* move back to `fastapi` dependency
+
+## [0.7.1] - 2024-05-07
 
 * move to `fastapi-slim` to avoid unwanted dependencies
 
@@ -305,7 +309,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.6.3...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.7.2...HEAD
+[0.7.1]: https://github.com/developmentseed/tipg/compare/0.7.1...0.7.2
+[0.7.1]: https://github.com/developmentseed/tipg/compare/0.7.0...0.7.1
+[0.7.0]: https://github.com/developmentseed/tipg/compare/0.6.3...0.7.0
 [0.6.3]: https://github.com/developmentseed/tipg/compare/0.6.2...0.6.3
 [0.6.2]: https://github.com/developmentseed/tipg/compare/0.6.1...0.6.2
 [0.6.1]: https://github.com/developmentseed/tipg/compare/0.6.0...0.6.1
