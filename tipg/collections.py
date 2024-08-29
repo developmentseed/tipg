@@ -955,7 +955,7 @@ async def get_collection_index(  # noqa: C901
                 columns = sorted(table.get("properties", []), key=lambda d: d["name"])
             else:
                 columns = table.get("properties", [])
-            
+
             properties_setting = table_conf.properties or [c["name"] for c in columns]
 
             # ID Column
