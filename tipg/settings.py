@@ -62,7 +62,8 @@ class TableSettings(BaseSettings):
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
-
+    sort_columns: bool = True
+    
     model_config = {
         "env_prefix": "TIPG_",
         "env_file": ".env",
@@ -86,7 +87,6 @@ class FeaturesSettings(BaseSettings):
 
     default_features_limit: int = Field(10, ge=0)
     max_features_per_query: int = Field(10000, ge=0)
-    sort_columns: bool = True
 
     model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
