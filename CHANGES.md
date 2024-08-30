@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
+## Unreleased
+
+* add `TIPG_SORT_COLUMNS` settings to enable/disable columns sorting (default to `True`) (author @mattdiez-at, https://github.com/developmentseed/tipg/pull/187)
+
 ## [0.7.2] - 2024-08-27
 
 * move back to `fastapi` dependency
@@ -310,7 +314,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - Initial release
 
 [unreleased]: https://github.com/developmentseed/tipg/compare/0.7.2...HEAD
-[0.7.1]: https://github.com/developmentseed/tipg/compare/0.7.1...0.7.2
+[0.7.2]: https://github.com/developmentseed/tipg/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/developmentseed/tipg/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/developmentseed/tipg/compare/0.6.3...0.7.0
 [0.6.3]: https://github.com/developmentseed/tipg/compare/0.6.2...0.6.3

@@ -143,7 +143,9 @@ class PostgresSettings(BaseSettings):
 
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
     @field_validator("database_url", mode="before")
-    def assemble_db_connection(cls, v: Optional[str], info: ValidationInfo) -> PostgresDsn:
+    def assemble_db_connection(
+        cls, v: Optional[str], info: ValidationInfo
+    ) -> PostgresDsn:
         """Validate db url settings."""
         if isinstance(v, str):
             return PostgresDsn(v)
