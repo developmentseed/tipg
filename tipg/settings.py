@@ -62,6 +62,7 @@ class TableSettings(BaseSettings):
 
     fallback_key_names: List[str] = ["ogc_fid", "id", "pkey", "gid"]
     table_config: Dict[str, TableConfig] = {}
+    sort_columns: bool = True
 
     model_config = {
         "env_prefix": "TIPG_",

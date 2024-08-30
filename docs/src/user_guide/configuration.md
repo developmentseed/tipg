@@ -79,6 +79,7 @@ prefix: **`TIPG_`**
 
 - **DATETIME_EXTENT** (bool): Fetch datetime extent by going throught all rows. Default is `True`
 - **FALLBACK_KEY_NAMES** (list of string): Primary Key names to look for in the tables. Default is `["ogc_fid", "id", "pkey", "gid"]`
+- **SORT_COLUMNS** (bool): Sort the `columns` for a table alphabetically. Default is `True`.
 - **TABLE_CONFIG** (dict of `TableConfig`)
     - **TABLE_CONFIG_ _ {schemaId}_{tableId} _ _GEOMCOL** (str): Table's geometry/geography column name
     - **TABLE_CONFIG_ _ {schemaId}_{tableId} _ _DATETIMECOL** (str): Table's datetime column name
