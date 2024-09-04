@@ -46,6 +46,9 @@ def database_url(database):
     db_url = f"postgresql://{database.user}:{database.password}@{database.host}:{database.port}/{database.dbname}"
     with psycopg.connect(db_url, autocommit=True) as conn:
         with conn.cursor() as cur:
+            cur.execute(f"ALTER DATABASE {database.dbname} SET TIMEZONE='UTC';")
+            cur.execute("SET TIME ZONE 'UTC';")
+
             cur.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
             # make sure postgis extension exists
             assert cur.execute(
@@ -182,10 +185,6 @@ def app(database_url, monkeypatch):
     db_settings.exclude_tables = None
     db_settings.tables = None
     db_settings.functions = None
-
-    # Remove middlewares https://github.com/encode/starlette/issues/472
-    app.user_middleware = []
-    app.middleware_stack = app.build_middleware_stack()
 
     with TestClient(app) as app:
         yield app
