@@ -910,8 +910,8 @@ async def get_collection_index(  # noqa: C901
 ) -> Catalog:
     """Fetch Table and Functions index."""
     schemas = schemas or ["public"]
-    PostgresSettings()
-    query = """
+    pg_settings = PostgresSettings()
+    query = f"""
         SELECT {pg_settings.tipg_schema}.tipg_catalog(
             :schemas,
             :tables,
@@ -940,7 +940,6 @@ async def get_collection_index(  # noqa: C901
             spatial_extent=spatial_extent,
             datetime_extent=datetime_extent,
         )
-        PostgresSettings()
         catalog: Dict[str, Collection] = {}
         table_settings = TableSettings()
         table_confs = table_settings.table_config
@@ -951,7 +950,7 @@ async def get_collection_index(  # noqa: C901
             table_id = table["schema"] + "." + table["name"]
             confid = table["schema"] + "_" + table["name"]
 
-            if table_id == "{pg_settings.tipg_schema}.tipg_catalog":
+            if table_id.split(".").pop() == "tipg_catalog":
                 continue
 
             table_conf = table_confs.get(confid, TableConfig())
