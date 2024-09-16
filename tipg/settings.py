@@ -141,6 +141,8 @@ class PostgresSettings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+    tipg_schema: str = Field("pg_temp", regex=r"[a-zA-Z][a-zA-Z0-9_-]*")
+
     # https://github.com/tiangolo/full-stack-fastapi-postgresql/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/backend/app/app/core/config.py#L42
     @field_validator("database_url", mode="before")
     def assemble_db_connection(

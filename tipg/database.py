@@ -37,6 +37,7 @@ class connection_factory:
 
     async def __call__(self, conn: asyncpg.Connection):
         """Create connection."""
+        settings = PostgresSettings()
         await conn.set_type_codec(
             "json", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
         )
@@ -46,7 +47,7 @@ class connection_factory:
 
         # Note: we add `pg_temp as the first element of the schemas list to make sure
         # we register the custom functions and `dbcatalog` in it.
-        schemas = ",".join(["pg_temp", *self.schemas])
+        schemas = ",".join([settings.tipg_schema, *self.schemas])
         logger.debug(f"Looking for Tables and Functions in {schemas} schemas")
 
         await conn.execute(
@@ -61,10 +62,14 @@ class connection_factory:
 
         # Register custom SQL functions/table/views in pg_temp
         for sqlfile in self.user_sql_files:
-            await conn.execute(sqlfile.read_text())
+            await conn.execute(
+                sqlfile.read_text().replace("pg_temp", settings.tipg_schema)
+            )
 
         # Register TiPG functions in `pg_temp`
-        await conn.execute(DB_CATALOG_FILE.read_text())
+        await conn.execute(
+            DB_CATALOG_FILE.read_text().replace("pg_temp", settings.tipg_schema)
+        )
 
 
 async def connect_to_db(
