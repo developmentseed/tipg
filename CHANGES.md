@@ -8,7 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## Unreleased
 
+## [0.7.3] - 2024-09-16
+
 * add `TIPG_SORT_COLUMNS` settings to enable/disable columns sorting (default to `True`) (author @mattdiez-at, https://github.com/developmentseed/tipg/pull/187)
+* fix `protomaps-leaflet` version in HTML template (co-author @bmcandr, https://github.com/developmentseed/tipg/pull/190)
 
 ## [0.7.2] - 2024-08-27
 
