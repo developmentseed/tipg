@@ -189,7 +189,7 @@ def bbox_query(
     bbox: Annotated[
         Optional[str],
         Query(description="Spatial Filter."),
-    ] = None
+    ] = None,
 ) -> Optional[List[float]]:
     """BBox dependency."""
     if bbox:

@@ -776,9 +776,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                if any(
-                    [f.get("geometry", None) is not None for f in item_list["items"]]
-                ):
+                if any(f.get("geometry", None) is not None for f in item_list["items"]):
                     rows = (
                         {
                             "collectionId": collection.id,

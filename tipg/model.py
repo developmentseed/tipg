@@ -236,9 +236,9 @@ class Queryables(BaseModel):
     title: str
     properties: Dict[str, Dict[str, str]]
     type: str = "object"
-    schema_name: Annotated[
-        str, Field(alias="$schema")
-    ] = "https://json-schema.org/draft/2019-09/schema"
+    schema_name: Annotated[str, Field(alias="$schema")] = (
+        "https://json-schema.org/draft/2019-09/schema"
+    )
     link: Annotated[str, Field(alias="$id")]
 
     model_config = {"populate_by_name": True}
@@ -391,9 +391,9 @@ class BoundingBox(BaseModel):
         ),
     ]
     crs: Annotated[Optional[CRSType], Field(json_schema_extra={"title": "CRS"})] = None
-    orderedAxes: Annotated[
-        Optional[List[str]], Field(max_length=2, min_length=2)
-    ] = None
+    orderedAxes: Annotated[Optional[List[str]], Field(max_length=2, min_length=2)] = (
+        None
+    )
 
 
 # Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/tms/propertiesSchema.yaml
