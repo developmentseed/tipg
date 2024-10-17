@@ -101,7 +101,10 @@ if settings.cors_origins:
     )
 
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
-app.add_middleware(CompressionMiddleware)
+app.add_middleware(
+    CompressionMiddleware,
+    compression_level=6,
+)
 
 if settings.catalog_ttl:
     app.add_middleware(

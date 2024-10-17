@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## Unreleased
 
+## [0.8.0] - TBD
+
+* update starlette-cramjam dependency and set compression-level default to 6
+
 ## [0.7.3] - 2024-09-16
 
 * add `TIPG_SORT_COLUMNS` settings to enable/disable columns sorting (default to `True`) (author @mattdiez-at, https://github.com/developmentseed/tipg/pull/187)
@@ -316,7 +320,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.7.2...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/developmentseed/tipg/compare/0.7.3...0.8.0
+[0.7.3]: https://github.com/developmentseed/tipg/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/developmentseed/tipg/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/developmentseed/tipg/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/developmentseed/tipg/compare/0.6.3...0.7.0

@@ -600,9 +600,7 @@ class Collection(BaseModel):
         sorts = []
         if sortby:
             for s in sortby.strip().split(","):
-                parts = re.match(
-                    "^(?P<direction>[+-]?)(?P<column>.*)$", s
-                ).groupdict()  # type:ignore
+                parts = re.match("^(?P<direction>[+-]?)(?P<column>.*)$", s).groupdict()  # type:ignore
 
                 direction = parts["direction"]
                 column = parts["column"].strip()

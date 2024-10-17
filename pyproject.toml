@@ -32,7 +32,7 @@ dependencies = [
     "geojson-pydantic>=1.0,<2.0",
     "pygeofilter>=0.2.0,<0.3.0",
     "ciso8601~=2.3",
-    "starlette-cramjam>=0.3,<0.4",
+    "starlette-cramjam>=0.4,<0.5",
     "importlib_resources>=1.1.0; python_version < '3.9'",
     "typing_extensions; python_version < '3.9'",
 ]
@@ -117,7 +117,7 @@ default_section = "THIRDPARTY"
 [tool.mypy]
 no_strict_optional = "True"
 
-[tool.ruff]
+[tool.ruff.lint]
 select = [
     "D1",  # pydocstyle errors
     "E",  # pycodestyle errors
