@@ -10,7 +10,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [0.8.0] - TBD
 
-* update starlette-cramjam dependency and set compression-level default to 6
+* update `starlette-cramjam` dependency and set compression-level default to 6
+* update `morecantile` dependency requirement to allow `6.x`
 
 ## [0.7.3] - 2024-09-16
 
