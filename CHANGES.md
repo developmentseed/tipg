@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 Note: Minor version `0.X.0` update might break the API, It's recommended to pin `tipg` to minor version: `tipg>=0.1,<0.2`
 
-## Unreleased
+## [unreleased]
 
-## [0.8.0] - TBD
+## [0.8.0] - 2024-10-17
 
 * update `starlette-cramjam` dependency and set compression-level default to 6
 * update `morecantile` dependency requirement to allow `6.x`
