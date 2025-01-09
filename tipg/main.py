@@ -39,6 +39,7 @@ async def lifespan(app: FastAPI):
         settings=postgres_settings,
         schemas=db_settings.schemas,
         user_sql_files=custom_sql_settings.sql_files,
+        skip_sql_execution=settings.skip_sql_execution,
     )
 
     # Register Collection Catalog

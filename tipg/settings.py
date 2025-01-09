@@ -32,6 +32,8 @@ class APISettings(BaseSettings):
 
     model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 
+    skip_sql_execution: bool = False
+
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
