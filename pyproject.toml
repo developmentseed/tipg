@@ -48,6 +48,7 @@ test = [
     "mapbox-vector-tile",
     "protobuf>=3.0,<4.0",
     "numpy",
+    "boto3",
 ]
 dev = [
     "pre-commit",
