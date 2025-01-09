@@ -25,15 +25,18 @@ class connection_factory:
 
     schemas: List[str]
     user_sql_files: List[pathlib.Path]
+    skip_sql_execution: bool
 
     def __init__(
         self,
         schemas: Optional[List[str]] = None,
         user_sql_files: Optional[List[pathlib.Path]] = None,
+        skip_sql_execution: Optional[bool] = False,
     ) -> None:
         """Init."""
         self.schemas = schemas or []
         self.user_sql_files = user_sql_files or []
+        self.skip_sql_execution = skip_sql_execution or False
 
     async def __call__(self, conn: asyncpg.Connection):
         """Create connection."""
@@ -44,9 +47,14 @@ class connection_factory:
             "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
         )
 
-        # Note: we add `pg_temp as the first element of the schemas list to make sure
-        # we register the custom functions and `dbcatalog` in it.
-        schemas = ",".join(["pg_temp", *self.schemas])
+        # Note: Unless we are skipping all sql execution, e.g. to connect with a read
+        # replica, we add `pg_temp`` as the first element of the schemas list to make
+        # sure we register the custom functions and `dbcatalog` in it.
+        if not self.skip_sql_execution:
+            schemas = ",".join(["pg_temp", *self.schemas])
+        if self.skip_sql_execution:
+            schemas = str(self.schemas)
+
         logger.debug(f"Looking for Tables and Functions in {schemas} schemas")
 
         await conn.execute(
@@ -59,12 +67,13 @@ class connection_factory:
             """
         )
 
-        # Register custom SQL functions/table/views in pg_temp
-        for sqlfile in self.user_sql_files:
-            await conn.execute(sqlfile.read_text())
+        if not self.skip_sql_execution:
+            # Register custom SQL functions/table/views in pg_temp
+            for sqlfile in self.user_sql_files:
+                await conn.execute(sqlfile.read_text())
 
-        # Register TiPG functions in `pg_temp`
-        await conn.execute(DB_CATALOG_FILE.read_text())
+            # Register TiPG functions in `pg_temp`
+            await conn.execute(DB_CATALOG_FILE.read_text())
 
 
 async def connect_to_db(
@@ -72,13 +81,14 @@ async def connect_to_db(
     settings: Optional[PostgresSettings] = None,
     schemas: Optional[List[str]] = None,
     user_sql_files: Optional[List[pathlib.Path]] = None,
+    skip_sql_execution: Optional[bool] = False,
     **kwargs,
 ) -> None:
     """Connect."""
     if not settings:
         settings = PostgresSettings()
 
-    con_init = connection_factory(schemas, user_sql_files)
+    con_init = connection_factory(schemas, user_sql_files, skip_sql_execution)
 
     app.state.pool = await asyncpg.create_pool_b(
         str(settings.database_url),
