@@ -161,14 +161,20 @@ jobs:
         id: tag
         run: |
           echo "version=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      
+      - name: Downcase REPO
+        id: downcase
+        run: |
+          repo_name=${{ github.repository }}
+          echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
 
       - name: Image name
         id: image
         run: |
           if [ ${{ matrix.image-version }} = 'uvicorn' ]; then
-            echo "name=${{ github.repository }}:uvicorn-" >> $GITHUB_OUTPUT
+            echo "name=${{ steps.downcase.outputs.repo }}:uvicorn-" >> $GITHUB_OUTPUT
           else
-            echo "name=${{ github.repository }}:" >> $GITHUB_OUTPUT
+            echo "name=${{ steps.downcase.outputs.repo }}:" >> $GITHUB_OUTPUT
           fi
 
       # Push `latest` when commiting to main
