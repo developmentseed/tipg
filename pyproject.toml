@@ -35,6 +35,7 @@ dependencies = [
     "starlette-cramjam>=0.4,<0.5",
     "importlib_resources>=1.1.0; python_version < '3.9'",
     "typing_extensions; python_version < '3.9'",
+    "boto3",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +49,6 @@ test = [
     "mapbox-vector-tile",
     "protobuf>=3.0,<4.0",
     "numpy",
-    "boto3",
 ]
 dev = [
     "pre-commit",
