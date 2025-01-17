@@ -10,6 +10,12 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 * fix serialization of UUID columns (author @giorgiobasile, https://github.com/developmentseed/tipg/pull/199)
 
+* Unify Docker images (deprecate `tipg-uvicorn`)
+
+* Remove `python3.8` support
+
+* Add `python3.13` support
+
 ## [0.8.0] - 2024-10-17
 
 * update `starlette-cramjam` dependency and set compression-level default to 6

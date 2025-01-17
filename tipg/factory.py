@@ -4,7 +4,17 @@ import abc
 import csv
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generator, Iterable, List, Literal, Optional
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+)
 from urllib.parse import urlencode
 
 import jinja2
@@ -13,7 +23,6 @@ from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
 from pygeofilter.ast import AstType
-from typing_extensions import Annotated
 
 from tipg import model
 from tipg.collections import Collection, CollectionList

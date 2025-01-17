@@ -17,14 +17,14 @@ on:
       - '.github/workflows/ci.yml'
   pull_request:
 env:
-  LATEST_PY_VERSION: '3.12'
+  LATEST_PY_VERSION: '3.13'
 
 jobs:
   tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     steps:
       - uses: actions/checkout@v4
@@ -134,12 +134,6 @@ jobs:
     needs: [tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image-version:
-        - 'uvicorn'
-        - 'gunicorn'
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -157,40 +151,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set tag version
-        id: tag
-        run: |
-          echo "version=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Image name
-        id: image
-        run: |
-          if [ ${{ matrix.image-version }} = 'uvicorn' ]; then
-            echo "name=${{ github.repository }}:uvicorn-" >> $GITHUB_OUTPUT
-          else
-            echo "name=${{ github.repository }}:" >> $GITHUB_OUTPUT
-          fi
-
-      # Push `latest` when commiting to main
       - name: Build and push
-        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
           context: .
-          file: dockerfiles/Dockerfile.${{ matrix.image-version }}
-          push: true
-          tags: |
-            ghcr.io/${{ steps.image.outputs.name }}latest
-
-      # Push `{VERSION}` when pushing a new tag
-      - name: Build and push
-        if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
-        uses: docker/build-push-action@v6
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: .
-          file: dockerfiles/Dockerfile.${{ matrix.image-version }}
-          push: true
-          tags: |
-            ghcr.io/${{ steps.image.outputs.name }}${{ steps.tag.outputs.version }}
+          file: dockerfiles/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

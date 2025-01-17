@@ -1,6 +1,7 @@
 """tipg.db: database events."""
 
 import pathlib
+from importlib.resources import files as resources_files
 from typing import List, Optional
 
 import orjson
@@ -10,12 +11,6 @@ from tipg.logger import logger
 from tipg.settings import PostgresSettings
 
 from fastapi import FastAPI
-
-try:
-    from importlib.resources import files as resources_files  # type: ignore
-except ImportError:
-    # Try backported to PY<39 `importlib_resources`.
-    from importlib_resources import files as resources_files  # type: ignore
 
 DB_CATALOG_FILE = resources_files(__package__) / "sql" / "dbcatalog.sql"
 

@@ -88,7 +88,7 @@ More info about configuration options at https://developmentseed.org/tipg/user_g
 ## Launch
 
 ```bash
-$ pip install uvicorn
+$ python -m pip install uvicorn
 
 # Set your PostGIS database instance URL in the environment
 $ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
@@ -116,31 +116,28 @@ $ docker-compose up app
 
 We are publishing two different docker images on `tag` and on every commit to `main` branch:
 
-| | Gunicorn | Uvicorn |
-|          -- |     -- |   -- |
-main commit | `ghcr.io/developmentseed/tipg:latest` | `ghcr.io/developmentseed/tipg:uvicorn-latest`
-tags | `ghcr.io/developmentseed/tipg:0.0.0` | `ghcr.io/developmentseed/tipg:uvicorn-0.0.0`
-dockerfile | [/dockerfiles/Dockerfile.gunicorn](https://github.com/developmentseed/tipg/blob/main/dockerfiles/Dockerfile.gunicorn) | [/dockerfiles/Dockerfile.uvicorn](https://github.com/developmentseed/tipg/blob/main/dockerfiles/Dockerfile.uvicorn)
+| | Gunicorn |
+|          -- |     -- |
+main commit | `ghcr.io/developmentseed/tipg:latest`
+tags | `ghcr.io/developmentseed/tipg:X.X.X`
+dockerfile | [/dockerfiles/Dockerfile](https://github.com/developmentseed/tipg/blob/main/dockerfiles/Dockerfile)
 
 See all version at https://github.com/developmentseed/tipg/pkgs/container/tipg
 
 ```
-# Gunicorn image
 $ docker run \
-    -p 8081:8081 \
-    -e PORT=8081 \
+    -p 8000:8000 \
     -e DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis \
-    ghcr.io/developmentseed/tipg:latest
+    ghcr.io/developmentseed/tipg:latest \
+    uvicorn tipg.main:app --host 0.0.0.0 --port 8000 --workers 1
 
-# or Uvicorn image
+# using Gunicorn
 $ docker run \
-    -p 8081:8081 \
-    -e PORT=8081 \
+    -p 8000:8000 \
     -e DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis \
-    ghcr.io/developmentseed/tipg:uvicorn-latest
+    ghcr.io/developmentseed/tipg:latest \
+    gunicorn -k uvicorn.workers.UvicornWorker tipg.main:app --bind 0.0.0.0:8000 --workers 1
 ```
-
-Note: If you are planning to use the docker image in a kubernetes deployment you may want to use the `uvicorn` image (ref: https://fastapi.tiangolo.com/deployment/server-workers/).
 
 ## Contribution & Development
 

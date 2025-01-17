@@ -1,12 +1,11 @@
 """tipg models."""
 
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Annotated, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from geojson_pydantic.features import Feature, FeatureCollection
 from morecantile.models import CRSType
 from pydantic import AnyUrl, BaseModel, Field, RootModel, model_validator
-from typing_extensions import Annotated
 
 from tipg.resources.enums import MediaType
 
