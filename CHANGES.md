@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [0.9.0] - 2025-01-17
+
 * fix serialization of UUID columns (author @giorgiobasile, https://github.com/developmentseed/tipg/pull/199)
 
 * Unify Docker images (deprecate `tipg-uvicorn`)
@@ -329,7 +331,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.8.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/developmentseed/tipg/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/developmentseed/tipg/compare/0.7.3...0.8.0
 [0.7.3]: https://github.com/developmentseed/tipg/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/developmentseed/tipg/compare/0.7.1...0.7.2
