@@ -886,9 +886,10 @@ def test_items_env_table_config_main(app, monkeypatch):
     assert body["features"][0]["geometry"]["type"] == "Polygon"
     Items.model_validate(body)
 
-    # Make sure that Postgres Decimal and Numeric are converted to str
+    # Make sure that Postgres Decimal, Numeric and UUID are converted to str
     assert isinstance(body["features"][0]["properties"]["decimal"], str)
     assert isinstance(body["features"][0]["properties"]["numeric"], str)
+    assert isinstance(body["features"][0]["properties"]["uuid"], str)
 
     response = app.get(
         "/collections/public.my_data/items",
@@ -901,9 +902,10 @@ def test_items_env_table_config_main(app, monkeypatch):
 
     assert len(body) == 1
     feature = json.loads(body[0])
-    # Make sure that Postgres Decimal and Numeric are converted to str
+    # Make sure that Postgres Decimal, Numeric and UUID are converted to str
     assert isinstance(feature["properties"]["decimal"], str)
     assert isinstance(feature["properties"]["numeric"], str)
+    assert isinstance(feature["properties"]["uuid"], str)
 
     response = app.get(
         "/collections/public.my_data/items?datetime=2004-10-19T10:23:54Z"

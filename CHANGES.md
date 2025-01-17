@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* fix serialization of UUID columns (author @giorgiobasile, https://github.com/developmentseed/tipg/pull/199)
+
 ## [0.8.0] - 2024-10-17
 
 * update `starlette-cramjam` dependency and set compression-level default to 6

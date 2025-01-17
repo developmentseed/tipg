@@ -4,6 +4,7 @@ import decimal
 from typing import Any
 
 import orjson
+from asyncpg.pgproto import pgproto
 
 from fastapi.responses import JSONResponse
 
@@ -11,6 +12,8 @@ from fastapi.responses import JSONResponse
 def default(obj):
     """Instruct orjson what to do with types it does not natively serialize"""
     if isinstance(obj, decimal.Decimal):
+        return str(obj)
+    elif isinstance(obj, pgproto.UUID):
         return str(obj)
 
 
