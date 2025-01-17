@@ -1,13 +1,9 @@
-version: '3'
-
 services:
   app:
     build:
       context: .
-      dockerfile: dockerfiles/Dockerfile.gunicorn
+      dockerfile: dockerfiles/Dockerfile
     environment:
-      - HOST=0.0.0.0
-      - PORT=8081
       - PYTHONWARNINGS=ignore
       - POSTGRES_USER=username
       - POSTGRES_PASS=password
@@ -20,31 +16,7 @@ services:
     depends_on:
     - database
     command:
-      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && /start.sh"
-    volumes:
-      - ./dockerfiles/scripts:/tmp/scripts
-
-  app-uvicorn:
-    build:
-      context: .
-      dockerfile: dockerfiles/Dockerfile.uvicorn
-    environment:
-      - HOST=0.0.0.0
-      - PORT=8081
-      - WEB_CONCURRENCY=1
-      - PYTHONWARNINGS=ignore
-      - POSTGRES_USER=username
-      - POSTGRES_PASS=password
-      - POSTGRES_DBNAME=postgis
-      - POSTGRES_HOST=database
-      - POSTGRES_PORT=5432
-      - DEBUG=TRUE
-    ports:
-      - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
-    depends_on:
-    - database
-    command:
-      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && uvicorn tipg.main:app --host 0.0.0.0 --port 8081"
+      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && uvicorn tipg.main:app --host 0.0.0.0 --port 8081 --workers 5"
     volumes:
       - ./dockerfiles/scripts:/tmp/scripts
 

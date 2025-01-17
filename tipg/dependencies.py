@@ -1,7 +1,7 @@
 """tipg dependencies."""
 
 import re
-from typing import Dict, List, Literal, Optional, Tuple, get_args
+from typing import Annotated, Dict, List, Literal, Optional, Tuple, get_args
 
 from ciso8601 import parse_rfc3339
 from morecantile import Tile
@@ -9,7 +9,6 @@ from morecantile import tms as default_tms
 from pygeofilter.ast import AstType
 from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
 from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
-from typing_extensions import Annotated
 
 from tipg.collections import Catalog, Collection, CollectionList
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter

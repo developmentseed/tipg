@@ -2,7 +2,7 @@
 name = "tipg"
 description = "Simple and Fast Geospatial OGC Features and Tiles API for PostGIS."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {file = "LICENSE"}
 authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.org"},
@@ -13,10 +13,11 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: GIS",
 ]
 dynamic = ["version"]
@@ -33,8 +34,6 @@ dependencies = [
     "pygeofilter>=0.2.0,<0.3.0",
     "ciso8601~=2.3",
     "starlette-cramjam>=0.4,<0.5",
-    "importlib_resources>=1.1.0; python_version < '3.9'",
-    "typing_extensions; python_version < '3.9'",
 ]
 
 [project.optional-dependencies]
