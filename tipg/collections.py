@@ -12,6 +12,7 @@ from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, model_validator
 from pygeofilter.ast import AstType
+from pyproj import Transformer
 
 from tipg.errors import (
     InvalidDatetime,
@@ -540,8 +541,6 @@ class Collection(BaseModel):
             # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
             tms_epsg = tms.crs.to_epsg() or 4326
             if geometry_column.srid != tms_epsg:
-                from pyproj import Transformer
-
                 transformer = Transformer.from_crs(
                     tms_epsg, geometry_column.srid, always_xy=True
                 )
