@@ -544,8 +544,10 @@ class Collection(BaseModel):
                 transformer = Transformer.from_crs(
                     tms_epsg, geometry_column.srid, always_xy=True
                 )
-                left, bottom = transformer.transform(left, bottom)
-                right, top = transformer.transform(right, top)
+
+                left, bottom, right, top = transformer.transform_bounds(
+                    left, bottom, right, top
+                )
 
             wheres.append(
                 logic.Func(
