@@ -1,9 +1,9 @@
 """tipg app."""
 
+import os
 from contextlib import asynccontextmanager
 from typing import Any, List
 
-import os
 import jinja2
 
 from tipg import __version__ as tipg_version
