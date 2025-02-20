@@ -2,6 +2,7 @@
 
 import datetime
 import re
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
@@ -12,6 +13,7 @@ from ciso8601 import parse_rfc3339
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, model_validator
 from pygeofilter.ast import AstType
+from pyproj import Transformer
 
 from tipg.errors import (
     InvalidDatetime,
@@ -31,6 +33,8 @@ from fastapi import FastAPI
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
+
+TransformerFromCRS = lru_cache(Transformer.from_crs)
 
 
 def debug_query(q, *p):
@@ -532,31 +536,36 @@ class Collection(BaseModel):
             wheres.append(to_filter(cql, [p.name for p in self.properties]))
 
         if tile and tms and geometry_column:
-            # Get Tile Bounds in Geographic CRS (usually epsg:4326)
-            left, bottom, right, top = tms.bounds(tile)
+            # Get tile bounds in the TMS coordinate system
+            bbox = tms.xy_bounds(tile)
+            left, bottom, right, top = bbox
 
-            # Truncate bounds to the max TMS bbox
-            left, bottom = tms.truncate_lnglat(left, bottom)
-            right, top = tms.truncate_lnglat(right, top)
+            # If the geometry column’s SRID does not match the TMS CRS, transform the bounds:
+            # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
+            tms_epsg = tms.crs.to_epsg() or 4326
+            if geometry_column.srid != tms_epsg:
+                transformer = TransformerFromCRS(
+                    tms_epsg, geometry_column.srid, always_xy=True
+                )
+
+                left, bottom, right, top = transformer.transform_bounds(
+                    left, bottom, right, top
+                )
 
             wheres.append(
                 logic.Func(
                     "ST_Intersects",
                     logic.Func(
-                        "ST_Transform",
+                        "ST_Segmentize",
                         logic.Func(
-                            "ST_Segmentize",
-                            logic.Func(
-                                "ST_MakeEnvelope",
-                                left,
-                                bottom,
-                                right,
-                                top,
-                                4326,
-                            ),
-                            right - left,
+                            "ST_MakeEnvelope",
+                            left,
+                            bottom,
+                            right,
+                            top,
+                            geometry_column.srid,
                         ),
-                        pg_funcs.cast(geometry_column.srid, "int"),
+                        right - left,
                     ),
                     logic.V(geometry_column.name),
                 )
