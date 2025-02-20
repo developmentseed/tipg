@@ -2,6 +2,7 @@
 
 import datetime
 import re
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
@@ -32,6 +33,8 @@ from fastapi import FastAPI
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
+
+TransformerFromCRS = lru_cache(Transformer.from_crs)
 
 
 def debug_query(q, *p):
@@ -541,7 +544,7 @@ class Collection(BaseModel):
             # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
             tms_epsg = tms.crs.to_epsg() or 4326
             if geometry_column.srid != tms_epsg:
-                transformer = Transformer.from_crs(
+                transformer = TransformerFromCRS(
                     tms_epsg, geometry_column.srid, always_xy=True
                 )
 
