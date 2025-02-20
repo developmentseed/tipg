@@ -56,10 +56,11 @@ server = [
     "uvicorn[standard]>=0.12.0,<0.19.0",
 ]
 docs = [
+    "black>=23.10.1",
     "mkdocs",
-    "mkdocs-material",
-    "pygments",
-    "pdocs",
+    "mkdocs-material[imaging]>=9.5",
+    "griffe-inherited-docstrings>=1.0.0",
+    "mkdocstrings[python]>=0.25.1",
 ]
 
 [project.urls]

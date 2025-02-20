@@ -28,8 +28,7 @@ nav:
     - "TiPg Vector Tiles server": advanced/ogc_tiles_server.md
     - "TiPg Features server": advanced/ogc_features_server.md
   - API:
-    - db: api/tipg/db.md
-    - dbmodel: api/tipg/dbmodel.md
+    - database: api/tipg/database.md
     - dependencies: api/tipg/dependencies.md
     - errors: api/tipg/errors.md
     - factory: api/tipg/factory.md
@@ -48,6 +47,29 @@ nav:
 
 plugins:
   - search
+  - mkdocstrings:
+      enable_inventory: true
+      handlers:
+        python:
+          paths: [src]
+          options:
+            filters:
+            - "!^__post_init__"
+            docstring_section_style: list
+            docstring_style: google
+            line_length: 100
+            separate_signature: true
+            show_root_heading: true
+            show_signature_annotations: true
+            show_source: false
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            extensions:
+              - griffe_inherited_docstrings
+          import:
+            - https://docs.python.org/3/objects.inv
+            - https://docs.pydantic.dev/latest/objects.inv
+            - https://fastapi.tiangolo.com/objects.inv
 
 theme:
   name: material
