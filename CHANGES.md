@@ -8,6 +8,11 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [0.11.0] - TBD
+
+* rename `tipg.collections.Collection -> tipg.collections.PgCollection`
+* add `tipg.collections.Collection` abstract base class
+
 ## [0.10.0] - 2025-02-20
 
 * convert tile bbox into collection's CRS for `MVT` where selection (author @callsumzg, https://github.com/developmentseed/tipg/pull/205)
