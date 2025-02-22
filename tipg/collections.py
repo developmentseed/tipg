@@ -1,10 +1,13 @@
 """tipg.dbmodel: database events."""
 
 import datetime
+import hashlib
+import json
 import re
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
+from aiocache import cached
 from buildpg import RawDangerous as raw
 from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
@@ -794,6 +797,14 @@ class Collection(BaseModel):
             prev=max(offset - limit, 0) if offset else None,
         )
 
+    @cached(
+        key_builder=lambda _f,
+        self,
+        pool,
+        tms,
+        tile,
+        **kwargs: f"{self.id}-{tms.id}-{tile.x}-{tile.y}-{tile.z}-{hashlib.md5(json.dumps(kwargs, sort_keys=True).encode('utf-8')).hexdigest()}",
+    )
     async def get_tile(
         self,
         *,
@@ -813,6 +824,7 @@ class Collection(BaseModel):
         limit: Optional[int] = None,
     ):
         """Build query to get Vector Tile."""
+        print(f"{tile.x}-{tile.y}-{tile.z}")
         limit = limit or mvt_settings.max_features_per_tile
 
         geometry_column = self.get_geometry_column(geom)

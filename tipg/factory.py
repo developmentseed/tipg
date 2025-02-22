@@ -45,7 +45,7 @@ from tipg.dependencies import (
 from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse, orjsonDumps
-from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
+from tipg.settings import CacheSettings, FeaturesSettings, MVTSettings, TMSSettings
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -59,6 +59,7 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
+cache_settings = CacheSettings()
 
 
 jinja2_env = jinja2.Environment(
@@ -1604,6 +1605,8 @@ class OGCTilesFactory(EndpointsFactory):
                 limit=limit,
                 geom=geom_column,
                 dt=datetime_column,
+                cache_write=cache_settings.disable is False,
+                cache_read=cache_settings.disable is False,
             )
 
             return Response(bytes(tile), media_type=MediaType.mvt.value)
