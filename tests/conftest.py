@@ -2,7 +2,9 @@
 
 import os
 from contextlib import asynccontextmanager
+from typing import Any, Dict
 
+import aiocache
 import psycopg
 import pytest
 from pytest_postgresql.janitor import DatabaseJanitor
@@ -101,6 +103,17 @@ def database_url(database):
     return db_url
 
 
+def _setup_cache():
+    config: Dict[str, Any] = {
+        "cache": "aiocache.SimpleMemoryCache",
+        "serializer": {
+            "class": "aiocache.serializers.PickleSerializer",
+        },
+        "ttl": 100,
+    }
+    aiocache.caches.set_config({"default": config})
+
+
 def create_tipg_app(
     postgres_settings: PostgresSettings,
     db_settings: DatabaseSettings,
@@ -134,6 +147,7 @@ def create_tipg_app(
             spatial_extent=db_settings.spatial_extent,
             datetime_extent=db_settings.datetime_extent,
         )
+        _setup_cache()
         yield
         await close_db_connection(app)
 
@@ -175,6 +189,7 @@ def app(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_DEFAULT_MINZOOM", str(5))
     monkeypatch.setenv("TIPG_DEFAULT_MAXZOOM", str(12))
 
+    monkeypatch.setenv("TIPG_CACHE_DISABLE", "TRUE")
     monkeypatch.setenv("TIPG_DEBUG", "TRUE")
 
     from tipg.main import app, db_settings, postgres_settings

@@ -1,8 +1,9 @@
 """tipg app."""
 
 from contextlib import asynccontextmanager
-from typing import Any, List
+from typing import Any, Dict, List
 
+import aiocache
 import jinja2
 
 from tipg import __version__ as tipg_version
@@ -13,6 +14,7 @@ from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import (
     APISettings,
+    CacheSettings,
     CustomSQLSettings,
     DatabaseSettings,
     PostgresSettings,
@@ -28,6 +30,21 @@ settings = APISettings()
 postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
+cache_settings = CacheSettings()
+
+
+def setup_cache():
+    """Setup aiocache."""
+    config: Dict[str, Any] = {
+        "cache": "aiocache.SimpleMemoryCache",
+        "serializer": {
+            "class": "aiocache.serializers.PickleSerializer",
+        },
+    }
+    if cache_settings.ttl is not None:
+        config["ttl"] = cache_settings.ttl
+
+    aiocache.caches.set_config({"default": config})
 
 
 @asynccontextmanager
@@ -55,6 +72,8 @@ async def lifespan(app: FastAPI):
         spatial_extent=db_settings.spatial_extent,
         datetime_extent=db_settings.datetime_extent,
     )
+
+    setup_cache()
 
     yield
 

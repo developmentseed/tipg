@@ -192,3 +192,19 @@ class CustomSQLSettings(BaseSettings):
             return list(self.custom_sql_directory.glob("*.sql"))
 
         return None
+
+
+class CacheSettings(BaseSettings):
+    """Cache settings"""
+
+    # TTL of the cache in seconds
+    ttl: int = 300
+
+    # Whether or not caching is enabled
+    disable: bool = False
+
+    model_config = {
+        "env_prefix": "TIPG_CACHE_",
+        "env_file": ".env",
+        "extra": "ignore",
+    }
