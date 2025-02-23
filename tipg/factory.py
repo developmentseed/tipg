@@ -1606,7 +1606,7 @@ class OGCTilesFactory(EndpointsFactory):
                 dt=datetime_column,
             )
 
-            return Response(bytes(tile), media_type=MediaType.mvt.value)
+            return Response(tile, media_type=MediaType.mvt.value)
 
     def _tilejson_routes(self):
         ############################################################################

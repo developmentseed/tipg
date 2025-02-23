@@ -1,5 +1,6 @@
 """tipg.dbmodel: database events."""
 
+import abc
 import datetime
 import re
 from functools import lru_cache
@@ -158,13 +159,12 @@ class Parameter(Column):
     default: Optional[str] = None
 
 
-class Collection(BaseModel):
-    """Model for DB Table and Function."""
+class Collection(BaseModel, metaclass=abc.ABCMeta):
+    """Collection Base Class."""
 
     type: str
     id: str
     table: str
-    dbschema: str = Field(alias="schema")
     title: Optional[str] = None
     description: Optional[str] = None
     table_columns: List[Column] = []
@@ -297,6 +297,57 @@ class Collection(BaseModel):
                 return p
 
         return None
+
+    @property
+    def queryables(self) -> Dict:
+        """Return the queryables."""
+        if self.geometry_columns:
+            geoms = {
+                col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
+                for col in self.geometry_columns
+            }
+        else:
+            geoms = {}
+
+        props = {
+            col.name: {"name": col.name, "type": col.json_type}
+            for col in self.properties
+            if col.name not in geoms
+        }
+
+        return {**geoms, **props}
+
+    @abc.abstractmethod
+    async def features(self, *args, **kwargs) -> ItemList:
+        """Get Items."""
+        ...
+
+    @abc.abstractmethod
+    async def get_tile(self, *args, **kwargs) -> bytes:
+        """Get MVT Tile."""
+        ...
+
+
+class CollectionList(TypedDict):
+    """Collections."""
+
+    collections: List[Collection]
+    matched: Optional[int]
+    next: Optional[int]
+    prev: Optional[int]
+
+
+class Catalog(TypedDict):
+    """Internal Collection Catalog."""
+
+    collections: Dict[str, Collection]
+    last_updated: datetime.datetime
+
+
+class PgCollection(Collection):
+    """Model for DB Table and Function."""
+
+    dbschema: str = Field(alias="schema")
 
     def _select_no_geo(self, properties: Optional[List[str]], addid: bool = True):
         nocomma = False
@@ -858,42 +909,9 @@ class Collection(BaseModel):
         debug_query(q, *p)
 
         async with pool.acquire() as conn:
-            return await conn.fetchval(q, *p)
+            tile = await conn.fetchval(q, *p)
 
-    @property
-    def queryables(self) -> Dict:
-        """Return the queryables."""
-        if self.geometry_columns:
-            geoms = {
-                col.name: {"$ref": geojson_schema.get(col.geometry_type.upper(), "")}
-                for col in self.geometry_columns
-            }
-        else:
-            geoms = {}
-
-        props = {
-            col.name: {"name": col.name, "type": col.json_type}
-            for col in self.properties
-            if col.name not in geoms
-        }
-
-        return {**geoms, **props}
-
-
-class CollectionList(TypedDict):
-    """Collections."""
-
-    collections: List[Collection]
-    matched: Optional[int]
-    next: Optional[int]
-    prev: Optional[int]
-
-
-class Catalog(TypedDict):
-    """Internal Collection Catalog."""
-
-    collections: Dict[str, Collection]
-    last_updated: datetime.datetime
+        return bytes(tile)
 
 
 async def get_collection_index(  # noqa: C901
@@ -990,7 +1008,7 @@ async def get_collection_index(  # noqa: C901
                     if table_conf.geomcol == c["name"] or geometry_column is None:
                         geometry_column = c
 
-            catalog[table_id] = Collection(
+            catalog[table_id] = PgCollection(
                 type=table["entity"],
                 id=table_id,
                 table=table["name"],
