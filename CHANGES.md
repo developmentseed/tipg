@@ -8,6 +8,12 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* update `Collection.get_tile()` and `Collection.features()` signature to expect `request: Request` as first parameter
+* re-use pg *connection* for `features_count` and `features`
+* renamed `tipg.collections.get_collection_index` to `tipg.collections.pg_get_collection_index` and change the function to use `DatabaseSettings` instance directly instead of keyword option
+* update `tipg.collections.pg_get_collection_index` to return a list of PgCollection instead of a Catalog
+* update `tipg.collections.register_collection_catalog` to pass `db_settings` to `pg_get_collection_index` function
+
 ## [0.11.0] - TBD
 
 * rename `tipg.collections.Collection -> tipg.collections.PgCollection`
