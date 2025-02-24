@@ -28,9 +28,17 @@ from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
-from tipg.settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
+from tipg.settings import (
+    DatabaseSettings,
+    FeaturesSettings,
+    MVTSettings,
+    TableConfig,
+    TableSettings,
+)
 
 from fastapi import FastAPI
+
+from starlette.requests import Request
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
@@ -318,12 +326,12 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         return {**geoms, **props}
 
     @abc.abstractmethod
-    async def features(self, *args, **kwargs) -> ItemList:
+    async def features(self, request: Request, *args, **kwargs) -> ItemList:
         """Get Items."""
         ...
 
     @abc.abstractmethod
-    async def get_tile(self, *args, **kwargs) -> bytes:
+    async def get_tile(self, request: Request, *args, **kwargs) -> bytes:
         """Get MVT Tile."""
         ...
 
@@ -682,8 +690,8 @@ class PgCollection(Collection):
 
     async def _features_query(
         self,
+        conn: asyncpg.Connection,
         *,
-        pool: asyncpg.BuildPgPool,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
@@ -728,18 +736,17 @@ class PgCollection(Collection):
         )
 
         q, p = render(":c", c=c)
-        async with pool.acquire() as conn:
-            for r in await conn.fetch(q, *p):
-                props = dict(r)
-                g = props.pop("tipg_geom")
-                id = props.pop("tipg_id")
-                feature = Feature(type="Feature", geometry=g, id=id, properties=props)
-                yield feature
+        for r in await conn.fetch(q, *p):
+            props = dict(r)
+            g = props.pop("tipg_geom")
+            id = props.pop("tipg_id")
+            feature = Feature(type="Feature", geometry=g, id=id, properties=props)
+            yield feature
 
     async def _features_count_query(
         self,
+        conn: asyncpg.Connection,
         *,
-        pool: asyncpg.BuildPgPool,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
@@ -765,13 +772,12 @@ class PgCollection(Collection):
         )
 
         q, p = render(":c", c=c)
-        async with pool.acquire() as conn:
-            count = await conn.fetchval(q, *p)
-            return count
+        count = await conn.fetchval(q, *p)
+        return count
 
     async def features(
         self,
-        pool: asyncpg.BuildPgPool,
+        request: Request,
         *,
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
@@ -803,40 +809,41 @@ class PgCollection(Collection):
                 f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
             )
 
-        matched = await self._features_count_query(
-            pool=pool,
-            ids_filter=ids_filter,
-            datetime_filter=datetime_filter,
-            bbox_filter=bbox_filter,
-            properties_filter=properties_filter,
-            function_parameters=function_parameters,
-            cql_filter=cql_filter,
-            geom=geom,
-            dt=dt,
-        )
-
-        features = [
-            f
-            async for f in self._features_query(
-                pool=pool,
+        async with request.app.state.pool.acquire() as conn:
+            matched = await self._features_count_query(
+                conn,
                 ids_filter=ids_filter,
                 datetime_filter=datetime_filter,
                 bbox_filter=bbox_filter,
                 properties_filter=properties_filter,
+                function_parameters=function_parameters,
                 cql_filter=cql_filter,
-                sortby=sortby,
-                properties=properties,
                 geom=geom,
                 dt=dt,
-                limit=limit,
-                offset=offset,
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
-                function_parameters=function_parameters,
             )
-        ]
-        returned = len(features)
+
+            features = [
+                f
+                async for f in self._features_query(
+                    conn,
+                    ids_filter=ids_filter,
+                    datetime_filter=datetime_filter,
+                    bbox_filter=bbox_filter,
+                    properties_filter=properties_filter,
+                    cql_filter=cql_filter,
+                    sortby=sortby,
+                    properties=properties,
+                    geom=geom,
+                    dt=dt,
+                    limit=limit,
+                    offset=offset,
+                    bbox_only=bbox_only,
+                    simplify=simplify,
+                    geom_as_wkt=geom_as_wkt,
+                    function_parameters=function_parameters,
+                )
+            ]
+            returned = len(features)
 
         return ItemList(
             items=features,
@@ -847,8 +854,8 @@ class PgCollection(Collection):
 
     async def get_tile(
         self,
+        request: Request,
         *,
-        pool: asyncpg.BuildPgPool,
         tms: TileMatrixSet,
         tile: Tile,
         ids_filter: Optional[List[str]] = None,
@@ -908,27 +915,21 @@ class PgCollection(Collection):
         )
         debug_query(q, *p)
 
-        async with pool.acquire() as conn:
+        async with request.app.state.pool.acquire() as conn:
             tile = await conn.fetchval(q, *p)
 
         return bytes(tile)
 
 
-async def get_collection_index(  # noqa: C901
+async def pg_get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
-    schemas: Optional[List[str]] = None,
-    tables: Optional[List[str]] = None,
-    exclude_tables: Optional[List[str]] = None,
-    exclude_table_schemas: Optional[List[str]] = None,
-    functions: Optional[List[str]] = None,
-    exclude_functions: Optional[List[str]] = None,
-    exclude_function_schemas: Optional[List[str]] = None,
-    spatial: bool = True,
-    spatial_extent: bool = True,
-    datetime_extent: bool = True,
-) -> Catalog:
+    settings: Optional[DatabaseSettings] = None,
+) -> List[Collection]:
     """Fetch Table and Functions index."""
-    schemas = schemas or ["public"]
+    if not settings:
+        settings = DatabaseSettings()
+
+    schemas = settings.schemas or ["public"]
 
     query = """
         SELECT pg_temp.tipg_catalog(
@@ -949,18 +950,18 @@ async def get_collection_index(  # noqa: C901
         rows = await conn.fetch_b(
             query,
             schemas=schemas,
-            tables=tables,
-            exclude_tables=exclude_tables,
-            exclude_table_schemas=exclude_table_schemas,
-            functions=functions,
-            exclude_functions=exclude_functions,
-            exclude_function_schemas=exclude_function_schemas,
-            spatial=spatial,
-            spatial_extent=spatial_extent,
-            datetime_extent=datetime_extent,
+            tables=settings.tables,
+            exclude_tables=settings.exclude_tables,
+            exclude_table_schemas=settings.exclude_table_schemas,
+            functions=settings.functions,
+            exclude_functions=settings.exclude_functions,
+            exclude_function_schemas=settings.exclude_function_schemas,
+            spatial=settings.only_spatial_tables,
+            spatial_extent=settings.spatial_extent,
+            datetime_extent=settings.datetime_extent,
         )
 
-        catalog: Dict[str, Collection] = {}
+        collections: List[Collection] = []
         table_settings = TableSettings()
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
@@ -1008,23 +1009,33 @@ async def get_collection_index(  # noqa: C901
                     if table_conf.geomcol == c["name"] or geometry_column is None:
                         geometry_column = c
 
-            catalog[table_id] = PgCollection(
-                type=table["entity"],
-                id=table_id,
-                table=table["name"],
-                schema=table["schema"],
-                description=table.get("description", None),
-                table_columns=columns,
-                properties=[p for p in columns if p["name"] in properties_setting],
-                id_column=id_column,
-                datetime_column=datetime_column,
-                geometry_column=geometry_column,
-                parameters=table.get("parameters") or [],
+            collections.append(
+                PgCollection(
+                    type=table["entity"],
+                    id=table_id,
+                    table=table["name"],
+                    schema=table["schema"],
+                    description=table.get("description", None),
+                    table_columns=columns,
+                    properties=[p for p in columns if p["name"] in properties_setting],
+                    id_column=id_column,
+                    datetime_column=datetime_column,
+                    geometry_column=geometry_column,
+                    parameters=table.get("parameters") or [],
+                )
             )
 
-        return Catalog(collections=catalog, last_updated=datetime.datetime.now())
+        return collections
 
 
-async def register_collection_catalog(app: FastAPI, **kwargs: Any) -> None:
+async def register_collection_catalog(
+    app: FastAPI,
+    db_settings: Optional[DatabaseSettings] = None,
+) -> None:
     """Register Table catalog."""
-    app.state.collection_catalog = await get_collection_index(app.state.pool, **kwargs)
+    db_collections = await pg_get_collection_index(app.state.pool, settings=db_settings)
+
+    app.state.collection_catalog = Catalog(
+        collections={col.id: col for col in [*db_collections]},
+        last_updated=datetime.datetime.now(),
+    )

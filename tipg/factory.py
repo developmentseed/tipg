@@ -762,7 +762,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             ]
 
             item_list = await collection.features(
-                request.app.state.pool,
+                request,
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
@@ -1012,7 +1012,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             ]
 
             item_list = await collection.features(
-                pool=request.app.state.pool,
+                request,
                 bbox_only=bbox_only,
                 simplify=simplify,
                 ids_filter=[itemId],
@@ -1590,7 +1590,7 @@ class OGCTilesFactory(EndpointsFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
 
             tile = await collection.get_tile(
-                pool=request.app.state.pool,
+                request,
                 tms=tms,
                 tile=tile,
                 ids_filter=ids_filter,

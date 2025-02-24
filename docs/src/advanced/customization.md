@@ -12,7 +12,7 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.collections import register_collection_catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
-from tipg.settings import PostgresSettings
+from tipg.settings import PostgresSettings, DatabaseSettings
 
 from fastapi import FastAPI
 
@@ -31,7 +31,10 @@ async def lifespan(app: FastAPI):
         settings=PostgresSettings(database_url="postgres://...."),
         schemas=["public"],
     )
-    await register_collection_catalog(app, schemas=["public"])
+    await register_collection_catalog(
+        app,
+        db_settings=DatabaseSettings(schemas=["public"]),
+    )
 
     yield
 
@@ -94,7 +97,7 @@ To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` env
 ```python
 from tipg.database import connect_to_db
 from tipg.collections import register_collection_catalog
-from tipg.settings import PostgresSettings
+from tipg.settings import PostgresSettings, DatabaseSettings
 
 postgres_settings = PostgresSettings()
 
@@ -111,8 +114,10 @@ async def startup_event() -> None:
     )
     await register_collection_catalog(
         app,
-        schemas=["public"],
-        exclude_function_schemas=["public"],
+        db_settings=DatabaseSettings(
+            schemas=["public"],
+            exclude_function_schemas=["public"],
+        ),
     )
 ```
 
