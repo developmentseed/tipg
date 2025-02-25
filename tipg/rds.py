@@ -32,17 +32,15 @@ def rds_connect_args(
     support IAM-based authentication for RDS.
     """
 
-    host = get_ssm_param(rds_settings.host_ssm_param) or pg_settings.postgres_host
-    port = int(
-        get_ssm_param(rds_settings.port_ssm_param) or pg_settings.postgres_port or 5432
-    )
-    user = get_ssm_param(rds_settings.user_ssm_param) or pg_settings.postgres_user
-    region = get_ssm_param(rds_settings.region_ssm_param) or None
-    dbname = get_ssm_param(rds_settings.dbname_ssm_param) or pg_settings.postgres_dbname
+    host = pg_settings.postgres_host
+    port = int(pg_settings.postgres_port or 5432)
+    user = pg_settings.postgres_user
+    region = "us-east-1"
+    dbname = pg_settings.postgres_dbname
     passwd = (
         None
         if rds_settings.use_iam_auth
-        else (get_secret(rds_settings.pass_secret_id) or pg_settings.postgres_pass)
+        else (pg_settings.postgres_pass)
     )
 
     new_pg = PostgresSettings(
@@ -106,25 +104,3 @@ def get_rds_token(
         Region=region or rds_client.meta.region_name,
     )
     return token
-
-
-def get_ssm_param(name: Union[str, None]) -> Union[str, None]:
-    """Get SSM param"""
-    if not name:
-        return None
-
-    logger.debug(f"Retrieving SSM param named: {name}")
-    ssm_client = boto3.client("ssm")
-    response = ssm_client.get_parameter(Name=name, WithDecryption=True)
-    return response["Value"]
-
-
-def get_secret(id: Union[str, None]) -> Union[str, None]:
-    """Get secret"""
-    if not id:
-        return None
-
-    logger.debug(f"Retrieving SecretsManager Secret with ID: {id}")
-    secrets_client = boto3.client("secretsmanager")
-    response = secrets_client.get_parameter(SecretId=id)
-    return response["SecretString"]
