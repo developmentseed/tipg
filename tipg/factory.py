@@ -635,9 +635,6 @@ class OGCFeaturesFactory(EndpointsFactory):
                 title=collection.title,
                 description=collection.description,
                 extent=collection.extent,
-                crs=[collection.crs]
-                if collection.crs
-                else ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"],
                 links=[
                     model.Link(
                         title="Collection",

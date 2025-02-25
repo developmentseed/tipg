@@ -164,7 +164,7 @@ def test_collections_landsat(app):
     assert response.headers["content-type"] == "application/json"
     body = response.json()
     assert body["id"] == "public.landsat_wrs"
-    assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
+    assert sorted(["id", "links", "extent", "itemType", "crs"]) == sorted(body)
     assert body["crs"] == ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
     assert ["bbox", "crs"] == list(body["extent"]["spatial"])
     assert (

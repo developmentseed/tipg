@@ -8,7 +8,7 @@ def test_non_geo(app):
     body = response.json()
     assert body["id"] == "public.nongeo_data"
     # No Extent for non-geo table
-    assert ["id", "title", "links", "extent", "itemType", "crs"] == list(body)
+    assert sorted(["id", "links", "extent", "itemType", "crs"]) == sorted(body)
     assert body["extent"]["temporal"]
     assert body["extent"]["temporal"]["interval"][0] == [
         "2004-10-19T09:23:54+00:00",
