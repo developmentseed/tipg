@@ -630,61 +630,68 @@ class OGCFeaturesFactory(EndpointsFactory):
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
-
-            data = model.Collection.model_validate(
-                {
-                    **collection.model_dump(),
-                    "title": collection.id,
-                    "extent": collection.extent,
-                    "links": [
-                        {
-                            "href": self.url_for(
-                                request,
-                                "collection",
-                                collectionId=collection.id,
-                            ),
-                            "rel": "self",
-                            "type": "application/json",
-                        },
-                        {
-                            "title": "Items",
-                            "href": self.url_for(
-                                request, "items", collectionId=collection.id
-                            ),
-                            "rel": "items",
-                            "type": "application/geo+json",
-                        },
-                        {
-                            "title": "Items (CSV)",
-                            "href": self.url_for(
-                                request, "items", collectionId=collection.id
-                            )
-                            + "?f=csv",
-                            "rel": "alternate",
-                            "type": "text/csv",
-                        },
-                        {
-                            "title": "Items (GeoJSONSeq)",
-                            "href": self.url_for(
-                                request, "items", collectionId=collection.id
-                            )
-                            + "?f=geojsonseq",
-                            "rel": "alternate",
-                            "type": "application/geo+json-seq",
-                        },
-                        {
-                            "title": "Queryables",
-                            "href": self.url_for(
-                                request,
-                                "queryables",
-                                collectionId=collection.id,
-                            ),
-                            "rel": "queryables",
-                            "type": "application/schema+json",
-                        },
-                        *self._additional_collection_tiles_links(request, collection),
-                    ],
-                }
+            data = model.Collection(
+                id=collection.id,
+                title=collection.title,
+                description=collection.description,
+                extent=collection.extent,
+                crs=[collection.crs]
+                if collection.crs
+                else ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"],
+                links=[
+                    model.Link(
+                        title="Collection",
+                        href=self.url_for(
+                            request,
+                            "collection",
+                            collectionId=collection.id,
+                        ),
+                        rel="self",
+                        type=MediaType.json,
+                    ),
+                    model.Link(
+                        title="Items",
+                        href=self.url_for(
+                            request,
+                            "items",
+                            collectionId=collection.id,
+                        ),
+                        rel="items",
+                        type=MediaType.geojson,
+                    ),
+                    model.Link(
+                        title="Items (CSV)",
+                        href=self.url_for(
+                            request,
+                            "items",
+                            collectionId=collection.id,
+                        )
+                        + "?f=csv",
+                        rel="alternate",
+                        type=MediaType.csv,
+                    ),
+                    model.Link(
+                        title="Items (GeoJSONSeq)",
+                        href=self.url_for(
+                            request,
+                            "items",
+                            collectionId=collection.id,
+                        )
+                        + "?f=geojsonseq",
+                        rel="alternate",
+                        type=MediaType.geojsonseq,
+                    ),
+                    model.Link(
+                        href=self.url_for(
+                            request,
+                            "queryables",
+                            collectionId=collection.id,
+                        ),
+                        rel="queryables",
+                        type=MediaType.schemajson,
+                    ),
+                    *self._additional_collection_tiles_links(request, collection),
+                ],
             )
 
             if output_type == MediaType.html:
