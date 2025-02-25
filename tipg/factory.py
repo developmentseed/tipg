@@ -53,7 +53,7 @@ from fastapi.responses import ORJSONResponse
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response, StreamingResponse
-from starlette.routing import compile_path, replace_params
+from starlette.routing import NoMatchFound, compile_path, replace_params
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tms_settings = TMSSettings()
@@ -416,6 +416,65 @@ class OGCFeaturesFactory(EndpointsFactory):
             ),
         ]
 
+    def _additional_collection_tiles_links(
+        self, request: Request, collection: Collection
+    ) -> List[model.Link]:
+        links = []
+        base_url = str(request.base_url)
+        try:
+            links.append(
+                model.Link(
+                    rel="data",
+                    title="Collection TileSets",
+                    type=MediaType.json,
+                    href=str(
+                        request.app.url_path_for(
+                            "collection_tileset_list",
+                            collectionId=collection.id,
+                        ).make_absolute_url(base_url=base_url)
+                    ),
+                ),
+            )
+            links.append(
+                model.Link(
+                    rel="data",
+                    title="Collection TileSet (Template URL)",
+                    type=MediaType.json,
+                    templated=True,
+                    href=str(
+                        request.app.url_path_for(
+                            "collection_tileset",
+                            collectionId=collection.id,
+                            tileMatrixSetId="{tileMatrixSetId}",
+                        ).make_absolute_url(base_url=base_url)
+                    ),
+                ),
+            )
+        except NoMatchFound:
+            pass
+
+        try:
+            links.append(
+                model.Link(
+                    title="Collection Map viewer (Template URL)",
+                    href=str(
+                        request.app.url_path_for(
+                            "viewer_endpoint",
+                            collectionId=collection.id,
+                            tileMatrixSetId="{tileMatrixSetId}",
+                        ).make_absolute_url(base_url=base_url)
+                    ),
+                    type=MediaType.html,
+                    rel="data",
+                    templated=True,
+                )
+            )
+
+        except NoMatchFound:
+            pass
+
+        return links
+
     def register_routes(self):
         """Register OGC Features endpoints."""
         self._collections_route()
@@ -530,6 +589,9 @@ class OGCFeaturesFactory(EndpointsFactory):
                                 rel="queryables",
                                 type=MediaType.schemajson,
                             ),
+                            *self._additional_collection_tiles_links(
+                                request, collection
+                            ),
                         ],
                     )
                     for collection in collection_list["collections"]
@@ -620,6 +682,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                             "rel": "queryables",
                             "type": "application/schema+json",
                         },
+                        *self._additional_collection_tiles_links(request, collection),
                     ],
                 }
             )

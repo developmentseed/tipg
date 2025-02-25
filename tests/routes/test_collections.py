@@ -20,6 +20,12 @@ def test_collections(app):
     assert body["numberMatched"] >= collection_number
     assert body["numberReturned"] >= collection_number
 
+    col = body["collections"][0]
+    link_titles = [link.get("title", "") for link in col["links"]]
+    assert "Collection TileSets" in link_titles
+    assert "Collection TileSet (Template URL)" in link_titles
+    assert "Collection Map viewer (Template URL)" in link_titles
+
     ids = [x["id"] for x in body["collections"]]
     assert "public.landsat_wrs" in ids
     assert "public.my_data" in ids
@@ -166,6 +172,11 @@ def test_collections_landsat(app):
         == "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
     )
     assert not body["extent"].get("temporal")
+
+    link_titles = [link.get("title", "") for link in body["links"]]
+    assert "Collection TileSets" in link_titles
+    assert "Collection TileSet (Template URL)" in link_titles
+    assert "Collection Map viewer (Template URL)" in link_titles
 
     response = app.get("/collections/public.landsat_wrs?f=html")
     assert response.status_code == 200

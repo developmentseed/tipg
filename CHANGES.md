@@ -13,6 +13,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * renamed `tipg.collections.get_collection_index` to `tipg.collections.pg_get_collection_index` and change the function to use `DatabaseSettings` instance directly instead of keyword option
 * update `tipg.collections.pg_get_collection_index` to return a list of PgCollection instead of a Catalog
 * update `tipg.collections.register_collection_catalog` to pass `db_settings` to `pg_get_collection_index` function
+* add `tilesets` and `viewer` links in `/collections` and `/collections/{collectionId}` response links
 
 ## [0.11.0] - TBD
 
