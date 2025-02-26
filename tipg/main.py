@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     # Create Connection Pool
     pg_settings, conn_kwargs = rds_connect_args(postgres_settings, rds_settings)
 
-    if os.environ.get("TIPG_RDS_USE_IAM_AUTH") == "TRUE":
+    if os.environ.get("TIPG_USE_RDS_IAM_AUTH") == "TRUE":
         await connect_to_db(
             app,
             settings=pg_settings,
