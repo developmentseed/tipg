@@ -35,7 +35,7 @@ def rds_connect_args(
     host = pg_settings.postgres_host
     port = int(pg_settings.postgres_port or 5432)
     user = pg_settings.postgres_user
-    region = "us-east-1"
+    region = None
     dbname = pg_settings.postgres_dbname
     passwd = None if rds_settings.use_iam_auth else (pg_settings.postgres_pass)
 
