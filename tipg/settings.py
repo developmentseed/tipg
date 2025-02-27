@@ -185,7 +185,7 @@ class PostgresSettings(BaseSettings):
             password=password,
             host=host,
             port=port,
-            path=f"/{dbname}",  # ensure the dbname is prefixed with '/'
+            dbname=dbname,  # ensure the dbname is prefixed with '/'
         )
 
 
