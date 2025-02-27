@@ -1,6 +1,5 @@
 """tipg app."""
 
-import os
 from contextlib import asynccontextmanager
 from typing import Any, List
 
@@ -12,13 +11,11 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
-from tipg.rds import rds_connect_args
 from tipg.settings import (
     APISettings,
     CustomSQLSettings,
     DatabaseSettings,
     PostgresSettings,
-    RDSSettings,
 )
 
 from fastapi import FastAPI, Request
@@ -28,7 +25,6 @@ from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
-rds_settings = RDSSettings()
 postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
@@ -38,25 +34,13 @@ custom_sql_settings = CustomSQLSettings()
 async def lifespan(app: FastAPI):
     """FastAPI Lifespan."""
     # Create Connection Pool
-    pg_settings, conn_kwargs = rds_connect_args(postgres_settings, rds_settings)
-
-    if os.environ.get("TIPG_USE_RDS_IAM_AUTH") == "TRUE":
-        await connect_to_db(
-            app,
-            settings=pg_settings,
-            schemas=db_settings.schemas,
-            user_sql_files=custom_sql_settings.sql_files,
-            skip_sql_execution=settings.skip_sql_execution,
-            **conn_kwargs,
-        )
-    else:
-        await connect_to_db(
-            app,
-            settings=postgres_settings,
-            schemas=db_settings.schemas,
-            user_sql_files=custom_sql_settings.sql_files,
-            skip_sql_execution=settings.skip_sql_execution,
-        )
+    await connect_to_db(
+        app,
+        settings=postgres_settings,
+        schemas=db_settings.schemas,
+        user_sql_files=custom_sql_settings.sql_files,
+        skip_sql_execution=settings.skip_sql_execution,
+    )
 
     # Register Collection Catalog
     await register_collection_catalog(
