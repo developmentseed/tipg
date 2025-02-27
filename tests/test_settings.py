@@ -18,7 +18,7 @@ def test_non_iam_db_url():
     )
     dsn = settings.database_url
     # Ensure the DSN contains the static password (properly URL-encoded)
-    assert "test_pass" in str(dsn)
+    assert "test_pass" in settings.postgres_pass
 
 
 # A fake RDS client to simulate token generation

@@ -178,7 +178,7 @@ class PostgresSettings(BaseSettings):
                 DBUsername=username,
             )
         else:
-            password = quote(info.data["postgres_pass"])
+            password = info.data["postgres_pass"]
 
         return PostgresDsn.build(
             scheme="postgresql",
