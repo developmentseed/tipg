@@ -3,7 +3,6 @@
 import json
 import pathlib
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote_plus as quote
 
 import boto3
 from pydantic import (
