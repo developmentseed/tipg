@@ -17,9 +17,8 @@ def test_non_iam_db_url():
         iam_auth_enabled=False,
     )
     dsn = settings.database_url
-    print(dsn)
     # Ensure the DSN contains the static password (properly URL-encoded)
-    assert "test_pass" in dsn
+    assert "test_pass" in str(dsn)
 
 
 # A fake RDS client to simulate token generation
@@ -54,6 +53,5 @@ def test_iam_db_url(monkeypatch):
         aws_region="us-east-1",
     )
     dsn = settings.database_url
-    print(dsn)
     # Check that the fake token is present in the DSN
-    assert "fake-token" in dsn
+    assert "fake-token" in str(dsn)
