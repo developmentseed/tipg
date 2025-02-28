@@ -3,7 +3,7 @@
 import json
 import pathlib
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote_plus as quote
+from urllib.parse import quote_plus
 
 import boto3
 from pydantic import (
@@ -183,7 +183,7 @@ class PostgresSettings(BaseSettings):
         return PostgresDsn.build(
             scheme="postgresql",
             username=username,
-            password=quote(password),
+            password=quote_plus(password),
             host=host,
             port=port,
             path=dbname,
