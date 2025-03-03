@@ -19,15 +19,18 @@ class connection_factory:
     """Connection creation."""
 
     schemas: List[str]
+    tipg_schema: str
     user_sql_files: List[pathlib.Path]
 
     def __init__(
         self,
-        schemas: Optional[List[str]] = None,
+        schemas: List[str],
+        tipg_schema: str,
         user_sql_files: Optional[List[pathlib.Path]] = None,
     ) -> None:
         """Init."""
-        self.schemas = schemas or []
+        self.schemas = schemas
+        self.tipg_schema = tipg_schema
         self.user_sql_files = user_sql_files or []
 
     async def __call__(self, conn: asyncpg.Connection):
@@ -39,9 +42,9 @@ class connection_factory:
             "jsonb", encoder=orjson.dumps, decoder=orjson.loads, schema="pg_catalog"
         )
 
-        # Note: we add `pg_temp as the first element of the schemas list to make sure
+        # Note: we add `{tipg_schema}` as the first element of the schemas list to make sure
         # we register the custom functions and `dbcatalog` in it.
-        schemas = ",".join(["pg_temp", *self.schemas])
+        schemas = ",".join([self.tipg_schema, *self.schemas])
         logger.debug(f"Looking for Tables and Functions in {schemas} schemas")
 
         await conn.execute(
@@ -54,26 +57,30 @@ class connection_factory:
             """
         )
 
-        # Register custom SQL functions/table/views in pg_temp
+        # Register custom SQL functions/table/views in `{tipg_schema}`
         for sqlfile in self.user_sql_files:
             await conn.execute(sqlfile.read_text())
 
-        # Register TiPG functions in `pg_temp`
-        await conn.execute(DB_CATALOG_FILE.read_text())
+        # Register TiPG functions in `{tipg_schema}`
+        await conn.execute(
+            DB_CATALOG_FILE.read_text().replace("pg_temp", self.tipg_schema)
+        )
 
 
 async def connect_to_db(
     app: FastAPI,
-    settings: Optional[PostgresSettings] = None,
-    schemas: Optional[List[str]] = None,
+    *,
+    schemas: List[str],
+    tipg_schema: str = "pg_temp",
     user_sql_files: Optional[List[pathlib.Path]] = None,
+    settings: Optional[PostgresSettings] = None,
     **kwargs,
 ) -> None:
     """Connect."""
+    con_init = connection_factory(schemas, tipg_schema, user_sql_files)
+
     if not settings:
         settings = PostgresSettings()
-
-    con_init = connection_factory(schemas, user_sql_files)
 
     app.state.pool = await asyncpg.create_pool_b(
         str(settings.database_url),

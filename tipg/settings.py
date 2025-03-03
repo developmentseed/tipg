@@ -164,6 +164,7 @@ class DatabaseSettings(BaseSettings):
     """TiPg Database settings."""
 
     schemas: List[str] = ["public"]
+    tipg_schema: str = Field("pg_temp", alias="application_schema")
     tables: Optional[List[str]] = None
     exclude_tables: Optional[List[str]] = None
     exclude_table_schemas: Optional[List[str]] = None

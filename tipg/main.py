@@ -36,9 +36,10 @@ async def lifespan(app: FastAPI):
     # Create Connection Pool
     await connect_to_db(
         app,
-        settings=postgres_settings,
         schemas=db_settings.schemas,
+        tipg_schema=db_settings.tipg_schema,
         user_sql_files=custom_sql_settings.sql_files,
+        settings=postgres_settings,
     )
 
     # Register Collection Catalog
