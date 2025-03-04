@@ -5,6 +5,7 @@ on:
   push:
     branches:
     - main
+    - maint-0.10.x
     tags:
     - '*'
     paths:
@@ -93,7 +94,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-pages-branch: 'gh-benchmarks'
           # Make a commit only if main
-          auto-push: ${{ github.ref == 'refs/heads/main' }}
+          auto-push: ${{ github.ref == 'refs/heads/maint-0.10.x' }}
 
   publish:
     needs: [tests]
@@ -132,7 +133,7 @@ jobs:
 
   publish-docker:
     needs: [tests]
-    if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
+    if: github.ref == 'refs/heads/maint-0.10.x' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
