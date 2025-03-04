@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [0.10.1] - 2025-03-04
+
+* remove `PostgresSettings` initialization from main.py
+
 ## [0.10.0] - 2025-02-20
 
 * convert tile bbox into collection's CRS for `MVT` where selection (author @callsumzg, https://github.com/developmentseed/tipg/pull/205)
