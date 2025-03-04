@@ -117,9 +117,10 @@ def create_tipg_app(
         """FastAPI Lifespan."""
         await connect_to_db(
             app,
-            settings=postgres_settings,
             schemas=db_settings.schemas,
+            tipg_schema=db_settings.tipg_schema,
             user_sql_files=sql_settings.sql_files,
+            settings=postgres_settings,
         )
         await register_collection_catalog(app, db_settings=db_settings)
         yield
@@ -496,8 +497,9 @@ def app_middleware_refresh(database_url, monkeypatch):
         """FastAPI Lifespan."""
         await connect_to_db(
             app,
-            settings=postgres_settings,
             schemas=db_settings.schemas,
+            tipg_schema=db_settings.tipg_schema,
+            settings=postgres_settings,
         )
         await register_collection_catalog(app, db_settings=db_settings)
         yield

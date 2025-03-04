@@ -14,6 +14,31 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * update `tipg.collections.pg_get_collection_index` to return a list of PgCollection instead of a Catalog
 * update `tipg.collections.register_collection_catalog` to pass `db_settings` to `pg_get_collection_index` function
 * add `tilesets` and `viewer` links in `/collections` and `/collections/{collectionId}` response links
+* add the ability to use a schema other than pg_temp for installing catalog functions (using `TIPG_DB_APPLICATION_SCHEMA` environment variable)
+* change `database.connect_to_db` input order
+
+    ```python
+    # Before
+    async def connect_to_db(
+        app: FastAPI,
+        settings: Optional[PostgresSettings] = None,
+        schemas: Optional[List[str]] = None,
+        user_sql_files: Optional[List[pathlib.Path]] = None,
+        **kwargs,
+    ) -> None:
+
+    # Now
+    async def connect_to_db(
+        app: FastAPI,
+        *,
+        schemas: List[str],
+        tipg_schema: str = "pg_temp",
+        user_sql_files: Optional[List[pathlib.Path]] = None,
+        settings: Optional[PostgresSettings] = None,
+        **kwargs,
+    ) -> None:
+    ```
+
 
 ## [0.11.0] - TBD
 
