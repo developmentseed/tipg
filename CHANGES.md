@@ -38,7 +38,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
         **kwargs,
     ) -> None:
     ```
-
+* fix URL in HTML templates when behind proxy
 
 ## [0.11.0] - TBD
 
