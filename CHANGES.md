@@ -8,14 +8,24 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
-* update `Collection.get_tile()` and `Collection.features()` signature to expect `request: Request` as first parameter
-* re-use pg *connection* for `features_count` and `features`
-* renamed `tipg.collections.get_collection_index` to `tipg.collections.pg_get_collection_index` and change the function to use `DatabaseSettings` instance directly instead of keyword option
-* update `tipg.collections.pg_get_collection_index` to return a list of PgCollection instead of a Catalog
-* update `tipg.collections.register_collection_catalog` to pass `db_settings` to `pg_get_collection_index` function
+### Added
+
 * add `tilesets` and `viewer` links in `/collections` and `/collections/{collectionId}` response links
 * add the ability to use a schema other than pg_temp for installing catalog functions (using `TIPG_DB_APPLICATION_SCHEMA` environment variable)
-* change `database.connect_to_db` input order
+* re-use pg *connection* for `features_count` and `features`
+* add `tipg.collections.Collection` abstract base class
+
+### Changed
+
+* rename `tipg.collections.Collection -> tipg.collections.PgCollection` **breaking change**
+* update `Collection.get_tile()` and `Collection.features()` signature to expect `request: Request` as first parameter **breaking change**
+* rename `tipg.collections.get_collection_index` to `tipg.collections.pg_get_collection_index` and change the function to use `DatabaseSettings` instance directly instead of keyword option **breaking change**
+* update `tipg.collections.pg_get_collection_index` to return a list of PgCollection instead of a Catalog **breaking change**
+* update `tipg.collections.register_collection_catalog` to pass `db_settings` to `pg_get_collection_index` function **breaking change**
+* remove **deprecated** tiles endpoint with default TileMatrixSet
+* rename tilejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json` **breaking change**
+* rename stylejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/style.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json` **breaking change**
+* change `database.connect_to_db` input order **breaking change**
 
     ```python
     # Before
@@ -38,15 +48,11 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
         **kwargs,
     ) -> None:
     ```
+
+### Fixed
+
 * fix URL in HTML templates when behind proxy
-* remove **deprecated** tiles endpoint with default TileMatrixSet
-* renamed tilejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json` **breaking change**
-* renamed stylejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/style.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json` **breaking change**
 
-## [0.11.0] - TBD
-
-* rename `tipg.collections.Collection -> tipg.collections.PgCollection`
-* add `tipg.collections.Collection` abstract base class
 
 ## [0.10.0] - 2025-02-20
 
