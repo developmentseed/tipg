@@ -39,6 +39,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
     ) -> None:
     ```
 * fix URL in HTML templates when behind proxy
+* remove **deprecated** tiles endpoint with default TileMatrixSet
+* renamed tilejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json` **breaking change**
+* renamed stylejson endpoint from `/collections/{collectionId}/{tileMatrixSetId}/style.json` to `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json` **breaking change**
 
 ## [0.11.0] - TBD
 

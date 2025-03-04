@@ -24,7 +24,9 @@ def test_geography_column(app):
     assert body["numberReturned"] == 6
     assert body["features"][0]["geometry"]["type"] == "Polygon"
 
-    response = app.get("/collections/public.my_data_geo/tilejson.json")
+    response = app.get(
+        "/collections/public.my_data_geo/tiles/WebMercatorQuad/tilejson.json"
+    )
     assert response.status_code == 200
     resp_json = response.json()
     assert resp_json["name"] == "public.my_data_geo"
@@ -34,7 +36,7 @@ def test_geography_column(app):
         resp_json["bounds"], [-47.5356, 74.8049, -8.97407, 81.8555]
     )
 
-    response = app.get("/collections/public.my_data_geo/tiles/5/11/5")
+    response = app.get("/collections/public.my_data_geo/tiles/WebMercatorQuad/5/11/5")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"])
