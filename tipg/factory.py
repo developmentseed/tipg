@@ -1192,6 +1192,7 @@ class OGCTilesFactory(EndpointsFactory):
                     request,
                     "collection_get_tile",
                     collectionId="{collectionId}",
+                    tileMatrixSetId="{tileMatrixSetId}",
                     z="{z}",
                     x="{x}",
                     y="{y}",
@@ -1606,22 +1607,16 @@ class OGCTilesFactory(EndpointsFactory):
             operation_id=".collection.vector.getTileTms",
             tags=["OGC Tiles API"],
         )
-        @self.router.get(
-            "/collections/{collectionId}/tiles/{z}/{x}/{y}",
-            response_class=Response,
-            responses={200: {"content": {MediaType.mvt.value: {}}}},
-            operation_id=".collection.vector.getTile",
-            tags=["OGC Tiles API"],
-            deprecated=True,
-        )
         async def collection_get_tile(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
-            tile: Annotated[Tile, Depends(TileParams)],
             tileMatrixSetId: Annotated[
                 Literal[tuple(self.supported_tms.list())],
-                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ] = tms_settings.default_tms,
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported."
+                ),
+            ],
+            tile: Annotated[Tile, Depends(TileParams)],
             ids_filter: Annotated[Optional[List[str]], Depends(ids_query)] = None,
             bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)] = None,
             datetime_filter: Annotated[
@@ -1680,7 +1675,7 @@ class OGCTilesFactory(EndpointsFactory):
         # ADDITIONAL ENDPOINTS NOT IN OGC Tiles API (tilejson, style.json, viewer) #
         ############################################################################
         @self.router.get(
-            "/collections/{collectionId}/{tileMatrixSetId}/tilejson.json",
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json",
             response_model=model.TileJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
@@ -1688,23 +1683,15 @@ class OGCTilesFactory(EndpointsFactory):
             operation_id=".collection.vector.getTileJSONTms",
             tags=["OGC Tiles API"],
         )
-        @self.router.get(
-            "/collections/{collectionId}/tilejson.json",
-            response_model=model.TileJSON,
-            responses={200: {"description": "Return a tilejson"}},
-            response_model_exclude_none=True,
-            response_class=ORJSONResponse,
-            operation_id=".collection.vector.getTileJSON",
-            tags=["OGC Tiles API"],
-            deprecated=True,
-        )
         async def collection_tilejson(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             tileMatrixSetId: Annotated[
                 Literal[tuple(self.supported_tms.list())],
-                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ] = tms_settings.default_tms,
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported."
+                ),
+            ],
             minzoom: Annotated[
                 Optional[int],
                 Query(description="Overwrite default minzoom."),
@@ -1782,7 +1769,7 @@ class OGCTilesFactory(EndpointsFactory):
 
     def _stylejson_routes(self):
         @self.router.get(
-            "/collections/{collectionId}/{tileMatrixSetId}/style.json",
+            "/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json",
             response_model=model.StyleJSON,
             responses={200: {"description": "Return a tilejson"}},
             response_model_exclude_none=True,
@@ -1790,23 +1777,15 @@ class OGCTilesFactory(EndpointsFactory):
             operation_id=".collection.vector.getStyleJSONTms",
             tags=["OGC Tiles API"],
         )
-        @self.router.get(
-            "/collections/{collectionId}/style.json",
-            response_model=model.StyleJSON,
-            responses={200: {"description": "Return a StyleJSON"}},
-            response_model_exclude_none=True,
-            response_class=ORJSONResponse,
-            operation_id=".collection.vector.getStyleJSON",
-            tags=["OGC Tiles API"],
-            deprecated=True,
-        )
         async def collection_stylejson(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             tileMatrixSetId: Annotated[
                 Literal[tuple(self.supported_tms.list())],
-                f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-            ] = tms_settings.default_tms,
+                Path(
+                    description="Identifier selecting one of the TileMatrixSetId supported."
+                ),
+            ],
             geom_column: Annotated[
                 Optional[str],
                 Query(
@@ -1922,20 +1901,6 @@ class OGCTilesFactory(EndpointsFactory):
         if self.with_viewer:
 
             @self.router.get(
-                "/collections/{collectionId}/{tileMatrixSetId}/viewer",
-                response_class=HTMLResponse,
-                operation_id=".collection.vector.viewerTms",
-                deprecated=True,
-                tags=["Map Viewer"],
-            )
-            @self.router.get(
-                "/collections/{collectionId}/viewer",
-                response_class=HTMLResponse,
-                operation_id=".collection.vector.viewer",
-                deprecated=True,
-                tags=["Map Viewer"],
-            )
-            @self.router.get(
                 "/collections/{collectionId}/tiles/{tileMatrixSetId}/viewer",
                 response_class=HTMLResponse,
                 operation_id=".collection.vector.map",
@@ -1946,8 +1911,10 @@ class OGCTilesFactory(EndpointsFactory):
                 collection: Annotated[Collection, Depends(self.collection_dependency)],
                 tileMatrixSetId: Annotated[
                     Literal[tuple(self.supported_tms.list())],
-                    f"Identifier selecting one of the TileMatrixSetId supported (default: '{tms_settings.default_tms}')",
-                ] = tms_settings.default_tms,
+                    Path(
+                        description="Identifier selecting one of the TileMatrixSetId supported."
+                    ),
+                ],
                 minzoom: Annotated[
                     Optional[int],
                     Query(description="Overwrite default minzoom."),

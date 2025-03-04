@@ -138,14 +138,18 @@ def test_items_function(app_functions):
 
 def test_tiles_functions(app_functions):
     """Test Tiles endpoint."""
-    response = app_functions.get("/collections/pg_temp.landsat_centroids/tilejson.json")
+    response = app_functions.get(
+        "/collections/pg_temp.landsat_centroids/tiles/WebMercatorQuad/tilejson.json"
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "pg_temp.landsat_centroids"
     assert body["minzoom"] == 5
     assert body["maxzoom"] == 12
 
-    response = app_functions.get("/collections/pg_temp.hexagons/tilejson.json")
+    response = app_functions.get(
+        "/collections/pg_temp.hexagons/tiles/WebMercatorQuad/tilejson.json"
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "pg_temp.hexagons"
@@ -153,7 +157,7 @@ def test_tiles_functions(app_functions):
     assert body["maxzoom"] == 12
 
     response = app_functions.get(
-        "/collections/pg_temp.hexagons/tilejson.json?minzoom=1&maxzoom=2&size=4"
+        "/collections/pg_temp.hexagons/tiles/WebMercatorQuad/tilejson.json?minzoom=1&maxzoom=2&size=4"
     )
     assert response.status_code == 200
     body = response.json()
@@ -193,43 +197,57 @@ def test_tiles_functions(app_functions):
 
     # tiles
     # Check default's function are used
-    response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3")
+    response = app_functions.get(
+        "/collections/pg_temp.squares/tiles/WebMercatorQuad/3/3/3"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 25
 
     # Check default's function are used
-    response = app_functions.get("/collections/pg_temp.squares/tiles/3/3/3?size=2")
+    response = app_functions.get(
+        "/collections/pg_temp.squares/tiles/WebMercatorQuad/3/3/3?size=2"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 483
 
     # Check any geometry input column will work
-    response = app_functions.get("/collections/pg_temp.hexagons/tiles/3/3/3")
+    response = app_functions.get(
+        "/collections/pg_temp.hexagons/tiles/WebMercatorQuad/3/3/3"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 12
 
-    response = app_functions.get("/collections/pg_temp.hexagons_g/tiles/3/3/3")
+    response = app_functions.get(
+        "/collections/pg_temp.hexagons_g/tiles/WebMercatorQuad/3/3/3"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 12
 
     # Check function with x/y/z input
-    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0?p=13")
+    response = app_functions.get(
+        "/collections/pg_temp.landsat/tiles/WebMercatorQuad/0/0/0?p=13"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 104
     assert decoded["default"]["features"][0]["properties"]["grid_path"] == 13
 
     # No features with p=0
-    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0?p=0")
+    response = app_functions.get(
+        "/collections/pg_temp.landsat/tiles/WebMercatorQuad/0/0/0?p=0"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert not decoded
 
     # default p=0 so it should return nothing
-    response = app_functions.get("/collections/pg_temp.landsat/tiles/0/0/0")
+    response = app_functions.get(
+        "/collections/pg_temp.landsat/tiles/WebMercatorQuad/0/0/0"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert not decoded

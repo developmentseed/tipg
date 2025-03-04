@@ -116,7 +116,7 @@ def test_tiles_factory():
     endpoints = OGCTilesFactory()
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
-    assert len(endpoints.router.routes) == 15
+    assert len(endpoints.router.routes) == 10
     assert len(endpoints.conforms_to) == 5
 
     app = FastAPI()
@@ -150,7 +150,7 @@ def test_tiles_factory():
     assert endpoints.router_prefix == "/map"
     assert endpoints.with_common
     assert endpoints.title == "OGC Tiles API"
-    assert len(endpoints.router.routes) == 15
+    assert len(endpoints.router.routes) == 10
 
     app = FastAPI()
     app.include_router(endpoints.router, prefix="/map")
@@ -180,7 +180,7 @@ def test_tiles_factory():
     endpoints = OGCTilesFactory(title="OGC Tiles API", with_common=False)
     assert not endpoints.with_common
     assert endpoints.title == "OGC Tiles API"
-    assert len(endpoints.router.routes) == 13
+    assert len(endpoints.router.routes) == 8
     assert len(endpoints.conforms_to) == 5
 
     app = FastAPI()
@@ -203,7 +203,7 @@ def test_endpoints_factory():
     endpoints = Endpoints()
     assert endpoints.with_common
     assert endpoints.title == "OGC API"
-    assert len(endpoints.router.routes) == 20
+    assert len(endpoints.router.routes) == 15
     assert len(endpoints.conforms_to) == 11  # 5 from tiles + 6 from features
 
     app = FastAPI()
@@ -244,7 +244,7 @@ def test_endpoints_factory():
     assert endpoints.router_prefix == "/ogc"
     assert endpoints.with_common
     assert endpoints.title == "OGC Full API"
-    assert len(endpoints.router.routes) == 20
+    assert len(endpoints.router.routes) == 15
     assert not endpoints.ogc_features.with_common
     assert endpoints.ogc_features.router_prefix == "/ogc"
     assert not endpoints.ogc_tiles.with_common
@@ -288,7 +288,7 @@ def test_endpoints_factory():
     endpoints = Endpoints(title="Tiles and Features API", with_common=False)
     assert not endpoints.with_common
     assert endpoints.title == "Tiles and Features API"
-    assert len(endpoints.router.routes) == 18  # 11 from tiles + 5 from features
+    assert len(endpoints.router.routes) == 13  # 8 from tiles + 5 from features
     assert len(endpoints.conforms_to) == 11  # 4 from tiles + 6 from features
 
     app = FastAPI()

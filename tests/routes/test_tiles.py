@@ -8,7 +8,9 @@ from tipg.collections import mvt_settings
 
 def test_tilejson(app):
     """Test TileJSON endpoint."""
-    response = app.get("/collections/public.landsat_wrs/tilejson.json")
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/tilejson.json"
+    )
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -22,7 +24,9 @@ def test_tilejson(app):
         resp_json["bounds"], [-180.0, -82.6401, 180.0, 82.6401], decimal=4
     )
 
-    response = app.get("/collections/public.landsat_wrs/WGS1984Quad/tilejson.json")
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WGS1984Quad/tilejson.json"
+    )
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -38,7 +42,7 @@ def test_tilejson(app):
     )
 
     response = app.get(
-        "/collections/public.landsat_wrs/tilejson.json?minzoom=1&maxzoom=2"
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/tilejson.json?minzoom=1&maxzoom=2"
     )
     assert response.status_code == 200
 
@@ -48,7 +52,7 @@ def test_tilejson(app):
     assert resp_json["maxzoom"] == 2
 
     response = app.get(
-        "/collections/public.landsat_wrs/tilejson.json?minzoom=1&maxzoom=2&limit=1000"
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/tilejson.json?minzoom=1&maxzoom=2&limit=1000"
     )
     assert response.status_code == 200
 
@@ -59,7 +63,9 @@ def test_tilejson(app):
     assert "?limit=1000" in resp_json["tiles"][0]
 
     # Make sure that a non-4326 collection still returns the bounds in 4326
-    response = app.get("/collections/public.minnesota/tilejson.json")
+    response = app.get(
+        "/collections/public.minnesota/tiles/WebMercatorQuad/tilejson.json"
+    )
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -77,13 +83,15 @@ def test_tile(app):
     mvt_settings.set_mvt_layername = False
 
     name = "landsat_wrs"
-    response = app.get(f"/collections/public.{name}/tiles/0/0/0")
+    response = app.get(f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert "default" in decoded.keys()
     assert len(decoded["default"]["features"]) == 10000
 
-    response = app.get(f"/collections/public.{name}/tiles/0/0/0?limit=1000")
+    response = app.get(
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1000"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 1000
@@ -92,7 +100,7 @@ def test_tile(app):
     )
 
     response = app.get(
-        f"/collections/public.{name}/tiles/0/0/0?limit=1&properties=pr,row,path"
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1&properties=pr,row,path"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
@@ -100,13 +108,17 @@ def test_tile(app):
         decoded["default"]["features"][0]["properties"]
     )
 
-    response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=geom")
+    response = app.get(
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?geom-column=geom"
+    )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert len(decoded["default"]["features"]) == 10000
 
     # invalid geometry column name
-    response = app.get(f"/collections/public.{name}/tiles/0/0/0?geom-column=the_geom")
+    response = app.get(
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?geom-column=the_geom"
+    )
     assert response.status_code == 404
 
     mvt_settings.set_mvt_layername = init_value
@@ -118,7 +130,7 @@ def test_tile_custom_name(app):
     mvt_settings.set_mvt_layername = True
 
     name = "landsat_wrs"
-    response = app.get(f"/collections/public.{name}/tiles/0/0/0")
+    response = app.get(f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0")
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
     assert name in decoded.keys()
@@ -178,7 +190,9 @@ def test_tile_tms_custom_name(app):
 
 def test_stylejson(app):
     """Test StyleJSON endpoint."""
-    response = app.get("/collections/public.landsat_wrs/style.json")
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/style.json"
+    )
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -197,7 +211,7 @@ def test_stylejson(app):
         np.around(source["bounds"], 4), [-180.0, -82.6401, 180.0, 82.6401]
     )
 
-    response = app.get("/collections/public.landsat_wrs/WGS1984Quad/style.json")
+    response = app.get("/collections/public.landsat_wrs/tiles/WGS1984Quad/style.json")
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -217,7 +231,9 @@ def test_stylejson(app):
         np.around(source["bounds"], 4), [-180.0, -82.6401, 180.0, 82.6401]
     )
 
-    response = app.get("/collections/public.landsat_wrs/style.json?minzoom=1&maxzoom=2")
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/style.json?minzoom=1&maxzoom=2"
+    )
     assert response.status_code == 200
 
     resp_json = response.json()
@@ -227,5 +243,7 @@ def test_stylejson(app):
     assert "minzoom" not in source["tiles"][0]
     assert "maxzoom" not in source["tiles"][0]
 
-    response = app.get("/collections/public.landsat/style.json?geom-column=centroid")
+    response = app.get(
+        "/collections/public.landsat/tiles/WebMercatorQuad/style.json?geom-column=centroid"
+    )
     assert response.status_code == 200
