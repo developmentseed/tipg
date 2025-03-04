@@ -53,6 +53,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 * fix URL in HTML templates when behind proxy
 
+## [0.10.1] - 2025-03-04
+
+* remove `PostgresSettings` initialization from main.py
 
 ## [0.10.0] - 2025-02-20
 
@@ -381,7 +384,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/0.10.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/0.10.1...HEAD
+[0.10.1]: https://github.com/developmentseed/tipg/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/developmentseed/tipg/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/developmentseed/tipg/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/developmentseed/tipg/compare/0.7.3...0.8.0

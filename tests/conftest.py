@@ -166,9 +166,7 @@ def app(database_url, monkeypatch):
 
     monkeypatch.setenv("TIPG_DEBUG", "TRUE")
 
-    from tipg.main import app, db_settings, postgres_settings
-
-    postgres_settings.database_url = database_url
+    from tipg.main import app, db_settings
 
     db_settings.only_spatial_tables = False
     db_settings.exclude_tables = None

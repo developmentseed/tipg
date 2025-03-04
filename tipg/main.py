@@ -11,12 +11,7 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
-from tipg.settings import (
-    APISettings,
-    CustomSQLSettings,
-    DatabaseSettings,
-    PostgresSettings,
-)
+from tipg.settings import APISettings, CustomSQLSettings, DatabaseSettings
 
 from fastapi import FastAPI, Request
 
@@ -25,7 +20,6 @@ from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
-postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
 
@@ -39,7 +33,6 @@ async def lifespan(app: FastAPI):
         schemas=db_settings.schemas,
         tipg_schema=db_settings.tipg_schema,
         user_sql_files=custom_sql_settings.sql_files,
-        settings=postgres_settings,
     )
 
     # Register Collection Catalog
