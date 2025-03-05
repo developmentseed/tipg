@@ -174,20 +174,23 @@ class PostgresSettings(BaseSettings):
             rds_client = boto3.client("rds", region_name=region)
             password = rds_client.generate_db_auth_token(
                 DBHostname=host,
-                Port=port,
+                Port=int(port),
                 DBUsername=username,
+                Region=region,
             )
         else:
             password = info.data["postgres_pass"]
 
-        return PostgresDsn.build(
+        db_url = PostgresDsn.build(
             scheme="postgresql",
             username=username,
             password=quote_plus(password),
             host=host,
-            port=port,
+            port=int(port),
             path=dbname,
         )
+
+        return db_url
 
 
 class DatabaseSettings(BaseSettings):
