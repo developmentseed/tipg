@@ -187,7 +187,7 @@ class PostgresSettings(BaseSettings):
             username=username,
             password=password,
             host=host,
-            port=int(port),
+            port=port,
             path=dbname,
         )
 
