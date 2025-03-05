@@ -172,19 +172,20 @@ class PostgresSettings(BaseSettings):
                     "aws_region must be provided when IAM authentication is enabled"
                 )
             rds_client = boto3.client("rds", region_name=region)
-            password = rds_client.generate_db_auth_token(
+            token = rds_client.generate_db_auth_token(
                 DBHostname=host,
                 Port=int(port),
                 DBUsername=username,
                 Region=region,
             )
+            password = quote_plus(token)
         else:
             password = info.data["postgres_pass"]
 
         db_url = PostgresDsn.build(
             scheme="postgresql",
             username=username,
-            password=quote_plus(password),
+            password=password,
             host=host,
             port=int(port),
             path=dbname,
