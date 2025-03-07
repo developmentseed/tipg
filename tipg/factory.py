@@ -1667,6 +1667,8 @@ class OGCTilesFactory(EndpointsFactory):
                 geom=geom_column,
                 dt=datetime_column,
             )
+            if isinstance(tile, Response):
+                return tile
 
             return Response(tile, media_type=MediaType.mvt.value)
 
