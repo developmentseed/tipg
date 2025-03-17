@@ -90,7 +90,7 @@ if settings.catalog_ttl:
         CatalogUpdateMiddleware,
         func=register_collection_catalog,
         ttl=settings.catalog_ttl,
-        dg_settings=db_settings,
+        db_settings=db_settings,
     )
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
