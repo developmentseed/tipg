@@ -193,3 +193,17 @@ class CustomSQLSettings(BaseSettings):
             return list(self.custom_sql_directory.glob("*.sql"))
 
         return None
+
+
+class PMTilesSettings(BaseSettings):
+    """TiPg PMTiles settings."""
+
+    paths: Optional[List[str]] = None
+    sources: Optional[Dict[str, str]] = None
+
+    model_config = {
+        "env_prefix": "TIPG_PMTILES",
+        "env_file": ".env",
+        "env_nested_delimiter": "__",
+        "extra": "ignore",
+    }
