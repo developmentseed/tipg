@@ -450,6 +450,7 @@ def CollectionsParams(
             description="Starts the response at an offset.",
         ),
     ] = None,
+    collectionId_substring: Annotated[Optional[str], Query(description="Filter based on collectionId substring.")] = None
 ) -> CollectionList:
     """Return Collections Catalog."""
     limit = limit or 0
@@ -485,6 +486,27 @@ def CollectionsParams(
             for collection in collections_list
             if collection.dt_bounds is not None
             and t_intersects(datetime_filter, collection.dt_bounds)
+        ]
+
+    # collectionId filter
+    if collectionId_substring is not None:
+        # --- Compile and Validate Regex ---
+        compiled_regex = None
+        try:
+            # Attempt to compile the regex pattern provided by the user
+            compiled_regex = re.compile(collectionId_substring)
+        except re.error as e:
+            # If compilation fails, raise an HTTP error (e.g., 400 Bad Request)
+            raise HTTPException(
+                status_code=400, # 400 for client syntax error
+                detail=f"Invalid regex pattern provided for 'collectionId_substring': {e}"
+            )
+        # --- End of Regex Validation ---
+        collections_list = [
+            collection
+            for collection in collections_list
+            # Use search() to find the pattern anywhere in the collection ID
+            if compiled_regex.search(collection.id)
         ]
 
     matched = len(collections_list)
