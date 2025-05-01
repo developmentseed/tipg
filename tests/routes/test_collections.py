@@ -372,3 +372,20 @@ def test_collections_temporal_extent_datetime_column(app):
     assert len(intervals) == 4
     assert intervals[0][0] == "2004-10-19T10:23:54+00:00"
     assert intervals[0][1] == "2007-10-24T00:00:00+00:00"
+
+def test_collections_collectionId_substring_filter(app):
+    """Test /collections endpoint."""
+    response = app.get("/collections", params={"collectionId_substring": "_mgrs"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+
+    ids = [x["id"] for x in body["collections"]]
+
+    assert "public.sentinel_mgrs" in ids
+    assert "pg_temp.landsat_centroids" not in ids
+    assert "pg_temp.hexagons" not in ids
+    assert "pg_temp.squares" not in ids
+    assert "public.st_squaregrid" not in ids
+    assert "public.st_hexagongrid" not in ids
+    assert "public.st_subdivide" not in ids

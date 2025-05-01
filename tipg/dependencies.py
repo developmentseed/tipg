@@ -234,7 +234,7 @@ def datetime_query(
     return None
 
 def collectionId_substring_query(
-    collectionId_substring: Annotated[Optional[str], Query(description="Filter based on collectionId substring.")] = None
+    collectionId_substring: Annotated[Optional[str], Query(description="Filter based on collectionId substring regex.")] = None
 ) -> Optional[str]:
     """collectionId substring dependency."""
     compiled_substring = None
