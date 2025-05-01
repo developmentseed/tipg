@@ -233,6 +233,21 @@ def datetime_query(
 
     return None
 
+def collectionId_substring_query(
+    collectionId_substring: Annotated[Optional[str], Query(description="Filter based on collectionId substring.")] = None
+) -> Optional[str]:
+    """collectionId substring dependency."""
+    compiled_substring = None
+    if collectionId_substring:
+        try:
+            # Attempt to compile the substring pattern provided by the user
+            compiled_substring = re.compile(collectionId_substring)
+        except re.error as e:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid substring '{collectionId_substring}' provided for 'collectionId_substring': {e}"
+            )
+    return compiled_substring
 
 def properties_query(
     properties: Annotated[
@@ -450,7 +465,7 @@ def CollectionsParams(
             description="Starts the response at an offset.",
         ),
     ] = None,
-    collectionId_substring: Annotated[Optional[str], Query(description="Filter based on collectionId substring.")] = None
+    collectionId_substring: Annotated[Optional[str], Depends(collectionId_substring_query)] = None
 ) -> CollectionList:
     """Return Collections Catalog."""
     limit = limit or 0
@@ -488,25 +503,13 @@ def CollectionsParams(
             and t_intersects(datetime_filter, collection.dt_bounds)
         ]
 
-    # collectionId filter
+    # collectionId substring filter
     if collectionId_substring is not None:
-        # --- Compile and Validate Regex ---
-        compiled_regex = None
-        try:
-            # Attempt to compile the regex pattern provided by the user
-            compiled_regex = re.compile(collectionId_substring)
-        except re.error as e:
-            # If compilation fails, raise an HTTP error (e.g., 400 Bad Request)
-            raise HTTPException(
-                status_code=400, # 400 for client syntax error
-                detail=f"Invalid regex pattern provided for 'collectionId_substring': {e}"
-            )
-        # --- End of Regex Validation ---
         collections_list = [
             collection
             for collection in collections_list
-            # Use search() to find the pattern anywhere in the collection ID
-            if compiled_regex.search(collection.id)
+            # Use search() to find the substring anywhere in the collection ID
+            if collectionId_substring.search(collection.id)
         ]
 
     matched = len(collections_list)
