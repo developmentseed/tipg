@@ -30,7 +30,7 @@ dependencies = [
     "morecantile>=5.0,<7.0",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
-    "geojson-pydantic>=1.0,<2.0",
+    "geojson-pydantic>=1.0,<3.0",
     "pygeofilter>=0.2.0,<0.3.0",
     "ciso8601~=2.3",
     "starlette-cramjam>=0.4,<0.5",
@@ -44,8 +44,7 @@ test = [
     "pytest-benchmark",
     "httpx",
     "pytest-postgresql",
-    "mapbox-vector-tile",
-    "protobuf>=3.0,<4.0",
+    "mapbox-vector-tile>=2.1",
     "numpy",
 ]
 dev = [
