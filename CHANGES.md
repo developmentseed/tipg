@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.1.0] - 2025-05-06
+
+* update geojson-pydantic requirement to `>=1.0,<3.0`
+
 ## [1.0.1] - 2025-03-17
 
 * fix typo when using catalog_ttl
