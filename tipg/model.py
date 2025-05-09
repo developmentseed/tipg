@@ -1,7 +1,7 @@
 """tipg models."""
 
 from datetime import datetime
-from typing import Annotated, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from geojson_pydantic.features import Feature, FeatureCollection
 from morecantile.models import CRSType
@@ -145,6 +145,7 @@ class Collection(BaseModel):
     extent: Optional[Extent] = None
     itemType: str = "feature"
     crs: List[str] = ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"]
+    extraProperties: Optional[Dict[str, Any]] = None
 
     model_config = {"extra": "ignore"}
 

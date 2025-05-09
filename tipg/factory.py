@@ -503,7 +503,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             },
             tags=["OGC Features API"],
         )
-        def collections(
+        async def collections(
             request: Request,
             collection_list: Annotated[
                 CollectionList,
@@ -555,51 +555,65 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                 )
 
+            collections=[]
+            for collection in collection_list["collections"]:
+                # First come first serve to get the collection properties
+                extra_properties_dict={}
+                if (callable(collection.features)):
+                    try:
+                        item_list = await collection.features(
+                            request
+                        )
+                        extra_properties_prefix = "_fid"
+                        extra_properties = item_list['items'][0]['properties']
+                        extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
+                    except Exception as err:
+                        print(err)
+                collections.append(model.Collection(
+                    id=collection.id,
+                    title=collection.id,
+                    description=collection.description,
+                    extent=collection.extent,
+                    extraProperties=extra_properties_dict,
+                    links=[
+                        model.Link(
+                            href=self.url_for(
+                                request,
+                                "collection",
+                                collectionId=collection.id,
+                            ),
+                            rel="collection",
+                            type=MediaType.json,
+                        ),
+                        model.Link(
+                            href=self.url_for(
+                                request,
+                                "items",
+                                collectionId=collection.id,
+                            ),
+                            rel="items",
+                            type=MediaType.geojson,
+                        ),
+                        model.Link(
+                            href=self.url_for(
+                                request,
+                                "queryables",
+                                collectionId=collection.id,
+                            ),
+                            rel="queryables",
+                            type=MediaType.schemajson,
+                        ),
+                        *self._additional_collection_tiles_links(
+                            request, collection
+                        ),
+                    ]
+                ))
+
             data = model.Collections(
                 links=links,
                 numberMatched=collection_list["matched"],
                 numberReturned=len(collection_list["collections"]),
-                collections=[
-                    model.Collection(
-                        id=collection.id,
-                        title=collection.id,
-                        description=collection.description,
-                        extent=collection.extent,
-                        links=[
-                            model.Link(
-                                href=self.url_for(
-                                    request,
-                                    "collection",
-                                    collectionId=collection.id,
-                                ),
-                                rel="collection",
-                                type=MediaType.json,
-                            ),
-                            model.Link(
-                                href=self.url_for(
-                                    request,
-                                    "items",
-                                    collectionId=collection.id,
-                                ),
-                                rel="items",
-                                type=MediaType.geojson,
-                            ),
-                            model.Link(
-                                href=self.url_for(
-                                    request,
-                                    "queryables",
-                                    collectionId=collection.id,
-                                ),
-                                rel="queryables",
-                                type=MediaType.schemajson,
-                            ),
-                            *self._additional_collection_tiles_links(
-                                request, collection
-                            ),
-                        ],
-                    )
-                    for collection in collection_list["collections"]
-                ],
+                collections=collections
             ).model_dump(exclude_none=True, mode="json")
 
             if output_type == MediaType.html:
@@ -628,17 +642,32 @@ class OGCFeaturesFactory(EndpointsFactory):
             },
             tags=["OGC Features API"],
         )
-        def collection(
+        async def collection(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
+
+            # First come first serve to get the collection properties
+            extra_properties_dict={}
+            if (callable(collection.features)):
+                try:
+                    item_list = await collection.features(
+                        request
+                    )
+                    extra_properties_prefix = "_fid"
+                    extra_properties = item_list['items'][0]['properties']
+                    extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
+                except Exception as err:
+                    print(err)
+
             data = model.Collection(
                 id=collection.id,
                 title=collection.title,
                 description=collection.description,
                 extent=collection.extent,
+                extraProperties=extra_properties_dict,
                 links=[
                     model.Link(
                         title="Collection",
