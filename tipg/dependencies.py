@@ -502,3 +502,94 @@ def CollectionsParams(
         next=offset + returned if matched - returned > offset else None,
         prev=max(offset - limit, 0) if offset else None,
     )
+
+ExtraProperties = Dict[str, any]
+
+async def CollectionExtraProperties(
+    request: Request,
+    collection: Annotated[Collection, Depends(CollectionParams)],
+) -> ExtraProperties:
+    """
+    Extracts extra properties from the first feature of a collection. (First Item has the highest priority)
+    - This is done because there is no separate table to store the collection specific information.
+      To elaborate, a schema table represents the whole collection and a rows represents items.
+      So, If we add any columns with prefix "collection_properties_", we use that as extra properties.
+    - This is needed to store metadata information about the collection.
+    - This is named extraProperties as there was another key named properties defined already for the Collection.
+
+    This function attempts to retrieve features from the provided collection.
+    If successful, it inspects the properties of the first feature and
+    filters them to include only those whose keys contain the prefix "collection_properties_".
+
+    Args:
+        request: The incoming Starlette/FastAPI request object.
+        collection: The collection object, typically resolved by FastAPI's
+                    dependency injection system using `CollectionParams`.
+
+    Returns:
+        A dictionary containing the extra properties (keys containing "collection_properties_")
+        from the first feature of the collection. Returns an empty dictionary
+        if the collection features are not callable, if no features are found,
+        or if an error occurs during processing.
+    """
+    # First come first serve to get the collection properties
+    extra_properties_dict={}
+    extra_properties_prefix = "collection_properties_"
+
+    if (callable(collection.features)):
+        try:
+            item_list = await collection.features(
+                request
+            )
+            extra_properties = item_list['items'][0]['properties']
+            extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
+        except Exception as err:
+            print(err)
+    return extra_properties_dict
+
+CollectionsExtraPropertiesDict = Dict[str, ExtraProperties]
+
+async def CollectionsExtraProperties(
+    request: Request,
+    collections: Annotated[CollectionList, Depends(CollectionsParams)],
+) -> CollectionsExtraPropertiesDict:
+    """
+    For all the list of available collection,
+    Extracts extra properties from the first feature of a collection. (First Item has the highest priority)
+    - This is done because there is no separate table to store the collection specific information.
+      To elaborate, a schema table represents the whole collection and a rows represents items.
+      So, If we add any columns with prefix "collection_properties_", we use that as extra properties.
+    - This is needed to store metadata information about the collection.
+    - This is named extraProperties as there was another key named properties defined already for the Collection.
+
+    This function attempts to retrieve features from the provided collection.
+    If successful, it inspects the properties of the first feature and
+    filters them to include only those whose keys contain the prefix "collection_properties_".
+
+    Args:
+        request: The incoming Starlette/FastAPI request object.
+        collections: The collection list, typically resolved by FastAPI's
+                    dependency injection system using `CollectionsParams`.
+
+    Returns:
+        A dictionary containing the collection.id as key and extra properties (keys containing "collection_properties_") as value
+    """
+    collections_extra_properties = {}
+    extra_properties_prefix = "collection_properties_"
+
+    for collection in collections["collections"]:
+        collection_id = collection.id
+        extra_properties_dict={}
+
+        if (callable(collection.features)):
+            try:
+                item_list = await collection.features(
+                    request
+                )
+                extra_properties = item_list['items'][0]['properties']
+                extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
+            except Exception as err:
+                print(err)
+        collections_extra_properties[collection_id] = extra_properties_dict
+
+    return collections_extra_properties

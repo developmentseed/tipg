@@ -28,6 +28,10 @@ from tipg import model
 from tipg.collections import Collection, CollectionList
 from tipg.dependencies import (
     CollectionParams,
+    ExtraProperties,
+    CollectionExtraProperties,
+    CollectionsExtraPropertiesDict,
+    CollectionsExtraProperties,
     CollectionsParams,
     ItemsOutputType,
     OutputType,
@@ -186,6 +190,9 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 
     # collection dependency
     collection_dependency: Callable[..., Collection] = CollectionParams
+
+    # collection extra-properties dependency needed for collection metadata
+    collection_extra_properties: Callable[..., ExtraProperties] = CollectionExtraProperties
 
     # Router Prefix is needed to find the path for routes when prefixed
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
@@ -363,6 +370,9 @@ class OGCFeaturesFactory(EndpointsFactory):
     # collections dependency
     collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
+    # collections extra-properties dependency needed for collection metadata list
+    collections_extra_properties: Callable[..., CollectionsExtraPropertiesDict] = CollectionsExtraProperties
+
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
@@ -509,6 +519,10 @@ class OGCFeaturesFactory(EndpointsFactory):
                 CollectionList,
                 Depends(self.collections_dependency),
             ],
+            collections_extra_properties_dictionary: Annotated[
+              CollectionsExtraPropertiesDict,
+              Depends(self.collections_extra_properties)
+            ],
             output_type: Annotated[
                 Optional[MediaType],
                 Depends(OutputType),
@@ -555,65 +569,52 @@ class OGCFeaturesFactory(EndpointsFactory):
                     ),
                 )
 
-            collections=[]
-            for collection in collection_list["collections"]:
-                # First come first serve to get the collection properties
-                extra_properties_dict={}
-                if (callable(collection.features)):
-                    try:
-                        item_list = await collection.features(
-                            request
-                        )
-                        extra_properties_prefix = "_fid"
-                        extra_properties = item_list['items'][0]['properties']
-                        extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
-                    except Exception as err:
-                        print(err)
-                collections.append(model.Collection(
-                    id=collection.id,
-                    title=collection.id,
-                    description=collection.description,
-                    extent=collection.extent,
-                    extraProperties=extra_properties_dict,
-                    links=[
-                        model.Link(
-                            href=self.url_for(
-                                request,
-                                "collection",
-                                collectionId=collection.id,
-                            ),
-                            rel="collection",
-                            type=MediaType.json,
-                        ),
-                        model.Link(
-                            href=self.url_for(
-                                request,
-                                "items",
-                                collectionId=collection.id,
-                            ),
-                            rel="items",
-                            type=MediaType.geojson,
-                        ),
-                        model.Link(
-                            href=self.url_for(
-                                request,
-                                "queryables",
-                                collectionId=collection.id,
-                            ),
-                            rel="queryables",
-                            type=MediaType.schemajson,
-                        ),
-                        *self._additional_collection_tiles_links(
-                            request, collection
-                        ),
-                    ]
-                ))
-
             data = model.Collections(
                 links=links,
                 numberMatched=collection_list["matched"],
                 numberReturned=len(collection_list["collections"]),
-                collections=collections
+                collections=[
+                    model.Collection(
+                        id=collection.id,
+                        title=collection.id,
+                        description=collection.description,
+                        extent=collection.extent,
+                        extraProperties=collections_extra_properties_dictionary[collection.id],
+                        links=[
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "collection",
+                                    collectionId=collection.id,
+                                ),
+                                rel="collection",
+                                type=MediaType.json,
+                            ),
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "items",
+                                    collectionId=collection.id,
+                                ),
+                                rel="items",
+                                type=MediaType.geojson,
+                            ),
+                            model.Link(
+                                href=self.url_for(
+                                    request,
+                                    "queryables",
+                                    collectionId=collection.id,
+                                ),
+                                rel="queryables",
+                                type=MediaType.schemajson,
+                            ),
+                            *self._additional_collection_tiles_links(
+                                request, collection
+                            ),
+                        ]
+                    )
+                    for collection in collection_list["collections"]
+                ]
             ).model_dump(exclude_none=True, mode="json")
 
             if output_type == MediaType.html:
@@ -645,29 +646,17 @@ class OGCFeaturesFactory(EndpointsFactory):
         async def collection(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
+            extraProperties: Annotated[Dict, Depends(self.collection_extra_properties)],
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
-
-            # First come first serve to get the collection properties
-            extra_properties_dict={}
-            if (callable(collection.features)):
-                try:
-                    item_list = await collection.features(
-                        request
-                    )
-                    extra_properties_prefix = "_fid"
-                    extra_properties = item_list['items'][0]['properties']
-                    extra_properties_dict = dict(map(lambda key: (key, extra_properties[key]), filter(lambda key: extra_properties_prefix in key, extra_properties)))
-                except Exception as err:
-                    print(err)
 
             data = model.Collection(
                 id=collection.id,
                 title=collection.title,
                 description=collection.description,
                 extent=collection.extent,
-                extraProperties=extra_properties_dict,
+                extraProperties=extraProperties,
                 links=[
                     model.Link(
                         title="Collection",
