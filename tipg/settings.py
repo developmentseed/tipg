@@ -164,7 +164,7 @@ class DatabaseSettings(BaseSettings):
     """TiPg Database settings."""
 
     schemas: List[str] = ["public"]
-    tipg_schema: str = Field("pg_temp", alias="application_schema")
+    application_schema: str = "pg_temp"
     tables: Optional[List[str]] = None
     exclude_tables: Optional[List[str]] = None
     exclude_table_schemas: Optional[List[str]] = None
@@ -177,6 +177,13 @@ class DatabaseSettings(BaseSettings):
     only_spatial_tables: bool = True
 
     model_config = {"env_prefix": "TIPG_DB_", "env_file": ".env", "extra": "ignore"}
+
+    @property
+    def tipg_schema(self):
+        """Compat: use application_schema for input and tipg_schema for attribute.
+        see https://github.com/developmentseed/tipg/issues/224
+        """
+        return self.application_schema
 
 
 class CustomSQLSettings(BaseSettings):
