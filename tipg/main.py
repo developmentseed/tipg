@@ -11,6 +11,7 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
+from tipg.openapi import _update_openapi
 from tipg.settings import APISettings, CustomSQLSettings, DatabaseSettings
 
 from fastapi import FastAPI, Request
@@ -52,6 +53,9 @@ app = FastAPI(
     lifespan=lifespan,
     root_path=settings.root_path,
 )
+
+# Fix OpenAPI response header for OGC Common compatibility
+_update_openapi(app)
 
 # custom template directory
 templates_location: List[Any] = (

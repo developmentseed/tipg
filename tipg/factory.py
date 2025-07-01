@@ -1254,7 +1254,7 @@ class OGCTilesFactory(EndpointsFactory):
                     "tilematrixsets",
                 ),
                 type=MediaType.json,
-                rel="data",
+                rel="http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
             ),
             model.Link(
                 title="TileMatrixSet (Template URL)",
@@ -1315,8 +1315,6 @@ class OGCTilesFactory(EndpointsFactory):
                                     "tilematrixset",
                                     tileMatrixSetId=tms_id,
                                 ),
-                                rel="http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
-                                type=MediaType.json,
                             )
                         ],
                     )
@@ -1435,7 +1433,7 @@ class OGCTilesFactory(EndpointsFactory):
                                         "tilematrixset",
                                         tileMatrixSetId=tms,
                                     ),
-                                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
                                     "type": "application/json",
                                     "title": f"Definition of '{tms}' tileMatrixSet",
                                 },
@@ -1546,7 +1544,7 @@ class OGCTilesFactory(EndpointsFactory):
                         "tilematrixset",
                         tileMatrixSetId=tileMatrixSetId,
                     ),
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
                     "type": "application/json",
                     "title": f"Definition of '{tileMatrixSetId}' tileMatrixSet",
                 },
