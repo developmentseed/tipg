@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.1.2] - 2025-07-02
+
+* fix `rel` values for tiling scheme links
+
 ## [1.1.1] - 2025-06-13
 
 * remove `tipg_schema` alias in `DatabaseSettings` to support env variable settings
