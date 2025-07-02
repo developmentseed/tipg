@@ -63,7 +63,10 @@ def test_docs(app):
     """Test /api endpoint."""
     response = app.get("/api")
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/json"
+    assert (
+        response.headers["content-type"]
+        == "application/vnd.oai.openapi+json;version=3.0"
+    )
     body = response.json()
     assert body["openapi"]
 

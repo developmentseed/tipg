@@ -250,7 +250,7 @@ class TileMatrixSetLink(BaseModel):
     """
 
     href: str
-    rel: str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes"
+    rel: str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme"
     type: MediaType = MediaType.json
 
     model_config = {"use_enum_values": True}
