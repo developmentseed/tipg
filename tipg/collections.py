@@ -28,10 +28,12 @@ from tipg.filter.evaluate import to_filter
 from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
+from tipg.resources.enums import MediaType
 from tipg.settings import (
     DatabaseSettings,
     FeaturesSettings,
     MVTSettings,
+    PMTilesSettings,
     TableConfig,
     TableSettings,
 )
@@ -39,6 +41,13 @@ from tipg.settings import (
 from fastapi import FastAPI
 
 from starlette.requests import Request
+from starlette.responses import Response
+
+try:
+    import aiopmtiles
+except ImportError:  # pragma: nocover
+    aiopmtiles = None  # type: ignore
+
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
@@ -350,6 +359,54 @@ class Catalog(TypedDict):
 
     collections: Dict[str, Collection]
     last_updated: datetime.datetime
+
+
+class PMTilesCollection(Collection):
+    """Model for a PMTiles archive."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_aiopmtiles(cls, data: Any) -> Any:
+        """Make sure aiopmtiles is available."""
+        assert (
+            aiopmtiles is not None
+        ), "aiopmtiles must be installed to use PMTilesCollection"
+        return data
+
+    async def features(
+        self,
+        request: Request,
+        **kwargs,
+    ) -> ItemList:
+        """Items for PmTiles."""
+        return ItemList(
+            items=[],
+            matched=0,
+            next=None,
+            prev=None,
+        )
+
+    async def get_tile(
+        self,
+        request: Request,
+        *,
+        tms: TileMatrixSet,
+        tile: Tile,
+        **kwargs,
+    ) -> Response:  # type: ignore
+        """Tile for PmTiles."""
+        async with aiopmtiles.Reader(self.table) as src:
+            # TODO: Check TMS support, assume they are in WebMercatorQuad
+            tile = await src.get_tile(tile.z, tile.x, tile.y)
+            headers: Dict[str, str] = {}
+            if src.tile_compression.value != 1:  # None
+                headers["Content-Encoding"] = src.tile_compression.name.lower()
+
+        return Response(
+            tile,
+            media_type=MediaType[src.tile_type.name.lower()].value,
+            headers=headers,
+        )
 
 
 class PgCollection(Collection):
@@ -924,7 +981,7 @@ class PgCollection(Collection):
 async def pg_get_collection_index(  # noqa: C901
     db_pool: asyncpg.BuildPgPool,
     settings: Optional[DatabaseSettings] = None,
-) -> List[Collection]:
+) -> List[PgCollection]:
     """Fetch Table and Functions index."""
     if not settings:
         settings = DatabaseSettings()
@@ -961,7 +1018,7 @@ async def pg_get_collection_index(  # noqa: C901
             datetime_extent=settings.datetime_extent,
         )
 
-        collections: List[Collection] = []
+        collections: List[PgCollection] = []
         table_settings = TableSettings()
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
@@ -1028,14 +1085,26 @@ async def pg_get_collection_index(  # noqa: C901
         return collections
 
 
+def pmtiles_get_collection(
+    settings: Optional[DatabaseSettings] = None,
+) -> List[PMTilesCollection]:
+    """return a list of PMTiles collections."""
+    ...
+
+
 async def register_collection_catalog(
     app: FastAPI,
     db_settings: Optional[DatabaseSettings] = None,
+    pmtiles_settings: Optional[PMTilesSettings] = None,
 ) -> None:
     """Register Table catalog."""
     db_collections = await pg_get_collection_index(app.state.pool, settings=db_settings)
 
+    pmtiles_collections = []
+    if aiopmtiles:
+        pmtiles_collections = pmtiles_get_collection(settings=pmtiles_settings)
+
     app.state.collection_catalog = Catalog(
-        collections={col.id: col for col in [*db_collections]},
+        collections={col.id: col for col in [*db_collections, *pmtiles_collections]},
         last_updated=datetime.datetime.now(),
     )
