@@ -8,6 +8,14 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.2.0] - 2025-07-23
+
+* remove `request: Request` in `Collection.features` and `Collection.get_tile` abstract methods
+
+* pass a `asyncpg.Connection` to `PgCollection.features` and `PgCollection.get_tile` instead of a `Request` object
+
+* switch `pg_get_collection_index` input from `asyncpg.BuildPgPool` to `asyncpg.Connection` object
+
 ## [1.1.2] - 2025-07-02
 
 * fix `rel` values for tiling scheme links
@@ -402,11 +410,13 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.1.1...HEAD
-[1.1.1]: https://github.com/developmentseed/tipg/compare/1.1.1...1.1.1
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.2.0...HEAD
+[1.1.2]: https://github.com/developmentseed/tipg/compare/1.1.2...1.2.0
+[1.1.2]: https://github.com/developmentseed/tipg/compare/1.1.1...1.1.2
+[1.1.1]: https://github.com/developmentseed/tipg/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/developmentseed/tipg/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/developmentseed/tipg/compare/1.0.0...1.0.1
-[1.0.0]: https://github.com/developmentseed/tipg/compare/0.10.0...1.0.0
+[1.0.0]: https://github.com/developmentseed/tipg/compare/0.10.1...1.0.0
 [0.10.1]: https://github.com/developmentseed/tipg/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/developmentseed/tipg/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/developmentseed/tipg/compare/0.8.0...0.9.0
@@ -418,7 +428,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 [0.6.3]: https://github.com/developmentseed/tipg/compare/0.6.2...0.6.3
 [0.6.2]: https://github.com/developmentseed/tipg/compare/0.6.1...0.6.2
 [0.6.1]: https://github.com/developmentseed/tipg/compare/0.6.0...0.6.1
-[0.6.0]: https://github.com/developmentseed/tipg/compare/0.5.7...0.6.0
+[0.6.0]: https://github.com/developmentseed/tipg/compare/0.5.8...0.6.0
 [0.5.8]: https://github.com/developmentseed/tipg/compare/0.5.7...0.5.8
 [0.5.7]: https://github.com/developmentseed/tipg/compare/0.5.6...0.5.7
 [0.5.6]: https://github.com/developmentseed/tipg/compare/0.5.5...0.5.6
