@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.2.1] - 2025-08-26
+
+* update `starlette-cramjam` requirement to `>=0.4,<0.6`
+
 ## [1.2.0] - 2025-07-23
 
 * remove `request: Request` in `Collection.features` and `Collection.get_tile` abstract methods
@@ -410,7 +414,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.2.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.2.1...HEAD
+[1.2.1]: https://github.com/developmentseed/tipg/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/developmentseed/tipg/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/developmentseed/tipg/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/developmentseed/tipg/compare/1.1.0...1.1.1
