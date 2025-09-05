@@ -28,6 +28,10 @@ from tipg import model
 from tipg.collections import Collection, CollectionList
 from tipg.dependencies import (
     CollectionParams,
+    ExtraProperties,
+    CollectionExtraProperties,
+    CollectionsExtraPropertiesDict,
+    CollectionsExtraProperties,
     CollectionsParams,
     ItemsOutputType,
     OutputType,
@@ -186,6 +190,9 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 
     # collection dependency
     collection_dependency: Callable[..., Collection] = CollectionParams
+
+    # collection extra-properties dependency needed for collection metadata
+    collection_extra_properties: Callable[..., ExtraProperties] = CollectionExtraProperties
 
     # Router Prefix is needed to find the path for routes when prefixed
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
@@ -363,6 +370,9 @@ class OGCFeaturesFactory(EndpointsFactory):
     # collections dependency
     collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
+    # collections extra-properties dependency needed for collection metadata list
+    collections_extra_properties: Callable[..., CollectionsExtraPropertiesDict] = CollectionsExtraProperties
+
     @property
     def conforms_to(self) -> List[str]:
         """Factory conformances."""
@@ -503,11 +513,15 @@ class OGCFeaturesFactory(EndpointsFactory):
             },
             tags=["OGC Features API"],
         )
-        def collections(
+        async def collections(
             request: Request,
             collection_list: Annotated[
                 CollectionList,
                 Depends(self.collections_dependency),
+            ],
+            collections_extra_properties_dictionary: Annotated[
+              CollectionsExtraPropertiesDict,
+              Depends(self.collections_extra_properties)
             ],
             output_type: Annotated[
                 Optional[MediaType],
@@ -565,6 +579,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                         title=collection.id,
                         description=collection.description,
                         extent=collection.extent,
+                        extraProperties=collections_extra_properties_dictionary[collection.id],
                         links=[
                             model.Link(
                                 href=self.url_for(
@@ -596,10 +611,10 @@ class OGCFeaturesFactory(EndpointsFactory):
                             *self._additional_collection_tiles_links(
                                 request, collection
                             ),
-                        ],
+                        ]
                     )
                     for collection in collection_list["collections"]
-                ],
+                ]
             ).model_dump(exclude_none=True, mode="json")
 
             if output_type == MediaType.html:
@@ -628,17 +643,20 @@ class OGCFeaturesFactory(EndpointsFactory):
             },
             tags=["OGC Features API"],
         )
-        def collection(
+        async def collection(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
+            extraProperties: Annotated[Dict, Depends(self.collection_extra_properties)],
             output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
+
             data = model.Collection(
                 id=collection.id,
                 title=collection.title,
                 description=collection.description,
                 extent=collection.extent,
+                extraProperties=extraProperties,
                 links=[
                     model.Link(
                         title="Collection",
