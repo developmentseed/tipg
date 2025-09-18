@@ -3,12 +3,11 @@
 import re
 from typing import Annotated, Dict, List, Literal, Optional, Tuple, get_args
 
+import orjson
 from ciso8601 import parse_rfc3339
+from cql2 import Expr
 from morecantile import Tile
 from morecantile import tms as default_tms
-from pygeofilter.ast import AstType
-from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
-from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tipg.collections import Catalog, Collection, CollectionList
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
@@ -289,14 +288,14 @@ def filter_query(
             alias="filter-lang",
         ),
     ] = None,
-) -> Optional[AstType]:
+) -> Optional[Dict]:
     """Parse Filter Query."""
     if query is not None:
         if filter_lang == "cql2-json":
-            return cql2_json_parser(query)
+            return Expr(orjson.loads(query))
 
         # default to cql2-text
-        return cql2_text_parser(query)
+        return Expr(query)
 
     return None
 

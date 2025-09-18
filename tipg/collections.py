@@ -11,9 +11,10 @@ from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
+from cql2 import Expr
+from geojson_pydantic.geometries import Polygon
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, model_validator
-from pygeofilter.ast import AstType
 from pyproj import Transformer
 
 from tipg.errors import (
@@ -24,8 +25,6 @@ from tipg.errors import (
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
-from tipg.filter.evaluate import to_filter
-from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import (
@@ -42,6 +41,12 @@ mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
+
+
+def bbox_to_wkt(bbox: List[float], srid: int = 4326) -> str:
+    """Return WKT representation of a BBOX."""
+    poly = Polygon.from_bounds(*bbox)  # type:ignore
+    return f"SRID={srid};{poly.wkt}"
 
 
 def debug_query(q, *p):
@@ -522,7 +527,7 @@ class PgCollection(Collection):
         datetime: Optional[List[str]] = None,
         bbox: Optional[List[float]] = None,
         properties: Optional[List[Tuple[str, Any]]] = None,
-        cql: Optional[AstType] = None,
+        cql: Optional[Expr] = None,
         geom: Optional[str] = None,
         dt: Optional[str] = None,
         tile: Optional[Tile] = None,
@@ -590,7 +595,7 @@ class PgCollection(Collection):
 
         # `CQL` filter
         if cql is not None:
-            wheres.append(to_filter(cql, [p.name for p in self.properties]))
+            wheres.append(cql.to_sql())
 
         if tile and tms and geometry_column:
             # Get tile bounds in the TMS coordinate system
@@ -694,7 +699,7 @@ class PgCollection(Collection):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -749,7 +754,7 @@ class PgCollection(Collection):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         geom: Optional[str] = None,
         dt: Optional[str] = None,
         function_parameters: Optional[Dict[str, str]],
@@ -781,7 +786,7 @@ class PgCollection(Collection):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -860,7 +865,7 @@ class PgCollection(Collection):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         function_parameters: Optional[Dict[str, str]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,

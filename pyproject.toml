@@ -23,6 +23,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
+    "cql2",
     "asyncpg>=0.23.0",
     "buildpg>=0.3",
     "fastapi>=0.100.0",
@@ -31,7 +32,6 @@ dependencies = [
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
     "geojson-pydantic>=1.0,<3.0",
-    "pygeofilter>=0.2.0,<0.3.0",
     "ciso8601~=2.3",
     "starlette-cramjam>=0.4,<0.6",
 ]
