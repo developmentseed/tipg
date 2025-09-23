@@ -288,7 +288,7 @@ def filter_query(
             alias="filter-lang",
         ),
     ] = None,
-) -> Optional[Dict]:
+) -> Optional[Expr]:
     """Parse Filter Query."""
     if query is not None:
         if filter_lang == "cql2-json":
