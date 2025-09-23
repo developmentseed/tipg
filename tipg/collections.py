@@ -3,7 +3,7 @@
 import abc
 import datetime
 import re
-from functools import lru_cache
+from functools import lru_cache, reduce
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 from buildpg import RawDangerous as raw
@@ -11,9 +11,10 @@ from buildpg import asyncpg, clauses
 from buildpg import funcs as pg_funcs
 from buildpg import logic, render
 from ciso8601 import parse_rfc3339
+from cql2 import Expr
+from geojson_pydantic.geometries import Polygon
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, model_validator
-from pygeofilter.ast import AstType
 from pyproj import Transformer
 
 from tipg.errors import (
@@ -24,8 +25,6 @@ from tipg.errors import (
     InvalidPropertyName,
     MissingDatetimeColumn,
 )
-from tipg.filter.evaluate import to_filter
-from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import (
@@ -42,6 +41,12 @@ mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
+
+
+def bbox_to_wkt(bbox: List[float], srid: int = 4326) -> str:
+    """Return WKT representation of a BBOX."""
+    poly = Polygon.from_bounds(*bbox)  # type:ignore
+    return f"SRID={srid};{poly.wkt}"
 
 
 def debug_query(q, *p):
@@ -323,6 +328,139 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return {**geoms, **props}
 
+    def cql_where(  # noqa: C901
+        self,
+        ids: Optional[List[str]] = None,
+        datetime: Optional[List[str]] = None,
+        bbox: Optional[List[float]] = None,
+        properties: Optional[List[Tuple[str, Any]]] = None,
+        cql: Optional[Expr] = None,
+        geom: Optional[str] = None,
+        dt: Optional[str] = None,
+        tile: Optional[Tile] = None,
+        tms: Optional[TileMatrixSet] = None,
+    ) -> Expr:
+        """Construct WHERE query."""
+        exprs = []
+
+        if cql:
+            exprs.append(cql)
+
+        # `ids` filter
+        if ids:
+            # REF: https://github.com/developmentseed/cql2-rs/issues/91
+            if len(ids) == 1:
+                exprs.append(Expr(f"{self.id_column.name} = {ids[0]}"))
+            else:
+                id_list = ", ".join(f"'{id_}'" for id_ in ids)
+                exprs.append(Expr(f"{self.id_column.name} IN {id_list}"))
+
+        # `properties` filter
+        if properties is not None:
+            for prop, val in properties:
+                col = self.get_column(prop)
+                if not col:
+                    raise InvalidPropertyName(f"Invalid property name: {prop}")
+                exprs.append(Expr(f"{prop}='{val}'"))
+
+        # `bbox` filter
+        geometry_column = self.get_geometry_column(geom)
+        if bbox is not None and geometry_column is not None:
+            # TODO: should we use bbox_to_wkt(bbox)
+            exprs.append(
+                Expr(
+                    f"S_INTERSECTS({geometry_column.name}, {', '.join(map(str, bbox))})"
+                )
+            )
+            print(exprs[0].reduce().to_sql())
+
+        # `datetime` filter
+        if datetime:
+            if not self.datetime_columns:
+                raise MissingDatetimeColumn(
+                    "Must have timestamp/timestamptz/date typed column to filter with datetime."
+                )
+
+            datetime_column = self.get_datetime_column(dt)
+            if not datetime_column:
+                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
+
+            if len(datetime) == 1:
+                # NOTE: should we do parse_rfc3339(datetime[0])
+                exprs.append(Expr(f"{datetime_column.name}=TIMESTAMP('{datetime[0]}')"))
+
+            else:
+                start = (
+                    parse_rfc3339(datetime[0])
+                    if datetime[0] not in ["..", ""]
+                    else None
+                )
+                end = (
+                    parse_rfc3339(datetime[1])
+                    if datetime[1] not in ["..", ""]
+                    else None
+                )
+                if start is None and end is None:
+                    raise InvalidDatetime(
+                        "Double open-ended datetime intervals are not allowed."
+                    )
+
+                if start is not None and end is not None and start > end:
+                    raise InvalidDatetime(
+                        "Start datetime cannot be before end datetime."
+                    )
+
+                if (start and end) and start > end:
+                    raise ValueError("Invalid datetime range: start must be <= end")
+
+                startstr, endstr = datetime[:2]
+                if startstr not in ["..", ""]:
+                    exprs.append(
+                        Expr(f"{datetime_column.name}>=TIMESTAMP('{startstr}')")
+                    )
+                if endstr:
+                    exprs.append(Expr(f"{datetime_column.name}<=TIMESTAMP('{endstr}')"))
+
+        # if tile and tms and geometry_column:
+        #     # Get tile bounds in the TMS coordinate system
+        #     bbox = tms.xy_bounds(tile)
+        #     left, bottom, right, top = bbox
+
+        #     # If the geometry column’s SRID does not match the TMS CRS, transform the bounds:
+        #     # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
+        #     tms_epsg = tms.crs.to_epsg() or 4326
+        #     if geometry_column.srid != tms_epsg:
+        #         transformer = TransformerFromCRS(
+        #             tms_epsg, geometry_column.srid, always_xy=True
+        #         )
+
+        #         left, bottom, right, top = transformer.transform_bounds(
+        #             left, bottom, right, top
+        #         )
+
+        #     wheres.append(
+        #         logic.Func(
+        #             "ST_Intersects",
+        #             logic.Func(
+        #                 "ST_Segmentize",
+        #                 logic.Func(
+        #                     "ST_MakeEnvelope",
+        #                     left,
+        #                     bottom,
+        #                     right,
+        #                     top,
+        #                     geometry_column.srid,
+        #                 ),
+        #                 right - left,
+        #             ),
+        #             logic.V(geometry_column.name),
+        #         )
+        #     )
+        if exprs:
+            return reduce(lambda x, y: x + y, exprs).reduce()
+
+        return None
+
     @abc.abstractmethod
     async def features(self, *args, **kwargs) -> ItemList:
         """Get Items."""
@@ -516,152 +654,6 @@ class PgCollection(Collection):
 
         return g
 
-    def _where(  # noqa: C901
-        self,
-        ids: Optional[List[str]] = None,
-        datetime: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        properties: Optional[List[Tuple[str, Any]]] = None,
-        cql: Optional[AstType] = None,
-        geom: Optional[str] = None,
-        dt: Optional[str] = None,
-        tile: Optional[Tile] = None,
-        tms: Optional[TileMatrixSet] = None,
-    ):
-        """Construct WHERE query."""
-        wheres = [logic.S(True)]
-
-        # `ids` filter
-        if ids is not None:
-            if len(ids) == 1:
-                wheres.append(
-                    logic.V(self.id_column.name)
-                    == pg_funcs.cast(pg_funcs.cast(ids[0], "text"), self.id_column.type)
-                )
-            else:
-                w = [
-                    logic.V(self.id_column.name)
-                    == logic.S(
-                        pg_funcs.cast(pg_funcs.cast(i, "text"), self.id_column.type)
-                    )
-                    for i in ids
-                ]
-                wheres.append(pg_funcs.OR(*w))
-
-        # `properties filter
-        if properties is not None:
-            w = []
-            for prop, val in properties:
-                col = self.get_column(prop)
-                if not col:
-                    raise InvalidPropertyName(f"Invalid property name: {prop}")
-
-                w.append(
-                    logic.V(col.name)
-                    == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
-                )
-
-            if w:
-                wheres.append(pg_funcs.AND(*w))
-
-        # `bbox` filter
-        geometry_column = self.get_geometry_column(geom)
-        if bbox is not None and geometry_column is not None:
-            wheres.append(
-                logic.Func(
-                    "ST_Intersects",
-                    logic.S(bbox_to_wkt(bbox)),
-                    logic.V(geometry_column.name),
-                )
-            )
-
-        # `datetime` filter
-        if datetime:
-            if not self.datetime_columns:
-                raise MissingDatetimeColumn(
-                    "Must have timestamp/timestamptz/date typed column to filter with datetime."
-                )
-
-            datetime_column = self.get_datetime_column(dt)
-            if not datetime_column:
-                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
-
-            wheres.append(self._datetime_filter_to_sql(datetime, datetime_column.name))
-
-        # `CQL` filter
-        if cql is not None:
-            wheres.append(to_filter(cql, [p.name for p in self.properties]))
-
-        if tile and tms and geometry_column:
-            # Get tile bounds in the TMS coordinate system
-            bbox = tms.xy_bounds(tile)
-            left, bottom, right, top = bbox
-
-            # If the geometry column’s SRID does not match the TMS CRS, transform the bounds:
-            # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
-            tms_epsg = tms.crs.to_epsg() or 4326
-            if geometry_column.srid != tms_epsg:
-                transformer = TransformerFromCRS(
-                    tms_epsg, geometry_column.srid, always_xy=True
-                )
-
-                left, bottom, right, top = transformer.transform_bounds(
-                    left, bottom, right, top
-                )
-
-            wheres.append(
-                logic.Func(
-                    "ST_Intersects",
-                    logic.Func(
-                        "ST_Segmentize",
-                        logic.Func(
-                            "ST_MakeEnvelope",
-                            left,
-                            bottom,
-                            right,
-                            top,
-                            geometry_column.srid,
-                        ),
-                        right - left,
-                    ),
-                    logic.V(geometry_column.name),
-                )
-            )
-
-        return clauses.Where(pg_funcs.AND(*wheres))
-
-    def _datetime_filter_to_sql(self, interval: List[str], dt_name: str):
-        if len(interval) == 1:
-            return logic.V(dt_name) == logic.S(
-                pg_funcs.cast(parse_rfc3339(interval[0]), "timestamptz")
-            )
-
-        else:
-            start = (
-                parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
-            )
-            end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
-
-            if start is None and end is None:
-                raise InvalidDatetime(
-                    "Double open-ended datetime intervals are not allowed."
-                )
-
-            if start is not None and end is not None and start > end:
-                raise InvalidDatetime("Start datetime cannot be before end datetime.")
-
-            if not start:
-                return logic.V(dt_name) <= logic.S(pg_funcs.cast(end, "timestamptz"))
-
-            elif not end:
-                return logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz"))
-
-            else:
-                return pg_funcs.AND(
-                    logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz")),
-                    logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
-                )
-
     def _sortby(self, sortby: Optional[str]):
         sorts = []
         if sortby:
@@ -690,15 +682,10 @@ class PgCollection(Collection):
         self,
         conn: asyncpg.Connection,
         *,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        where: Optional[str] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
-        dt: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         bbox_only: Optional[bool] = None,
@@ -719,15 +706,7 @@ class PgCollection(Collection):
                 geom_as_wkt=geom_as_wkt,
             ),
             self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-            ),
+            clauses.Where(where or logic.S(True)),
             self._sortby(sortby),
             clauses.Limit(limit),
             clauses.Offset(offset),
@@ -745,28 +724,14 @@ class PgCollection(Collection):
         self,
         conn: asyncpg.Connection,
         *,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
-        geom: Optional[str] = None,
-        dt: Optional[str] = None,
+        where: Optional[str],
         function_parameters: Optional[Dict[str, str]],
     ) -> int:
         """Build features COUNT query."""
         c = clauses.Clauses(
             self._select_count(),
             self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-            ),
+            clauses.Where(where or logic.S(True)),
         )
 
         q, p = render(":c", c=c)
@@ -781,7 +746,7 @@ class PgCollection(Collection):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -807,31 +772,30 @@ class PgCollection(Collection):
                 f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
             )
 
-        matched = await self._features_count_query(
-            conn,
-            ids_filter=ids_filter,
-            datetime_filter=datetime_filter,
-            bbox_filter=bbox_filter,
-            properties_filter=properties_filter,
-            function_parameters=function_parameters,
-            cql_filter=cql_filter,
+        where_filter = self.cql_where(
+            ids=ids_filter,
+            datetime=datetime_filter,
+            bbox=bbox_filter,
+            properties=properties_filter,
+            cql=cql_filter,
             geom=geom,
             dt=dt,
+        )
+
+        matched = await self._features_count_query(
+            conn,
+            where=where_filter.to_sql() if where_filter else None,
+            function_parameters=function_parameters,
         )
 
         features = [
             f
             async for f in self._features_query(
                 conn,
-                ids_filter=ids_filter,
-                datetime_filter=datetime_filter,
-                bbox_filter=bbox_filter,
-                properties_filter=properties_filter,
-                cql_filter=cql_filter,
+                where=where_filter.to_sql() if where_filter else None,
                 sortby=sortby,
                 properties=properties,
                 geom=geom,
-                dt=dt,
                 limit=limit,
                 offset=offset,
                 bbox_only=bbox_only,
@@ -860,7 +824,7 @@ class PgCollection(Collection):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         function_parameters: Optional[Dict[str, str]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -879,6 +843,18 @@ class PgCollection(Collection):
                 f"Limit can not be set higher than the `tipg_max_features_per_tile` setting of {mvt_settings.max_features_per_tile}"
             )
 
+        where_filter = self.cql_where(
+            ids=ids_filter,
+            datetime=datetime_filter,
+            bbox=bbox_filter,
+            properties=properties_filter,
+            cql=cql_filter,
+            geom=geom,
+            dt=dt,
+            tms=tms,
+            tile=tile,
+        )
+
         c = clauses.Clauses(
             self._select_mvt(
                 properties=properties,
@@ -887,17 +863,7 @@ class PgCollection(Collection):
                 tile=tile,
             ),
             self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-                tms=tms,
-                tile=tile,
-            ),
+            clauses.Where(where_filter.to_sql() if where_filter else logic.S(True)),
             clauses.Limit(limit),
         )
 

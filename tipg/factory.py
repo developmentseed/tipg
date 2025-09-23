@@ -19,10 +19,10 @@ from urllib.parse import urlencode
 
 import jinja2
 import orjson
+from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
-from pygeofilter.ast import AstType
 
 from tipg import model
 from tipg.collections import Collection, CollectionList
@@ -777,7 +777,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
             datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
             properties: Annotated[Optional[List[str]], Depends(properties_query)],
-            cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
+            cql_filter: Annotated[Optional[Expr], Depends(filter_query)],
             sortby: Annotated[Optional[str], Depends(sortby_query)],
             geom_column: Annotated[
                 Optional[str],
@@ -1086,9 +1086,9 @@ class OGCFeaturesFactory(EndpointsFactory):
             async with request.app.state.pool.acquire() as conn:
                 item_list = await collection.features(
                     conn,
+                    cql_filter=Expr(f"{collection.id_column.name} = {itemId}"),
                     bbox_only=bbox_only,
                     simplify=simplify,
-                    ids_filter=[itemId],
                     properties=properties,
                     function_parameters=function_parameters_query(request, collection),
                     geom=geom_column,
@@ -1629,7 +1629,7 @@ class OGCTilesFactory(EndpointsFactory):
             properties: Annotated[
                 Optional[List[str]], Depends(properties_query)
             ] = None,
-            cql_filter: Annotated[Optional[AstType], Depends(filter_query)] = None,
+            cql_filter: Annotated[Optional[Expr], Depends(filter_query)] = None,
             sortby: Annotated[Optional[str], Depends(sortby_query)] = None,
             geom_column: Annotated[
                 Optional[str],
