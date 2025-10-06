@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* switch to official python docker image from `bitnami`
+
 ## [1.2.1] - 2025-08-26
 
 * update `starlette-cramjam` requirement to `>=0.4,<0.6`
