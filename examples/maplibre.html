@@ -1,0 +1,51 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Demo</title>
+    <meta property="og:description" content="Use a custom style layer to render custom WebGL content." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.js'></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    const map = new maplibregl.Map({
+        container: 'map',
+        zoom: 3,
+        center: [7.5, 58],
+        style: 'https://demotiles.maplibre.org/style.json',
+        canvasContextAttributes: {antialias: true} // create the gl context with MSAA antialiasing, so custom layers are antialiased
+    });
+
+
+    // add the custom style layer to the map
+    map.on('load', () => {
+        map.addSource('countries', {
+            type: 'vector',
+            url: 'http://127.0.0.1:8081/collections/public.countries/tiles/WebMercatorQuad/tilejson.json'
+        });
+        map.addLayer({
+            'id': 'countries',
+            'type': 'line',
+            'source': 'countries',
+            'source-layer': 'default',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': '#ff69b4',
+                'line-width': 1
+            }
+        });
+    });
+</script>
+</body>
+</html>
