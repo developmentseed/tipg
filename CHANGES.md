@@ -9,6 +9,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ## [unreleased]
 
 * switch to official python docker image from `bitnami`
+* add `FactoryExtension` to `EndpointsFactory`
+* rename `viewer_endpoint` function to `map_viewer` **breaking change**
+* rename `/viewer` endpoint to `/map.html` **breaking change**
 
 ## [1.2.1] - 2025-08-26
 

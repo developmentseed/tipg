@@ -9,6 +9,7 @@ from tipg import __version__ as tipg_version
 from tipg.collections import register_collection_catalog
 from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from tipg.extensions.viewer import viewerExtension
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.openapi import _update_openapi
@@ -73,6 +74,7 @@ ogc_api = Endpoints(
     title=settings.name,
     templates=templates,
     with_tiles_viewer=settings.add_tiles_viewer,
+    extensions=[viewerExtension()],
 )
 app.include_router(ogc_api.router)
 
