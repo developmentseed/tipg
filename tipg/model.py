@@ -291,7 +291,8 @@ class LayerJSON(BaseModel):
 class TileJSON(BaseModel):
     """
     TileJSON model.
-    Based on https://github.com/mapbox/tilejson-spec/tree/master/2.2.0
+
+    Based on https://github.com/mapbox/tilejson-spec/tree/master/3.0.0
     """
 
     tilejson: str = "3.0.0"
