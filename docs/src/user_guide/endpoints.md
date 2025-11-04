@@ -657,7 +657,7 @@ Return a TileJSON document. **Not in OGC Tile API specification**
 
 Path:
 
-- `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json`
 
 PathParams:
 
@@ -677,7 +677,7 @@ QueryParams:
 
 Example:
 ```json
-curl http://127.0.0.1:8081/collections/public.landsat_wrs/WebMercatorQuad/tilejson.json | jq
+curl http://127.0.0.1:8081/collections/public.landsat_wrs/tiles/WebMercatorQuad/tilejson.json | jq
 {
   "tilejson": "3.0.0",
   "name": "public.landsat_wrs",
@@ -722,7 +722,7 @@ Return a mapbox/maplibre StyleJSON document. **Not in OGC Tile API specification
 
 Path:
 
-- `/collections/{collectionId}/{tileMatrixSetId}/style.json`
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json`
 
 PathParams:
 
@@ -741,7 +741,7 @@ QueryParams:
 \*  **Not in OGC API Tiles Specification**
 
 ```json
-// http://127.0.0.1:8081/collections/public.landsat_wrs/WebMercatorQuad/style.json
+// http://127.0.0.1:8081/collections/public.landsat_wrs/tiles/WebMercatorQuad/style.json
 {
   "version": 8,
   "name": "TiPg",
@@ -831,7 +831,7 @@ Simple Map viewer. **Not in OGC Tile API specification**
 
 Path:
 
-- `/collections/{collectionId}/{tileMatrixSetId}/viewer`
+- `/collections/{collectionId}/tiles/{tileMatrixSetId}/map.html`
 
 PathParams:
 
