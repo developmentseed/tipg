@@ -24,6 +24,11 @@ COPY pyproject.toml pyproject.toml
 RUN python -m pip install . --no-cache-dir
 RUN rm -rf tipg/ README.md pyproject.toml LICENSE
 
+RUN groupadd -g 1000 user && \
+    useradd -u 1000 -g user -s /bin/bash -m user
+
+USER user
+
 ###################################################
 # For compatibility (might be removed at one point)
 ENV MODULE_NAME=tipg.main
@@ -31,4 +36,5 @@ ENV VARIABLE_NAME=app
 ENV HOST=0.0.0.0
 ENV PORT=80
 ENV WEB_CONCURRENCY=1
+
 CMD gunicorn -k uvicorn.workers.UvicornWorker ${MODULE_NAME}:${VARIABLE_NAME} --bind ${HOST}:${PORT} --workers ${WEB_CONCURRENCY}
