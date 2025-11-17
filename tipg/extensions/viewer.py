@@ -15,7 +15,7 @@ from starlette.responses import HTMLResponse
 
 @dataclass
 class viewerExtension(FactoryExtension):
-    """Add /validate endpoint to a COG TilerFactory."""
+    """Add /viewer endpoint."""
 
     def register(self, factory: EndpointsFactory):
         """Register endpoint to the tiler factory."""

@@ -12,6 +12,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * add `FactoryExtension` to `EndpointsFactory`
 * rename `viewer_endpoint` function to `map_viewer` **breaking change**
 * rename `/viewer` endpoint to `/map.html` **breaking change**
+* changed container image to use non-root `user`
 
 ## [1.2.1] - 2025-08-26
 

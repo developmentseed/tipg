@@ -1,4 +1,31 @@
 
+| Method | URL                                                             | Output    | Description
+| ------ | ----------------------------------------------------------------|---------- |--------------
+| `GET`  | `/`                                                             | JSON/HTML | Landing Page
+| `GET`  | `/api`                                                          | JSON Schema | OpenAPI JSON Schema
+| `GET`  | `/api.html`                                                     | HTML      | Swagger page
+| `GET`  | `/conformance`                                                  | JSON/HTML | Conformance classes supported
+| - | - | - |-
+| `GET`  | `/collections`                                                  | JSON/HTML | List of Collections available
+| `GET`  | `/collections/{collectionId}`                                   | JSON/HTML | Collection's metadata
+| `GET`  | `/collection/{collectionId}/queryables`                         | JSON/HTML | List of Collection's queryables
+| `GET`  | `/collections/{collectionId}/items`                             | GeoJSON/HTML | Collection's Items
+| `GET`  | `/collections/{collectionId}/items/{itemId}`                    | GeoJSON/HTML | Item's metadata
+| - | - | - |-
+| `GET`  | `/tileMatrixSets`                                               | JSON/HTML | List of TileMatrixSets available
+| `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                             | JSON/HTML | TileMatrixSet's metadata
+| `GET`  | `/collections/{collectionId}/tiles`                             | JSON/HTML | List of OGC Tilesets available
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}`           | JSON/HTML| OGC Tileset metadata
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`| bin | Vector Tile 
+| - | - | - |-
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json` | TileJSON | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json` | StyleJSON | Mapbox StyleJSON document
+| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/map.html`        | HTML      | Simple map viewer (leaflet)
+| `GET`  | `/collections/{collectionId}/viewer.html`                       | HTML      | WebMercator viewer (maplibre)
+| - | - | - |-
+| `GET`  | `/healthz.html`                                                  | JSON      | Health check
+
+
 ## OGC Common
 
 ### Landing page
@@ -100,7 +127,7 @@ curl http://127.0.0.1:8081 | jq
       "title": "Collection TileSet (Template URL)"
     },
     {
-      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrixSetId}/viewer",
+      "href": "http://127.0.0.1:8081/collections/{collectionId}/tiles/{tileMatrixSetId}/map.html",
       "rel": "data",
       "type": "text/html",
       "templated": true,
