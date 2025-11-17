@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.3.0] - 2025-11-17
+
 * switch to official python docker image from `bitnami`
 * add `FactoryExtension` to `EndpointsFactory`
 * rename `viewer_endpoint` function to `map_viewer` **breaking change**
@@ -423,7 +425,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.2.1...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.3.0...HEAD
+[1.3.0]: https://github.com/developmentseed/tipg/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/developmentseed/tipg/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/developmentseed/tipg/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/developmentseed/tipg/compare/1.1.1...1.1.2
