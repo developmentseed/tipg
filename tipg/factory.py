@@ -176,6 +176,16 @@ def create_html_response(
     )
 
 
+@dataclass
+class FactoryExtension(metaclass=abc.ABCMeta):
+    """Factory Extension."""
+
+    @abc.abstractmethod
+    def register(self, factory: "EndpointsFactory"):
+        """Register extension to the factory."""
+        ...
+
+
 # ref: https://github.com/python/mypy/issues/5374
 @dataclass  # type: ignore
 class EndpointsFactory(metaclass=abc.ABCMeta):
@@ -191,6 +201,8 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
     router_prefix: str = ""
 
+    extensions: List[FactoryExtension] = field(default_factory=list)
+
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
     # Full application with Landing and Conformance
@@ -203,7 +215,12 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         if self.with_common:
             self._landing_route()
             self._conformance_route()
+
         self.register_routes()
+
+        # Register Extensions
+        for ext in self.extensions:
+            ext.register(self)
 
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Return full url (with prefix) for a specific handler."""
@@ -463,7 +480,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     title="Collection Map viewer (Template URL)",
                     href=str(
                         request.app.url_path_for(
-                            "viewer_endpoint",
+                            "map_viewer",
                             collectionId=collection.id,
                             tileMatrixSetId="{tileMatrixSetId}",
                         ).make_absolute_url(base_url=base_url)
@@ -1238,7 +1255,7 @@ class OGCTilesFactory(EndpointsFactory):
                     title="Collection Map viewer (Template URL)",
                     href=self.url_for(
                         request,
-                        "viewer_endpoint",
+                        "map_viewer",
                         collectionId="{collectionId}",
                         tileMatrixSetId="{tileMatrixSetId}",
                     ),
@@ -1572,7 +1589,7 @@ class OGCTilesFactory(EndpointsFactory):
                     {
                         "href": self.url_for(
                             request,
-                            "viewer_endpoint",
+                            "map_viewer",
                             tileMatrixSetId=tileMatrixSetId,
                             collectionId=collection.id,
                         ),
@@ -1906,12 +1923,12 @@ class OGCTilesFactory(EndpointsFactory):
         if self.with_viewer:
 
             @self.router.get(
-                "/collections/{collectionId}/tiles/{tileMatrixSetId}/viewer",
+                "/collections/{collectionId}/tiles/{tileMatrixSetId}/map.html",
                 response_class=HTMLResponse,
                 operation_id=".collection.vector.map",
                 tags=["Map Viewer"],
             )
-            def viewer_endpoint(
+            def map_viewer(
                 request: Request,
                 collection: Annotated[Collection, Depends(self.collection_dependency)],
                 tileMatrixSetId: Annotated[
