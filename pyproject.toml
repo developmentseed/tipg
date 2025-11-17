@@ -2,7 +2,7 @@
 name = "tipg"
 description = "Simple and Fast Geospatial OGC Features and Tiles API for PostGIS."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [
     {name = "Vincent Sarago", email = "vincent@developmentseed.org"},
@@ -13,11 +13,10 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: GIS",
 ]
 dynamic = ["version"]
@@ -36,8 +35,8 @@ dependencies = [
     "starlette-cramjam>=0.4,<0.6",
 ]
 
-[project.optional-dependencies]
-test = [
+[dependency-groups]
+dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
@@ -46,8 +45,6 @@ test = [
     "pytest-postgresql",
     "mapbox-vector-tile>=2.1",
     "numpy",
-]
-dev = [
     "pre-commit",
     "bump-my-version",
 ]
@@ -61,36 +58,27 @@ docs = [
     "griffe-inherited-docstrings>=1.0.0",
     "mkdocstrings[python]>=0.25.1",
 ]
+deploy = [
+    "hatch",
+]
 
 [project.urls]
 Homepage = "https://developmentseed.org/tipg"
 Source = "https://github.com/developmentseed/tipg"
 Documentation = "https://developmentseed.org/tipg/"
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.hatch.version]
 path = "tipg/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "/tests",
-  "/dockerfiles",
-  "/docs",
-  "/data",
-  "docker-compose.yml",
-  "CONTRIBUTING.md",
-  "CHANGES.md",
-  ".pytest_cache",
-  ".github",
-  ".bumpversion.cfg",
-  ".env.example",
-  ".flake8",
-  ".gitignore",
-  ".pre-commit-config.yaml",
-]
+only-include = ["tipg/"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.hatch.build.targets.wheel]
+only-include = ["tipg/"]
 
 [tool.coverage.run]
 branch = true

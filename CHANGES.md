@@ -13,6 +13,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * rename `viewer_endpoint` function to `map_viewer` **breaking change**
 * rename `/viewer` endpoint to `/map.html` **breaking change**
 * changed container image to use non-root `user`
+* update minimum python version to 3.11
+* add python 3.14 support
+* switch to UV for development
 
 ## [1.2.1] - 2025-08-26
 
