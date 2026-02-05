@@ -411,6 +411,7 @@ class PgCollection(Collection):
         geometry_column: Column,
         tms: TileMatrixSet,
         tile: Tile,
+        simplify: Optional[float],
     ):
         """Create MVT from intersecting geometries."""
         geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
