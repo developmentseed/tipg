@@ -1671,7 +1671,7 @@ class OGCTilesFactory(EndpointsFactory):
             simplify: Annotated[
                 Optional[float],
                 Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
+                    description="Simplify the output geometry to given threshold in the units of the output CRS.",
                 ),
             ] = None,
         ):
