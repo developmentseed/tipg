@@ -415,6 +415,13 @@ class PgCollection(Collection):
         """Create MVT from intersecting geometries."""
         geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
 
+        if simplify:
+            geom = logic.Func(
+                "ST_Simplify",
+                geom,
+                simplify
+            )
+
         # make sure the geometries do not overflow the TMS bbox
         if not tms.is_valid(tile):
             geom = logic.Func(
@@ -866,6 +873,7 @@ class PgCollection(Collection):
         geom: Optional[str] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
+        simplify: Optional[float] = None,
     ):
         """Build query to get Vector Tile."""
         limit = limit or mvt_settings.max_features_per_tile
@@ -885,6 +893,7 @@ class PgCollection(Collection):
                 geometry_column=geometry_column,
                 tms=tms,
                 tile=tile,
+                simplify=simplify,
             ),
             self._from(function_parameters),
             self._where(
