@@ -412,15 +412,16 @@ class PgCollection(Collection):
         tms: TileMatrixSet,
         tile: Tile,
         simplify: Optional[float],
+        preserve_topology: Optional[bool],
     ):
         """Create MVT from intersecting geometries."""
         geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
 
         if simplify:
             geom = logic.Func(
-                "ST_Simplify",
-                geom,
-                simplify
+                "ST_SnapToGrid",
+                logic.Func("ST_SimplifyPreserveTopology" if preserve_topology else "ST_Simplify", geom, simplify),
+                simplify,
             )
 
         # make sure the geometries do not overflow the TMS bbox
@@ -875,6 +876,7 @@ class PgCollection(Collection):
         dt: Optional[str] = None,
         limit: Optional[int] = None,
         simplify: Optional[float] = None,
+        preserve_topology: Optional[bool] = None,
     ):
         """Build query to get Vector Tile."""
         limit = limit or mvt_settings.max_features_per_tile
@@ -895,6 +897,7 @@ class PgCollection(Collection):
                 tms=tms,
                 tile=tile,
                 simplify=simplify,
+                preserve_topology=preserve_topology,
             ),
             self._from(function_parameters),
             self._where(
