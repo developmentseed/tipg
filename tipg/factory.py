@@ -1668,6 +1668,12 @@ class OGCTilesFactory(EndpointsFactory):
                     description="Limits the number of features in the response. Defaults to 10000 or TIPG_MAX_FEATURES_PER_TILE environment variable."
                 ),
             ] = None,
+            simplify: Annotated[
+                Optional[float],
+                Query(
+                    description="Simplify the output geometry to given threshold in the units of the output CRS.",
+                ),
+            ] = None,
         ):
             """Return Vector Tile."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1688,6 +1694,7 @@ class OGCTilesFactory(EndpointsFactory):
                     limit=limit,
                     geom=geom_column,
                     dt=datetime_column,
+                    simplify=simplify,
                 )
 
             return Response(tile, media_type=MediaType.mvt.value)

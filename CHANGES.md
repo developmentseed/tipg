@@ -8,6 +8,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* add `simplify` option on OGC Tiles endpoints (author @guillemc23, https://github.com/developmentseed/tipg/pull/249)
+
+
 ## [1.3.0] - 2025-11-17
 
 * switch to official python docker image from `bitnami`
