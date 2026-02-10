@@ -1674,12 +1674,6 @@ class OGCTilesFactory(EndpointsFactory):
                     description="Simplify the output geometry to given threshold in the units of the output CRS.",
                 ),
             ] = None,
-            preserve_topology: Annotated[
-                Optional[bool],
-                Query(
-                    description="Whether to preserve the same topology as the original data when simplifying.",
-                ),
-            ] = None,
         ):
             """Return Vector Tile."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1701,7 +1695,6 @@ class OGCTilesFactory(EndpointsFactory):
                     geom=geom_column,
                     dt=datetime_column,
                     simplify=simplify,
-                    preserve_topology=preserve_topology,
                 )
 
             return Response(tile, media_type=MediaType.mvt.value)
