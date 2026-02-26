@@ -8,6 +8,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.3.1] - 2026-02-26
+
+* fix: bbox filter when collection's geometry is not in EPSG:4326 CRS
+
 ## [1.3.0] - 2025-11-17
 
 * switch to official python docker image from `bitnami`
@@ -425,7 +429,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.3.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.3.1...HEAD
+[1.3.1]: https://github.com/developmentseed/tipg/compare/1.3.0...1.3.1
 [1.3.0]: https://github.com/developmentseed/tipg/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/developmentseed/tipg/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/developmentseed/tipg/compare/1.1.2...1.2.0

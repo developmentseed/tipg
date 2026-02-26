@@ -570,8 +570,12 @@ class PgCollection(Collection):
             wheres.append(
                 logic.Func(
                     "ST_Intersects",
-                    logic.S(bbox_to_wkt(bbox)),
                     logic.V(geometry_column.name),
+                    logic.Func(
+                        "ST_Transform",
+                        logic.S(bbox_to_wkt(bbox)),
+                        logic.Func("ST_SRID", logic.V(geometry_column.name)),
+                    ),
                 )
             )
 
