@@ -1103,7 +1103,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             async with request.app.state.pool.acquire() as conn:
                 item_list = await collection.features(
                     conn,
-                    cql_filter=Expr(f"{collection.id_column.name} = {itemId}"),
+                    ids_filter=[itemId],
                     bbox_only=bbox_only,
                     simplify=simplify,
                     properties=properties,

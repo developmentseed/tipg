@@ -288,11 +288,17 @@ def filter_query(
         ),
     ] = None,
 ) -> Optional[Expr]:
-    """Parse Filter Query."""
-    if query is not None:
-        return Expr(query)
+    """Parse Filter Query.
 
-    return None
+    User-supplied filters are normalized through cql2-json so spatial literals
+    (`POLYGON(...)`, `POINT(...)`, etc.) compile to ``ST_GeomFromGeoJSON``
+    (SRID 4326) rather than ``ST_GeomFromText`` (SRID 0), which would
+    otherwise produce a mixed-SRID error against the 4326 geometry columns.
+    """
+    if query is None:
+        return None
+
+    return Expr(Expr(query).to_json())
 
 
 def sortby_query(
