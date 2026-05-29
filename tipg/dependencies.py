@@ -290,10 +290,21 @@ def filter_query(
 ) -> Optional[Expr]:
     """Parse Filter Query.
 
-    User-supplied filters are normalized through cql2-json so spatial literals
-    (`POLYGON(...)`, `POINT(...)`, etc.) compile to ``ST_GeomFromGeoJSON``
-    (SRID 4326) rather than ``ST_GeomFromText`` (SRID 0), which would
-    otherwise produce a mixed-SRID error against the 4326 geometry columns.
+    Per OGC API - Features - Part 3: Filtering, Requirement 7
+    (``/req/filter/filter-crs-wgs84``), when no ``filter-crs`` is supplied
+    the server "SHALL process all geometries in the filter expression using
+    CRS84". tipg does not implement the ``filter-crs`` parameter, so we
+    always treat filter geometries as CRS84 (≈ EPSG:4326).
+
+    To make that assumption explicit in the generated SQL, we round-trip
+    user input through cql2-json before re-parsing. The cql2 library emits
+    ``ST_GeomFromText(...)`` (SRID 0) when an ``Expr`` was parsed from
+    cql2-text, but ``ST_GeomFromGeoJSON(...)`` (SRID 4326) when parsed
+    from cql2-json — and SRID 0 literals fail any mixed-SRID PostGIS
+    comparison. Re-parsing the JSON form forces every spatial literal into
+    the SRID-4326 emit path. ``_where`` later wraps these 4326 literals in
+    ``ST_Transform(..., <column_srid>)`` if the target column is in a
+    different CRS, so the index on the column side is preserved.
     """
     if query is None:
         return None

@@ -23,6 +23,7 @@ from tipg.errors import (
     InvalidLimit,
     InvalidPropertyName,
     MissingDatetimeColumn,
+    NotFound,
 )
 from tipg.logger import logger
 from tipg.model import Extent
@@ -42,81 +43,103 @@ features_settings = FeaturesSettings()
 TransformerFromCRS = lru_cache(Transformer.from_crs)
 
 
-_INT_PG_TYPES = {
-    "smallint",
-    "integer",
-    "bigint",
-    "smallserial",
-    "serial",
-    "bigserial",
-}
-_FLOAT_PG_TYPES = {
-    "real",
-    "double precision",
-    "decimal",
-    "numeric",
-    "float8",
-}
+_INT_PG_TYPES = frozenset(
+    {
+        "smallint",
+        "integer",
+        "bigint",
+        "smallserial",
+        "serial",
+        "bigserial",
+    }
+)
 
-# TODO: This doesn't seem right. There must be a simpler or canonical way of doing this.
-def _coerce_value(val: Any, pg_type: str) -> Any:
-    """Cast a URL-string filter value into the column's native Python type.
 
-    Postgres applies implicit casts for single ``col = 'literal'`` comparisons,
-    but ``col = ANY(text[])`` does not coerce array elements, so we have to
-    convert here to keep IN-style filters working against numeric columns.
+def _coerce_id(val: str, pg_type: str) -> Union[str, int]:
+    """Parse a URL-supplied id into the primary-key column's Python type.
+
+    IDs always arrive as strings (URL path or query parameters); the
+    underlying column is either text or integer. cql2 treats Python ints
+    and strs as different literal kinds (and PostgreSQL ``= ANY(text[])``
+    does not coerce array elements at runtime), so we normalize here.
+
+    A non-integer string against an integer column means the id can't
+    exist, so map the parse failure onto a 404 rather than letting the
+    eventual PostgreSQL ``invalid input syntax`` error bubble up as a 500.
     """
-    if not isinstance(val, str):
+    if pg_type not in _INT_PG_TYPES:
         return val
-    if pg_type in _INT_PG_TYPES:
+    try:
         return int(val)
-    if pg_type in _FLOAT_PG_TYPES:
-        return float(val)
-    return val
+    except ValueError as exc:
+        raise NotFound(f"Invalid id {val!r} for {pg_type} column.") from exc
 
 
-# TODO: Understand how tipg did bbox intersects before me. Manually constructing the Polygon is too ugly to be right.
 def _s_intersects_bbox(
-    prop: str, west: float, south: float, east: float, north: float
+    prop: str,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    srid: Optional[int] = None,
 ) -> Expr:
-    """Build a cql2 S_INTERSECTS expression against a 4326 polygon envelope."""
-    return Expr(
-        {
-            "op": "s_intersects",
-            "args": [
-                {"property": prop},
-                {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [west, south],
-                            [east, south],
-                            [east, north],
-                            [west, north],
-                            [west, south],
-                        ]
-                    ],
-                },
-            ],
-        }
-    )
+    """Build a cql2 S_INTERSECTS expression against a polygon envelope.
+
+    Coordinates are taken to be in ``srid``; if ``srid`` is non-4326, the
+    polygon literal is wrapped in ``ST_SetSRID`` so PostGIS does not pick
+    up ``ST_GeomFromGeoJSON``'s 4326 default. Pass ``srid=None`` or
+    ``srid=4326`` for the no-op case.
+    """
+    polygon: Any = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+            ]
+        ],
+    }
+    if srid is not None and srid != 4326:
+        polygon = {"op": "st_setsrid", "args": [polygon, srid]}
+    return Expr({"op": "s_intersects", "args": [{"property": prop}, polygon]})
 
 
-# TODO: Do we need this?  Can we do just one ST_TRANSFORM and use that geom for the rest of the query?
-def _wrap_geom_property_to_4326(node: Any, geom_col_name: str) -> Any:
-    """Walk a cql2-json tree, replacing references to ``geom_col_name`` with
-    ``ST_Transform(geom_col, 4326)`` so the surrounding 4326-space predicates
-    line up with a non-4326 stored geometry column.
+_GEOJSON_GEOMETRY_TYPES = frozenset(
+    {
+        "Point",
+        "MultiPoint",
+        "LineString",
+        "MultiLineString",
+        "Polygon",
+        "MultiPolygon",
+        "GeometryCollection",
+    }
+)
+
+
+def _transform_cql_geom_literals(node: Any, target_srid: int) -> Any:
+    """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
+    literal in ``ST_Transform(<literal>, target_srid)``.
+
+    Per OGC API Features Part 3 Req 7, geometries in a CQL filter are
+    CRS84 (≈ EPSG:4326). Wrapping the literal side (rather than the
+    column side) keeps PostGIS' spatial index on the column usable and
+    lets the planner fold the transform on the constant once.
     """
     if isinstance(node, dict):
-        if node.get("property") == geom_col_name and len(node) == 1:
-            return {
-                "op": "st_transform",
-                "args": [{"property": geom_col_name}, 4326],
-            }
-        return {k: _wrap_geom_property_to_4326(v, geom_col_name) for k, v in node.items()}
+        if node.get("type") in _GEOJSON_GEOMETRY_TYPES and (
+            "coordinates" in node or "geometries" in node
+        ):
+            return {"op": "st_transform", "args": [node, target_srid]}
+        return {
+            k: _transform_cql_geom_literals(v, target_srid)
+            for k, v in node.items()
+        }
     if isinstance(node, list):
-        return [_wrap_geom_property_to_4326(item, geom_col_name) for item in node]
+        return [_transform_cql_geom_literals(item, target_srid) for item in node]
     return node
 
 
@@ -415,21 +438,31 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
     ) -> Optional[Expr]:
         """Construct WHERE query as a cql2 Expr."""
         exprs: List[Expr] = []
+        geometry_column = self.get_geometry_column(geom)
+
+        # Per OGC API Features Part 3 Req 7, geometries in `cql` and `bbox`
+        # are CRS84 (≈ EPSG:4326). When the stored column is in another
+        # SRID, wrap their literals in `ST_Transform(literal, <col_srid>)`
+        # so the comparison happens in the column's native CRS — PostGIS
+        # folds the transform on the constant side and the spatial index
+        # on the column stays usable.
+        target_srid = geometry_column.srid if geometry_column is not None else None
+        needs_srid_wrap = target_srid is not None and target_srid != 4326
 
         if cql is not None:
+            if needs_srid_wrap:
+                cql = Expr(
+                    _transform_cql_geom_literals(cql.to_json(), target_srid)
+                )
             exprs.append(cql)
 
         # `ids` filter
         if ids:
             id_prop = {"property": self.id_column.name}
-            if len(ids) == 1:
-                # Single `=` relies on Postgres' implicit text→col cast,
-                # which yields the natural type-error message for bad input.
-                exprs.append(Expr({"op": "=", "args": [id_prop, ids[0]]}))
+            typed_ids = [_coerce_id(i, self.id_column.type) for i in ids]
+            if len(typed_ids) == 1:
+                exprs.append(Expr({"op": "=", "args": [id_prop, typed_ids[0]]}))
             else:
-                # `= ANY(text[])` does not coerce element types, so we have
-                # to convert URL strings to the column's native type here.
-                typed_ids = [_coerce_value(i, self.id_column.type) for i in ids]
                 exprs.append(Expr({"op": "in", "args": [id_prop, typed_ids]}))
 
         # `properties` filter
@@ -441,16 +474,24 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                     Expr({"op": "=", "args": [{"property": prop}, val]})
                 )
 
-        # `bbox` filter
-        geometry_column = self.get_geometry_column(geom)
+        # `bbox` filter — bbox is CRS84 (4326) per OGC API Features.
+        # Reproject the four corner coords to the column's CRS in Python
+        # so the polygon literal already carries target-CRS coordinates;
+        # ST_SetSRID then just tags it, no PostGIS-side transform needed.
         if bbox is not None and geometry_column is not None:
-            # TODO: Do we need to handle bbox with 6 elements?
             if len(bbox) == 6:
                 west, south, _, east, north, _ = bbox
             else:
                 west, south, east, north = bbox
+            if needs_srid_wrap:
+                transformer = TransformerFromCRS(4326, target_srid, always_xy=True)
+                west, south, east, north = transformer.transform_bounds(
+                    west, south, east, north
+                )
             exprs.append(
-                _s_intersects_bbox(geometry_column.name, west, south, east, north)
+                _s_intersects_bbox(
+                    geometry_column.name, west, south, east, north, srid=target_srid
+                )
             )
 
         # `datetime` filter
@@ -522,7 +563,11 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                         )
                     )
 
-        # `tile` envelope filter — reproject tile bounds (TMS CRS) to 4326
+        # `tile` envelope filter — reproject tile bounds directly from the
+        # TMS CRS to the stored column's CRS (skipping the 4326 round-trip)
+        # and tag the resulting polygon literal with `ST_SetSRID` so it
+        # carries the column's SRID rather than the 4326 default that
+        # `ST_GeomFromGeoJSON` would otherwise apply.
         if tile and tms and geometry_column:
             bounds = tms.xy_bounds(tile)
             west, south, east, north = (
@@ -532,34 +577,24 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                 bounds.top,
             )
             tms_epsg = tms.crs.to_epsg() or 4326
-            if tms_epsg != 4326:
-                transformer = TransformerFromCRS(tms_epsg, 4326, always_xy=True)
+            tile_target_srid = target_srid if target_srid is not None else 4326
+            if tms_epsg != tile_target_srid:
+                transformer = TransformerFromCRS(
+                    tms_epsg, tile_target_srid, always_xy=True
+                )
                 west, south, east, north = transformer.transform_bounds(
                     west, south, east, north
                 )
             exprs.append(
-                _s_intersects_bbox(geometry_column.name, west, south, east, north)
-            )
-
-        # For non-4326 geometry columns, wrap every reference to the geom
-        # column in `ST_Transform(geom, 4326)` so the whole WHERE evaluates
-        # in 4326 space (all of our built-in spatial filters above use 4326
-        # polygons, and the user is told to supply spatial literals in 4326).
-
-        # Note: this loses the spatial index on the geom column for non-4326
-        # collections; an index-friendly variant would transform the
-        # polygon-literal side to geom's SRID instead.
-
-        # TODO: Should we transform the bbox or polygon CRS instead?
-        if geometry_column is not None and geometry_column.srid not in (None, 4326):
-            exprs = [
-                Expr(
-                    _wrap_geom_property_to_4326(
-                        e.to_json(), geometry_column.name
-                    )
+                _s_intersects_bbox(
+                    geometry_column.name,
+                    west,
+                    south,
+                    east,
+                    north,
+                    srid=tile_target_srid,
                 )
-                for e in exprs
-            ]
+            )
 
         if exprs:
             # NOTE: do not call .reduce() — cql2-rs constant-folds some
