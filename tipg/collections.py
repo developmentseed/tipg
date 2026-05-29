@@ -6,10 +6,7 @@ import re
 from functools import lru_cache, reduce
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
-from buildpg import RawDangerous as raw
-from buildpg import asyncpg, clauses
-from buildpg import funcs as pg_funcs
-from buildpg import logic, render
+import asyncpg
 from ciso8601 import parse_rfc3339
 from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
@@ -41,6 +38,11 @@ mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
+
+
+def _quote_ident(name: str) -> str:
+    """Quote a PostgreSQL identifier (column/table/schema) safely."""
+    return '"' + name.replace('"', '""') + '"'
 
 
 _INT_PG_TYPES = frozenset(
@@ -636,26 +638,48 @@ class PgCollection(Collection):
 
     dbschema: str = Field(alias="schema")
 
-    def _select_no_geo(self, properties: Optional[List[str]], addid: bool = True):
-        nocomma = False
-        columns = self.columns(properties)
-        if columns:
-            sel = logic.as_sql_block(clauses.Select(columns))
-        else:
-            sel = logic.as_sql_block(raw("SELECT "))
-            nocomma = True
+    @property
+    def _qualified_name(self) -> str:
+        """SQL-quoted ``"schema"."table"`` identifier for this collection."""
+        return f"{_quote_ident(self.dbschema)}.{_quote_ident(self.table)}"
 
-        if addid:
-            if self.id_column:
-                id_clause = logic.V(self.id_column.name).as_("tipg_id")
-            else:
-                id_clause = raw(" ROW_NUMBER () OVER () AS tipg_id ")
-            if nocomma:
-                sel = clauses.Clauses(sel, id_clause)
-            else:
-                sel = sel.comma(id_clause)
+    def _select_property_columns(self, properties: Optional[List[str]]) -> List[str]:
+        """Quoted column-name fragments for the property columns to SELECT."""
+        return [_quote_ident(c) for c in self.columns(properties)]
 
-        return logic.as_sql_block(sel)
+    def _select_id(self) -> str:
+        """SQL fragment that selects the primary-key column as ``tipg_id``.
+
+        Falls back to ``ROW_NUMBER()`` when the collection has no primary key.
+        """
+        if self.id_column:
+            return f"{_quote_ident(self.id_column.name)} AS tipg_id"
+        return "ROW_NUMBER() OVER () AS tipg_id"
+
+    def _geom_expr(
+        self,
+        geometry_column: Optional[Column],
+        bbox_only: Optional[bool],
+        simplify: Optional[float],
+    ) -> Optional[str]:
+        """Build the SQL expression for the geometry column (reprojected to
+        4326 if needed, optionally bbox-only or simplified).
+        """
+        if geometry_column is None:
+            return None
+
+        g = f"CAST({_quote_ident(geometry_column.name)} AS geometry)"
+
+        if geometry_column.srid != 4326:
+            g = f"ST_Transform({g}, 4326)"
+
+        if bbox_only:
+            g = f"ST_Envelope({g})"
+        elif simplify:
+            s = float(simplify)
+            g = f"ST_SnapToGrid(ST_Simplify({g}, {s}), {s})"
+
+        return g
 
     def _select(
         self,
@@ -664,27 +688,26 @@ class PgCollection(Collection):
         bbox_only: Optional[bool],
         simplify: Optional[float],
         geom_as_wkt: bool = False,
-    ):
-        sel = self._select_no_geo(properties)
+    ) -> str:
+        """Build the SELECT clause for the main features query."""
+        cols = self._select_property_columns(properties)
+        cols.append(self._select_id())
 
-        geom = self._geom(geometry_column, bbox_only, simplify)
+        geom = self._geom_expr(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
-            if geom:
-                sel = sel.comma(logic.Func("ST_AsEWKT", geom).as_("tipg_geom"))
-            else:
-                sel = sel.comma(pg_funcs.cast(None, "text").as_("tipg_geom"))
-
+            cols.append(
+                f"ST_AsEWKT({geom}) AS tipg_geom"
+                if geom
+                else "CAST(NULL AS text) AS tipg_geom"
+            )
         else:
-            if geom:
-                sel = sel.comma(
-                    pg_funcs.cast(logic.Func("ST_AsGeoJSON", geom), "json").as_(
-                        "tipg_geom"
-                    )
-                )
-            else:
-                sel = sel.comma(pg_funcs.cast(None, "json").as_("tipg_geom"))
+            cols.append(
+                f"CAST(ST_AsGeoJSON({geom}) AS json) AS tipg_geom"
+                if geom
+                else "CAST(NULL AS json) AS tipg_geom"
+            )
 
-        return sel
+        return "SELECT " + ", ".join(cols)
 
     def _select_mvt(
         self,
@@ -692,113 +715,84 @@ class PgCollection(Collection):
         geometry_column: Column,
         tms: TileMatrixSet,
         tile: Tile,
-    ):
-        """Create MVT from intersecting geometries."""
-        geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
+    ) -> str:
+        """Build the SELECT clause that emits an MVT geometry per row."""
+        cols = self._select_property_columns(properties)
 
-        # make sure the geometries do not overflow the TMS bbox — `tms.bbox`
-        # is 4326, so we transform any non-4326 geom to 4326 before clipping.
+        geom = f"CAST({_quote_ident(geometry_column.name)} AS geometry)"
+
+        # For tiles that fall outside the TMS's natural domain (e.g. an
+        # over-zoomed corner tile), clip the source geometry to the TMS's
+        # geographic bbox before reprojecting — otherwise ST_AsMVTGeom can
+        # produce garbage near the antimeridian / poles. ``tms.bbox`` is in
+        # the TMS's ``geographic_crs``, which is NOT always EPSG:4326 (e.g.
+        # CanadianNAD83_LCC uses 4269, EuropeanETRS89_LAEAQuad uses 4258,
+        # NZTM2000Quad uses 4167). When the geographic CRS has no EPSG code
+        # (WorldCRS84Quad → OGC:CRS84), 4326 is a safe fallback since the
+        # coordinate values are identical (only axis order differs, and
+        # PostGIS treats 4326 as lon/lat).
         if not tms.is_valid(tile):
-            geom = logic.Func(
-                "ST_Intersection",
-                logic.Func("ST_MakeEnvelope", *tms.bbox, 4326),
-                logic.Func(
-                    "ST_Transform",
-                    geom,
-                    pg_funcs.cast(4326, "int"),
-                ),
+            west, south, east, north = tms.bbox
+            geo_srid = tms.geographic_crs.to_epsg() or 4326
+            geom = (
+                f"ST_Intersection("
+                f"ST_MakeEnvelope({west}, {south}, {east}, {north}, {geo_srid}), "
+                f"ST_Transform({geom}, {geo_srid})"
+                f")"
             )
 
-        # Transform the geometries to TMS CRS using EPSG code
+        # Reproject to TMS CRS — prefer EPSG code, fall back to PROJ string.
         if tms_srid := tms.crs.to_epsg():
-            transform_logic = logic.Func(
-                "ST_Transform",
-                geom,
-                pg_funcs.cast(tms_srid, "int"),
-            )
-
-        # Transform the geometries to TMS CRS using PROJ String
+            transformed = f"ST_Transform({geom}, {tms_srid})"
         else:
-            tms_proj = tms.crs.to_proj4()
-            transform_logic = logic.Func(
-                "ST_Transform",
-                geom,
-                pg_funcs.cast(tms_proj, "text"),
-            )
+            tms_proj = tms.crs.to_proj4().replace("'", "''")
+            transformed = f"ST_Transform({geom}, '{tms_proj}')"
 
         bbox = tms.xy_bounds(tile)
-        sel = self._select_no_geo(properties, addid=False).comma(
-            logic.Func(
-                "ST_AsMVTGeom",
-                transform_logic,
-                logic.Func(
-                    "ST_Segmentize",
-                    logic.Func(
-                        "ST_MakeEnvelope",
-                        bbox.left,
-                        bbox.bottom,
-                        bbox.right,
-                        bbox.top,
-                    ),
-                    bbox.right - bbox.left,
-                ),
-                mvt_settings.tile_resolution,
-                mvt_settings.tile_buffer,
-                mvt_settings.tile_clip,
-            ).as_("geom")
+        envelope = (
+            f"ST_Segmentize("
+            f"ST_MakeEnvelope({bbox.left}, {bbox.bottom}, {bbox.right}, {bbox.top}), "
+            f"{bbox.right - bbox.left}"
+            f")"
+        )
+        cols.append(
+            f"ST_AsMVTGeom("
+            f"{transformed}, {envelope}, "
+            f"{int(mvt_settings.tile_resolution)}, "
+            f"{int(mvt_settings.tile_buffer)}, "
+            f"{'TRUE' if mvt_settings.tile_clip else 'FALSE'}"
+            f") AS geom"
         )
 
-        return sel
+        return "SELECT " + ", ".join(cols)
 
-    def _select_count(self):
-        return clauses.Select(pg_funcs.count("*"))
-
-    def _from(self, function_parameters: Optional[Dict[str, str]]):
-        if self.type == "Function":
-            if not function_parameters:
-                return clauses.From(self.id) + raw("()")
-            params = []
-            for p in self.parameters:
-                if p.name in function_parameters:
-                    params.append(
-                        pg_funcs.cast(
-                            pg_funcs.cast(function_parameters[p.name], "text"),
-                            p.type,
-                        )
-                    )
-            return clauses.From(logic.Func(self.id, *params))
-        return clauses.From(self.id)
-
-    def _geom(
+    def _from(
         self,
-        geometry_column: Optional[Column],
-        bbox_only: Optional[bool],
-        simplify: Optional[float],
-    ):
-        if geometry_column is None:
-            return None
+        function_parameters: Optional[Dict[str, str]],
+        params: List[Any],
+    ) -> str:
+        """Build the FROM clause. Function-table parameters are appended to
+        ``params`` and referenced via ``$N`` placeholders.
+        """
+        name = self._qualified_name
+        if self.type != "Function":
+            return f"FROM {name}"
 
-        g = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
+        if not function_parameters:
+            return f"FROM {name}()"
 
-        # Reproject to WGS84 if needed — GeoJSON output is always 4326
-        if geometry_column.srid != 4326:
-            g = logic.Func("ST_Transform", g, pg_funcs.cast(4326, "int"))
+        args = []
+        for p in self.parameters:
+            if p.name in function_parameters:
+                params.append(function_parameters[p.name])
+                # Double cast (value → text → target type): asyncpg sends
+                # Python strs as text, and the explicit cast to ``p.type``
+                # then coerces to whatever the function signature expects.
+                args.append(f"CAST(CAST(${len(params)} AS text) AS {p.type})")
+        return f"FROM {name}({', '.join(args)})"
 
-        # Return BBOX Only
-        if bbox_only:
-            g = logic.Func("ST_Envelope", g)
-
-        # Simplify the geometry
-        elif simplify:
-            g = logic.Func(
-                "ST_SnapToGrid",
-                logic.Func("ST_Simplify", g, simplify),
-                simplify,
-            )
-
-        return g
-
-    def _sortby(self, sortby: Optional[str]):
+    def _sortby(self, sortby: Optional[str]) -> str:
+        """Build the ORDER BY clause."""
         sorts = []
         if sortby:
             for s in sortby.strip().split(","):
@@ -806,29 +800,23 @@ class PgCollection(Collection):
 
                 direction = parts["direction"]
                 column = parts["column"].strip()
-                if self.get_column(column):
-                    if direction == "-":
-                        sorts.append(logic.V(column).desc())
-                    else:
-                        sorts.append(logic.V(column))
-                else:
+                if not self.get_column(column):
                     raise InvalidPropertyName(f"Property {column} does not exist.")
-
+                col_sql = _quote_ident(column)
+                sorts.append(f"{col_sql} DESC" if direction == "-" else col_sql)
+        elif self.id_column is not None:
+            sorts.append(_quote_ident(self.id_column.name))
         else:
-            if self.id_column is not None:
-                sorts.append(logic.V(self.id_column.name))
-            else:
-                sorts.append(logic.V(self.properties[0].name))
+            sorts.append(_quote_ident(self.properties[0].name))
 
-        return clauses.OrderBy(*sorts)
+        return "ORDER BY " + ", ".join(sorts)
 
-    # TODO: get rid of buildpg
     @staticmethod
-    def _where_clause(where: Optional[Expr]):
-        """Wrap a cql2 Expr (or None) into a buildpg Where clause."""
+    def _where_clause(where: Optional[Expr]) -> str:
+        """Render a cql2 ``Expr`` (or ``None``) as a WHERE clause."""
         if where is None:
-            return clauses.Where(logic.S(True))
-        return clauses.Where(raw(where.to_sql()))
+            return "WHERE TRUE"
+        return f"WHERE {where.to_sql()}"
 
     async def _features_query(
         self,
@@ -845,27 +833,29 @@ class PgCollection(Collection):
         geom_as_wkt: bool = False,
         function_parameters: Optional[Dict[str, str]],
     ):
-        """Build Features query."""
+        """Build and run the Features query, yielding each row as a Feature."""
         limit = limit or features_settings.default_features_limit
         offset = offset or 0
+        params: List[Any] = []
 
-        c = clauses.Clauses(
-            self._select(
-                properties=properties,
-                geometry_column=self.get_geometry_column(geom),
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
-            ),
-            self._from(function_parameters),
-            self._where_clause(where),
-            self._sortby(sortby),
-            clauses.Limit(limit),
-            clauses.Offset(offset),
+        sql = " ".join(
+            [
+                self._select(
+                    properties=properties,
+                    geometry_column=self.get_geometry_column(geom),
+                    bbox_only=bbox_only,
+                    simplify=simplify,
+                    geom_as_wkt=geom_as_wkt,
+                ),
+                self._from(function_parameters, params),
+                self._where_clause(where),
+                self._sortby(sortby),
+                f"LIMIT {int(limit)}",
+                f"OFFSET {int(offset)}",
+            ]
         )
 
-        q, p = render(":c", c=c)
-        for r in await conn.fetch(q, *p):
+        for r in await conn.fetch(sql, *params):
             props = dict(r)
             g = props.pop("tipg_geom")
             id = props.pop("tipg_id")
@@ -879,16 +869,16 @@ class PgCollection(Collection):
         where: Optional[Expr] = None,
         function_parameters: Optional[Dict[str, str]],
     ) -> int:
-        """Build features COUNT query."""
-        c = clauses.Clauses(
-            self._select_count(),
-            self._from(function_parameters),
-            self._where_clause(where),
+        """Run the COUNT(*) query for the current filter."""
+        params: List[Any] = []
+        sql = " ".join(
+            [
+                "SELECT COUNT(*)",
+                self._from(function_parameters, params),
+                self._where_clause(where),
+            ]
         )
-
-        q, p = render(":c", c=c)
-        count = await conn.fetchval(q, *p)
-        return count
+        return await conn.fetchval(sql, *params)
 
     async def features(
         self,
@@ -1007,30 +997,30 @@ class PgCollection(Collection):
             tile=tile,
         )
 
-        c = clauses.Clauses(
-            self._select_mvt(
-                properties=properties,
-                geometry_column=geometry_column,
-                tms=tms,
-                tile=tile,
-            ),
-            self._from(function_parameters),
-            self._where_clause(where_filter),
-            clauses.Limit(limit),
+        params: List[Any] = []
+        inner_sql = " ".join(
+            [
+                self._select_mvt(
+                    properties=properties,
+                    geometry_column=geometry_column,
+                    tms=tms,
+                    tile=tile,
+                ),
+                self._from(function_parameters, params),
+                self._where_clause(where_filter),
+                f"LIMIT {int(limit)}",
+            ]
         )
 
-        q, p = render(
-            """
-            WITH
-            t AS (:c)
-            SELECT ST_AsMVT(t.*, :l) FROM t
-            """,
-            c=c,
-            l=self.table if mvt_settings.set_mvt_layername is True else "default",
+        layer = self.table if mvt_settings.set_mvt_layername is True else "default"
+        params.append(layer)
+        sql = (
+            f"WITH t AS ({inner_sql}) "
+            f"SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
         )
-        debug_query(q, *p)
+        debug_query(sql, *params)
 
-        tile = await conn.fetchval(q, *p)
+        tile = await conn.fetchval(sql, *params)
 
         return bytes(tile)
 
@@ -1047,31 +1037,22 @@ async def pg_get_collection_index(  # noqa: C901
 
     query = f"""
         SELECT {settings.tipg_schema}.tipg_catalog(
-            :schemas,
-            :tables,
-            :exclude_tables,
-            :exclude_table_schemas,
-            :functions,
-            :exclude_functions,
-            :exclude_function_schemas,
-            :spatial,
-            :spatial_extent,
-            :datetime_extent
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         );
-    """  # noqa: W605
+    """
 
-    rows = await conn.fetch_b(
+    rows = await conn.fetch(
         query,
-        schemas=schemas,
-        tables=settings.tables,
-        exclude_tables=settings.exclude_tables,
-        exclude_table_schemas=settings.exclude_table_schemas,
-        functions=settings.functions,
-        exclude_functions=settings.exclude_functions,
-        exclude_function_schemas=settings.exclude_function_schemas,
-        spatial=settings.only_spatial_tables,
-        spatial_extent=settings.spatial_extent,
-        datetime_extent=settings.datetime_extent,
+        schemas,
+        settings.tables,
+        settings.exclude_tables,
+        settings.exclude_table_schemas,
+        settings.functions,
+        settings.exclude_functions,
+        settings.exclude_function_schemas,
+        settings.only_spatial_tables,
+        settings.spatial_extent,
+        settings.datetime_extent,
     )
 
     collections: List[Collection] = []

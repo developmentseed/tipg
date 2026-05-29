@@ -4,8 +4,8 @@ import pathlib
 from importlib.resources import files as resources_files
 from typing import List, Optional
 
+import asyncpg
 import orjson
-from buildpg import asyncpg
 
 from tipg.logger import logger
 from tipg.settings import PostgresSettings
@@ -82,7 +82,7 @@ async def connect_to_db(
     if not settings:
         settings = PostgresSettings()
 
-    app.state.pool = await asyncpg.create_pool_b(
+    app.state.pool = await asyncpg.create_pool(
         str(settings.database_url),
         min_size=settings.db_min_conn_size,
         max_size=settings.db_max_conn_size,
