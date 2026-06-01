@@ -137,8 +137,7 @@ def _transform_cql_geom_literals(node: Any, target_srid: int) -> Any:
         ):
             return {"op": "st_transform", "args": [node, target_srid]}
         return {
-            k: _transform_cql_geom_literals(v, target_srid)
-            for k, v in node.items()
+            k: _transform_cql_geom_literals(v, target_srid) for k, v in node.items()
         }
     if isinstance(node, list):
         return [_transform_cql_geom_literals(item, target_srid) for item in node]
@@ -453,9 +452,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         if cql is not None:
             if needs_srid_wrap:
-                cql = Expr(
-                    _transform_cql_geom_literals(cql.to_json(), target_srid)
-                )
+                cql = Expr(_transform_cql_geom_literals(cql.to_json(), target_srid))
             exprs.append(cql)
 
         # `ids` filter
@@ -472,9 +469,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
             for prop, val in properties:
                 if not self.get_column(prop):
                     raise InvalidPropertyName(f"Invalid property name: {prop}")
-                exprs.append(
-                    Expr({"op": "=", "args": [{"property": prop}, val]})
-                )
+                exprs.append(Expr({"op": "=", "args": [{"property": prop}, val]}))
 
         # `bbox` filter — bbox is CRS84 (4326) per OGC API Features.
         # Reproject the four corner coords to the column's CRS in Python
@@ -522,13 +517,9 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
             else:
                 start_str, end_str = datetime[0], datetime[1]
                 start = (
-                    parse_rfc3339(start_str)
-                    if start_str not in ["..", ""]
-                    else None
+                    parse_rfc3339(start_str) if start_str not in ["..", ""] else None
                 )
-                end = (
-                    parse_rfc3339(end_str) if end_str not in ["..", ""] else None
-                )
+                end = parse_rfc3339(end_str) if end_str not in ["..", ""] else None
 
                 if start is None and end is None:
                     raise InvalidDatetime(
@@ -1014,10 +1005,7 @@ class PgCollection(Collection):
 
         layer = self.table if mvt_settings.set_mvt_layername is True else "default"
         params.append(layer)
-        sql = (
-            f"WITH t AS ({inner_sql}) "
-            f"SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
-        )
+        sql = f"WITH t AS ({inner_sql}) " f"SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
         debug_query(sql, *params)
 
         tile = await conn.fetchval(sql, *params)
