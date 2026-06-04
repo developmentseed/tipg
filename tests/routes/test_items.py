@@ -390,10 +390,20 @@ def test_items_geo_filter_cql2(app):
     Items.model_validate(body)
 
 
-def test_items_geo_filter_cql2_non_4326_crs(app):
+def test_items_geo_filte_non_4326_crs(app):
     """Test CQL2 non 4326 geo filter."""
     response = app.get(
-        "/collections/public.minnesota/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-95.5389899 47.5578719,-95.5018943 46.4902864,-94.1637708 46.4891952,-94.1277889 47.5804373,-95.5389899 47.5578719)))"
+        "/collections/public.minnesota/items?filter-lang=cql2-text&filter=S_INTERSECTS(geom, POLYGON((-95.5389899 46.4902864, -94.1637708 46.4902864, -94.1637708 47.5804373, -95.5389899 47.5804373, -95.5389899 46.4902864)))"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 2
+    assert body["numberMatched"] == 2
+    Items.model_validate(body)
+
+    response = app.get(
+        "/collections/public.minnesota/items?bbox=-95.5389899,46.4902864,-94.1637708,47.5804373"
     )
 
     assert response.status_code == 200

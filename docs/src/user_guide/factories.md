@@ -115,7 +115,7 @@ app.include_router(endpoints.router)
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
-- **with_viewer** (bool, optional): add `/viewer` endpoint to visualize the Vector tile. Defaults to `True`
+- **with_map_viewer** (bool, optional): add `/map.html` endpoint to visualize the Vector tile. Defaults to `True`
 
 - **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
@@ -134,9 +134,9 @@ app.include_router(endpoints.router)
 | `GET`  | `/collections/{collectionId}/tiles`                                                      | JSON                          | list of available vector tilesets
 | `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}`                                    | JSON                          | vector tileset metadata
 | `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`                        | Mapbox Vector Tile (Protobuf) | create a web map vector tile from collection's items
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`                            | JSON                          | Mapbox TileJSON document
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/style.json`                               | JSON                          | Mapbox/Maplibre StyleJSON document
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/viewer`                                   | HTML                          | simple map viewer **[OPTIONAL]**
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json`                      | JSON                          | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json`                         | JSON                          | Mapbox/Maplibre StyleJSON document
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/map.html`                           | HTML                          | simple map viewer **[OPTIONAL]**
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                          | list of available TileMatrixSets
 | `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                          | TileMatrixSet document
 | `GET`  | `/conformance`                                                                           | HTML / JSON                   | conformance class landing Page
@@ -160,7 +160,7 @@ app.include_router(endpoints.router)
 
 - **supported_tms** (morecantile.TileMatrixSets): morecantile TileMatrixSets instance (holds a set of TileMatrixSet documents)
 
-- **with_tiles_viewer** (bool, optional): add `/viewer` endpoint to visualize the Vector tile. Defaults to `True`
+- **with_tiles_viewer** (bool, optional): add `/map.html` endpoint to visualize the Vector tile. Defaults to `True`
 
 - **with_common** (bool, optional): Create Full OGC Features API set of endpoints with OGC Common endpoints (landing `/` and conformance `/conformance`). Defaults to `True`
 
@@ -184,9 +184,9 @@ app.include_router(endpoints.router)
 | `GET`  | `/collections/{collectionId}/tiles`                                                      | JSON                                              | list of available vector tilesets
 | `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}`                                    | JSON                                              | vector tileset metadata
 | `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/{z}/{x}/{y}`                        | Mapbox Vector Tile (Protobuf)                     | create a web map vector tile from collection's items
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/tilejson.json`                            | JSON                                              | Mapbox TileJSON document
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/style.json`                               | JSON                                              | Mapbox/Maplibre StyleJSON document
-| `GET`  | `/collections/{collectionId}/{tileMatrixSetId}/viewer`                                   | HTML                                              | simple map viewer **[OPTIONAL]**
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/tilejson.json`                      | JSON                                              | Mapbox TileJSON document
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/style.json`                         | JSON                                              | Mapbox/Maplibre StyleJSON document
+| `GET`  | `/collections/{collectionId}/tiles/{tileMatrixSetId}/map.html`                           | HTML                                              | simple map viewer **[OPTIONAL]**
 | `GET`  | `/tileMatrixSets`                                                                        | JSON                                              | list of available TileMatrixSets
 | `GET`  | `/tileMatrixSets/{tileMatrixSetId}`                                                      | JSON                                              | TileMatrixSet document
 | `GET`  | `/conformance`                                                                           | HTML / JSON                                       | conformance class landing Page

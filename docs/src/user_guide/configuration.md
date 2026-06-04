@@ -115,11 +115,11 @@ prefix: **`TIPG_`**
 - **TILE_RESOLUTION** (int): Default is `4096`
 - **TILE_BUFFER** (int): Default is `256`
 - **TILE_CLIP** (bool): Default is `True`
-- **MAX_FEATURE_PER_TILE** (int): Default is `10000`
+- **MAX_FEATURES_PER_TILE** (int): Default is `10000`
 - **SET_MVT_LAYERNAME** (bool): Set MVT layername from Table ID. Default is `False` ("default")
 
 ```bash
-TIPG_MAX_FEATURE_PER_TILE=1000
+TIPG_MAX_FEATURES_PER_TILE=1000
 ```
 
 ## Features settings

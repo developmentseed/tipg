@@ -18,17 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout master
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: 3.11
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .["docs"]
+          version: "0.9.*" 
+          enable-cache: true
 
       - name: Deploy docs
-        run: mkdocs gh-deploy --force -f docs/mkdocs.yml
+        run: uv run --group docs mkdocs gh-deploy --force -f docs/mkdocs.yml

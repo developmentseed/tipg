@@ -1,11 +1,11 @@
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.14
 
-FROM bitnami/python:${PYTHON_VERSION}
+FROM python:${PYTHON_VERSION}
 RUN apt update && apt upgrade -y \
   && apt install curl -y \
   && rm -rf /var/lib/apt/lists/*
 
-  # Ensure root certificates are always updated at evey container build
+# Ensure root certificates are always updated at evey container build
 # and curl is using the latest version of them
 RUN mkdir /usr/local/share/ca-certificates/cacert.org
 RUN cd /usr/local/share/ca-certificates/cacert.org && curl -k -O https://www.cacert.org/certs/root.crt
@@ -24,6 +24,11 @@ COPY pyproject.toml pyproject.toml
 RUN python -m pip install . --no-cache-dir
 RUN rm -rf tipg/ README.md pyproject.toml LICENSE
 
+RUN groupadd -g 1000 user && \
+    useradd -u 1000 -g user -s /bin/bash -m user
+
+USER user
+
 ###################################################
 # For compatibility (might be removed at one point)
 ENV MODULE_NAME=tipg.main
@@ -31,4 +36,5 @@ ENV VARIABLE_NAME=app
 ENV HOST=0.0.0.0
 ENV PORT=80
 ENV WEB_CONCURRENCY=1
+
 CMD gunicorn -k uvicorn.workers.UvicornWorker ${MODULE_NAME}:${VARIABLE_NAME} --bind ${HOST}:${PORT} --workers ${WEB_CONCURRENCY}

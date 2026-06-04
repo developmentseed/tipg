@@ -10,6 +10,21 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 * switch from pygeofilter to cql2
 
+## [1.3.1] - 2026-02-26
+
+* fix: bbox filter when collection's geometry is not in EPSG:4326 CRS
+
+## [1.3.0] - 2025-11-17
+
+* switch to official python docker image from `bitnami`
+* add `FactoryExtension` to `EndpointsFactory`
+* rename `viewer_endpoint` function to `map_viewer` **breaking change**
+* rename `/viewer` endpoint to `/map.html` **breaking change**
+* changed container image to use non-root `user`
+* update minimum python version to 3.11
+* add python 3.14 support
+* switch to UV for development
+
 ## [1.2.1] - 2025-08-26
 
 * update `starlette-cramjam` requirement to `>=0.4,<0.6`
@@ -416,7 +431,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.2.1...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.3.1...HEAD
+[1.3.1]: https://github.com/developmentseed/tipg/compare/1.3.0...1.3.1
+[1.3.0]: https://github.com/developmentseed/tipg/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/developmentseed/tipg/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/developmentseed/tipg/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/developmentseed/tipg/compare/1.1.1...1.1.2

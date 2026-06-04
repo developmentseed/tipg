@@ -33,13 +33,13 @@
 ## Install
 
 ```bash
-$ python -m pip install pip -U
-$ python -m pip install tipg
+python -m pip install pip -U
+python -m pip install tipg
 
 # or from source
-$ git clone https://github.com/developmentseed/tipg.git
-$ cd tipg
-$ python -m pip install -e .
+git clone https://github.com/developmentseed/tipg.git
+cd tipg
+python -m pip install -e .
 ```
 
 ## OGC Specifications
@@ -88,15 +88,13 @@ More info about configuration options at https://developmentseed.org/tipg/user_g
 ## Launch
 
 ```bash
-$ python -m pip install uvicorn
-
 # Set your PostGIS database instance URL in the environment
-$ export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
-$ uvicorn tipg.main:app
+export DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
+uv run --group server uvicorn tipg.main:app
 
 # or using Docker
 
-$ docker-compose up app
+docker-compose up app
 ```
 
 <p align="center">
