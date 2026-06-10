@@ -447,12 +447,12 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         # so the comparison happens in the column's native CRS — PostGIS
         # folds the transform on the constant side and the spatial index
         # on the column stays usable.
-        target_srid = geometry_column.srid if geometry_column is not None else None
-        needs_srid_wrap = target_srid is not None and target_srid != 4326
+        col_srid = geometry_column.srid if geometry_column is not None else None
+        needs_srid_wrap = col_srid is not None and col_srid != 4326
 
         if cql is not None:
             if needs_srid_wrap:
-                cql = Expr(_transform_cql_geom_literals(cql.to_json(), target_srid))
+                cql = Expr(_transform_cql_geom_literals(cql.to_json(), col_srid))
             exprs.append(cql)
 
         # `ids` filter
@@ -481,13 +481,13 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
             else:
                 west, south, east, north = bbox
             if needs_srid_wrap:
-                transformer = TransformerFromCRS(4326, target_srid, always_xy=True)
+                transformer = TransformerFromCRS(4326, col_srid, always_xy=True)
                 west, south, east, north = transformer.transform_bounds(
                     west, south, east, north
                 )
             exprs.append(
                 _s_intersects_bbox(
-                    geometry_column.name, west, south, east, north, srid=target_srid
+                    geometry_column.name, west, south, east, north, srid=col_srid
                 )
             )
 
@@ -569,15 +569,20 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                 bounds.right,
                 bounds.top,
             )
-            tms_epsg = tms.crs.to_epsg() or 4326
-            tile_target_srid = target_srid if target_srid is not None else 4326
-            if tms_epsg != tile_target_srid:
+            # Bounds are now in TMS CRS
+            tms_srid = tms.crs.to_epsg() or 4326
+            tile_target_srid = col_srid if col_srid is not None else 4326
+
+            # If the TMS CRS is different from the column's SRID,
+            # transform the bounds to the column's SRID.
+            if tms_srid != tile_target_srid:
                 transformer = TransformerFromCRS(
-                    tms_epsg, tile_target_srid, always_xy=True
+                    tms_srid, tile_target_srid, always_xy=True
                 )
                 west, south, east, north = transformer.transform_bounds(
                     west, south, east, north
                 )
+
             exprs.append(
                 _s_intersects_bbox(
                     geometry_column.name,
