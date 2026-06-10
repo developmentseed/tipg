@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Optional, Protocol, Set
 
-from tipg.collections import Catalog
+from tipg.dbmodel import Catalog
 from tipg.errors import MissingCollectionCatalog
 from tipg.logger import logger
 

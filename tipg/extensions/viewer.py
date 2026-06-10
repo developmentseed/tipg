@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated, Optional
 from urllib.parse import urlencode
 
-from tipg.collections import Collection
+from tipg.dbmodel import Collection
 from tipg.factory import EndpointsFactory, FactoryExtension
 
 from fastapi import Depends, Query
