@@ -4,11 +4,9 @@ import re
 from typing import Annotated, Dict, List, Literal, Optional, Tuple, get_args
 
 from ciso8601 import parse_rfc3339
+from cql2 import Expr
 from morecantile import Tile
 from morecantile import tms as default_tms
-from pygeofilter.ast import AstType
-from pygeofilter.parsers.cql2_json import parse as cql2_json_parser
-from pygeofilter.parsers.cql2_text import parse as cql2_text_parser
 
 from tipg.collections import Catalog, Collection, CollectionList
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
@@ -289,16 +287,29 @@ def filter_query(
             alias="filter-lang",
         ),
     ] = None,
-) -> Optional[AstType]:
-    """Parse Filter Query."""
-    if query is not None:
-        if filter_lang == "cql2-json":
-            return cql2_json_parser(query)
+) -> Optional[Expr]:
+    """Parse Filter Query.
 
-        # default to cql2-text
-        return cql2_text_parser(query)
+    Per OGC API - Features - Part 3: Filtering, Requirement 7
+    (``/req/filter/filter-crs-wgs84``), when no ``filter-crs`` is supplied
+    the server "SHALL process all geometries in the filter expression using
+    CRS84". tipg does not implement the ``filter-crs`` parameter, so we
+    always treat filter geometries as CRS84 (≈ EPSG:4326).
 
-    return None
+    To make that assumption explicit in the generated SQL, we round-trip
+    user input through cql2-json before re-parsing. The cql2 library emits
+    ``ST_GeomFromText(...)`` (SRID 0) when an ``Expr`` was parsed from
+    cql2-text, but ``ST_GeomFromGeoJSON(...)`` (SRID 4326) when parsed
+    from cql2-json — and SRID 0 literals fail any mixed-SRID PostGIS
+    comparison. Re-parsing the JSON form forces every spatial literal into
+    the SRID-4326 emit path. ``_where`` later wraps these 4326 literals in
+    ``ST_Transform(..., <column_srid>)`` if the target column is in a
+    different CRS, so the index on the column side is preserved.
+    """
+    if query is None:
+        return None
+
+    return Expr(Expr(query).to_json())
 
 
 def sortby_query(

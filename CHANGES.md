@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* switch from pygeofilter to cql2
+
 ## [1.3.1] - 2026-02-26
 
 * fix: bbox filter when collection's geometry is not in EPSG:4326 CRS

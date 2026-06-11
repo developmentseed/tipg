@@ -3,17 +3,14 @@
 import abc
 import datetime
 import re
-from functools import lru_cache
+from functools import lru_cache, reduce
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
-from buildpg import RawDangerous as raw
-from buildpg import asyncpg, clauses
-from buildpg import funcs as pg_funcs
-from buildpg import logic, render
+import asyncpg
 from ciso8601 import parse_rfc3339
+from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, Field, model_validator
-from pygeofilter.ast import AstType
 from pyproj import Transformer
 
 from tipg.errors import (
@@ -23,9 +20,8 @@ from tipg.errors import (
     InvalidLimit,
     InvalidPropertyName,
     MissingDatetimeColumn,
+    NotFound,
 )
-from tipg.filter.evaluate import to_filter
-from tipg.filter.filters import bbox_to_wkt
 from tipg.logger import logger
 from tipg.model import Extent
 from tipg.settings import (
@@ -44,10 +40,116 @@ features_settings = FeaturesSettings()
 TransformerFromCRS = lru_cache(Transformer.from_crs)
 
 
+def _quote_ident(name: str) -> str:
+    """Quote a PostgreSQL identifier (column/table/schema) safely."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+_INT_PG_TYPES = frozenset(
+    {
+        "smallint",
+        "integer",
+        "bigint",
+        "smallserial",
+        "serial",
+        "bigserial",
+    }
+)
+
+
+def _coerce_id(val: str, pg_type: str) -> Union[str, int]:
+    """Parse a URL-supplied id into the primary-key column's Python type.
+
+    IDs always arrive as strings (URL path or query parameters); the
+    underlying column is either text or integer. cql2 treats Python ints
+    and strs as different literal kinds (and PostgreSQL ``= ANY(text[])``
+    does not coerce array elements at runtime), so we normalize here.
+
+    A non-integer string against an integer column means the id can't
+    exist, so map the parse failure onto a 404 rather than letting the
+    eventual PostgreSQL ``invalid input syntax`` error bubble up as a 500.
+    """
+    if pg_type not in _INT_PG_TYPES:
+        return val
+    try:
+        return int(val)
+    except ValueError as exc:
+        raise NotFound(f"Invalid id {val!r} for {pg_type} column.") from exc
+
+
+def _s_intersects_bbox(
+    prop: str,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    srid: Optional[int] = None,
+) -> Expr:
+    """Build a cql2 S_INTERSECTS expression against a polygon envelope.
+
+    Coordinates are taken to be in ``srid``; if ``srid`` is non-4326, the
+    polygon literal is wrapped in ``ST_SetSRID`` so PostGIS does not pick
+    up ``ST_GeomFromGeoJSON``'s 4326 default. Pass ``srid=None`` or
+    ``srid=4326`` for the no-op case.
+    """
+    polygon: Any = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+            ]
+        ],
+    }
+    if srid is not None and srid != 4326:
+        polygon = {"op": "st_setsrid", "args": [polygon, srid]}
+    return Expr({"op": "s_intersects", "args": [{"property": prop}, polygon]})
+
+
+_GEOJSON_GEOMETRY_TYPES = frozenset(
+    {
+        "Point",
+        "MultiPoint",
+        "LineString",
+        "MultiLineString",
+        "Polygon",
+        "MultiPolygon",
+        "GeometryCollection",
+    }
+)
+
+
+def _transform_cql_geom_literals(node: Any, target_srid: int) -> Any:
+    """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
+    literal in ``ST_Transform(<literal>, target_srid)``.
+
+    Per OGC API Features Part 3 Req 7, geometries in a CQL filter are
+    CRS84 (≈ EPSG:4326). Wrapping the literal side (rather than the
+    column side) keeps PostGIS' spatial index on the column usable and
+    lets the planner fold the transform on the constant once.
+    """
+    if isinstance(node, dict):
+        if node.get("type") in _GEOJSON_GEOMETRY_TYPES and (
+            "coordinates" in node or "geometries" in node
+        ):
+            return {"op": "st_transform", "args": [node, target_srid]}
+        return {
+            k: _transform_cql_geom_literals(v, target_srid) for k, v in node.items()
+        }
+    if isinstance(node, list):
+        return [_transform_cql_geom_literals(item, target_srid) for item in node]
+    return node
+
+
 def debug_query(q, *p):
     """Utility to print raw statement to use for debugging."""
 
-    qsub = re.sub(r"\$([0-9]+)", r"{\1}", q)
+    # Escape literal `{` and `}` (cql2 emits GeoJSON literals containing them)
+    # then turn `$N` placeholders into `{N}` format slots.
+    qsub = re.sub(r"\$([0-9]+)", r"{\1}", q.replace("{", "{{").replace("}", "}}"))
 
     def quote_str(s):
         """Quote strings."""
@@ -323,6 +425,183 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return {**geoms, **props}
 
+    def cql_where(  # noqa: C901
+        self,
+        ids: Optional[List[str]] = None,
+        datetime: Optional[List[str]] = None,
+        bbox: Optional[List[float]] = None,
+        properties: Optional[List[Tuple[str, Any]]] = None,
+        cql: Optional[Expr] = None,
+        geom: Optional[str] = None,
+        dt: Optional[str] = None,
+        tile: Optional[Tile] = None,
+        tms: Optional[TileMatrixSet] = None,
+    ) -> Optional[Expr]:
+        """Construct WHERE query as a cql2 Expr."""
+        exprs: List[Expr] = []
+        geometry_column = self.get_geometry_column(geom)
+
+        # Per OGC API Features Part 3 Req 7, geometries in `cql` and `bbox`
+        # are CRS84 (≈ EPSG:4326). When the stored column is in another
+        # SRID, wrap their literals in `ST_Transform(literal, <col_srid>)`
+        # so the comparison happens in the column's native CRS — PostGIS
+        # folds the transform on the constant side and the spatial index
+        # on the column stays usable.
+        col_srid = geometry_column.srid if geometry_column is not None else None
+        needs_srid_wrap = col_srid is not None and col_srid != 4326
+
+        if cql is not None:
+            if needs_srid_wrap:
+                cql = Expr(_transform_cql_geom_literals(cql.to_json(), col_srid))
+            exprs.append(cql)
+
+        # `ids` filter
+        if ids:
+            id_prop = {"property": self.id_column.name}
+            typed_ids = [_coerce_id(i, self.id_column.type) for i in ids]
+            if len(typed_ids) == 1:
+                exprs.append(Expr({"op": "=", "args": [id_prop, typed_ids[0]]}))
+            else:
+                exprs.append(Expr({"op": "in", "args": [id_prop, typed_ids]}))
+
+        # `properties` filter
+        if properties is not None:
+            for prop, val in properties:
+                if not self.get_column(prop):
+                    raise InvalidPropertyName(f"Invalid property name: {prop}")
+                exprs.append(Expr({"op": "=", "args": [{"property": prop}, val]}))
+
+        # `bbox` filter — bbox is CRS84 (4326) per OGC API Features.
+        # Reproject the four corner coords to the column's CRS in Python
+        # so the polygon literal already carries target-CRS coordinates;
+        # ST_SetSRID then just tags it, no PostGIS-side transform needed.
+        if bbox is not None and geometry_column is not None:
+            if len(bbox) == 6:
+                west, south, _, east, north, _ = bbox
+            else:
+                west, south, east, north = bbox
+            if needs_srid_wrap:
+                transformer = TransformerFromCRS(4326, col_srid, always_xy=True)
+                west, south, east, north = transformer.transform_bounds(
+                    west, south, east, north
+                )
+            exprs.append(
+                _s_intersects_bbox(
+                    geometry_column.name, west, south, east, north, srid=col_srid
+                )
+            )
+
+        # `datetime` filter
+        if datetime:
+            if not self.datetime_columns:
+                raise MissingDatetimeColumn(
+                    "Must have timestamp/timestamptz/date typed column to filter with datetime."
+                )
+
+            datetime_column = self.get_datetime_column(dt)
+            if not datetime_column:
+                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
+
+            dt_prop = {"property": datetime_column.name}
+
+            if len(datetime) == 1:
+                parse_rfc3339(datetime[0])
+                exprs.append(
+                    Expr(
+                        {
+                            "op": "=",
+                            "args": [dt_prop, {"timestamp": datetime[0]}],
+                        }
+                    )
+                )
+            else:
+                start_str, end_str = datetime[0], datetime[1]
+                start = (
+                    parse_rfc3339(start_str) if start_str not in ["..", ""] else None
+                )
+                end = parse_rfc3339(end_str) if end_str not in ["..", ""] else None
+
+                if start is None and end is None:
+                    raise InvalidDatetime(
+                        "Double open-ended datetime intervals are not allowed."
+                    )
+
+                if start is not None and end is not None and start > end:
+                    raise InvalidDatetime(
+                        "Start datetime cannot be before end datetime."
+                    )
+
+                if start is not None:
+                    exprs.append(
+                        Expr(
+                            {
+                                "op": ">=",
+                                "args": [dt_prop, {"timestamp": start_str}],
+                            }
+                        )
+                    )
+                if end is not None:
+                    # TODO: Understand the correct way to handle inclusive/exclusive end
+                    # Closed interval uses exclusive upper bound to keep
+                    # the half-open `[start, end)` semantics tipg has always
+                    # used; the open-ended `../<end>` form remains inclusive
+                    # (`<=`)
+                    op = "<" if start is not None else "<="
+                    exprs.append(
+                        Expr(
+                            {
+                                "op": op,
+                                "args": [dt_prop, {"timestamp": end_str}],
+                            }
+                        )
+                    )
+
+        # `tile` envelope filter — reproject tile bounds directly from the
+        # TMS CRS to the stored column's CRS (skipping the 4326 round-trip)
+        # and tag the resulting polygon literal with `ST_SetSRID` so it
+        # carries the column's SRID rather than the 4326 default that
+        # `ST_GeomFromGeoJSON` would otherwise apply.
+        if tile and tms and geometry_column:
+            bounds = tms.xy_bounds(tile)
+            west, south, east, north = (
+                bounds.left,
+                bounds.bottom,
+                bounds.right,
+                bounds.top,
+            )
+            # Bounds are now in TMS CRS
+            tms_srid = tms.crs.to_epsg() or 4326
+            tile_target_srid = col_srid if col_srid is not None else 4326
+
+            # If the TMS CRS is different from the column's SRID,
+            # transform the bounds to the column's SRID.
+            if tms_srid != tile_target_srid:
+                transformer = TransformerFromCRS(
+                    tms_srid, tile_target_srid, always_xy=True
+                )
+                west, south, east, north = transformer.transform_bounds(
+                    west, south, east, north
+                )
+
+            exprs.append(
+                _s_intersects_bbox(
+                    geometry_column.name,
+                    west,
+                    south,
+                    east,
+                    north,
+                    srid=tile_target_srid,
+                )
+            )
+
+        if exprs:
+            # NOTE: do not call .reduce() — cql2-rs constant-folds some
+            # predicates (e.g. `"numeric" IS NULL`) incorrectly.
+            # TODO: Open a bug in cql2-rs for this.
+            return reduce(lambda x, y: x + y, exprs)
+
+        return None
+
     @abc.abstractmethod
     async def features(self, *args, **kwargs) -> ItemList:
         """Get Items."""
@@ -355,26 +634,48 @@ class PgCollection(Collection):
 
     dbschema: str = Field(alias="schema")
 
-    def _select_no_geo(self, properties: Optional[List[str]], addid: bool = True):
-        nocomma = False
-        columns = self.columns(properties)
-        if columns:
-            sel = logic.as_sql_block(clauses.Select(columns))
-        else:
-            sel = logic.as_sql_block(raw("SELECT "))
-            nocomma = True
+    @property
+    def _qualified_name(self) -> str:
+        """SQL-quoted ``"schema"."table"`` identifier for this collection."""
+        return f"{_quote_ident(self.dbschema)}.{_quote_ident(self.table)}"
 
-        if addid:
-            if self.id_column:
-                id_clause = logic.V(self.id_column.name).as_("tipg_id")
-            else:
-                id_clause = raw(" ROW_NUMBER () OVER () AS tipg_id ")
-            if nocomma:
-                sel = clauses.Clauses(sel, id_clause)
-            else:
-                sel = sel.comma(id_clause)
+    def _select_property_columns(self, properties: Optional[List[str]]) -> List[str]:
+        """Quoted column-name fragments for the property columns to SELECT."""
+        return [_quote_ident(c) for c in self.columns(properties)]
 
-        return logic.as_sql_block(sel)
+    def _select_id(self) -> str:
+        """SQL fragment that selects the primary-key column as ``tipg_id``.
+
+        Falls back to ``ROW_NUMBER()`` when the collection has no primary key.
+        """
+        if self.id_column:
+            return f"{_quote_ident(self.id_column.name)} AS tipg_id"
+        return "ROW_NUMBER() OVER () AS tipg_id"
+
+    def _geom_expr(
+        self,
+        geometry_column: Optional[Column],
+        bbox_only: Optional[bool],
+        simplify: Optional[float],
+    ) -> Optional[str]:
+        """Build the SQL expression for the geometry column (reprojected to
+        4326 if needed, optionally bbox-only or simplified).
+        """
+        if geometry_column is None:
+            return None
+
+        g = f"CAST({_quote_ident(geometry_column.name)} AS geometry)"
+
+        if geometry_column.srid != 4326:
+            g = f"ST_Transform({g}, 4326)"
+
+        if bbox_only:
+            g = f"ST_Envelope({g})"
+        elif simplify:
+            s = float(simplify)
+            g = f"ST_SnapToGrid(ST_Simplify({g}, {s}), {s})"
+
+        return g
 
     def _select(
         self,
@@ -383,27 +684,26 @@ class PgCollection(Collection):
         bbox_only: Optional[bool],
         simplify: Optional[float],
         geom_as_wkt: bool = False,
-    ):
-        sel = self._select_no_geo(properties)
+    ) -> str:
+        """Build the SELECT clause for the main features query."""
+        cols = self._select_property_columns(properties)
+        cols.append(self._select_id())
 
-        geom = self._geom(geometry_column, bbox_only, simplify)
+        geom = self._geom_expr(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
-            if geom:
-                sel = sel.comma(logic.Func("ST_AsEWKT", geom).as_("tipg_geom"))
-            else:
-                sel = sel.comma(pg_funcs.cast(None, "text").as_("tipg_geom"))
-
+            cols.append(
+                f"ST_AsEWKT({geom}) AS tipg_geom"
+                if geom
+                else "CAST(NULL AS text) AS tipg_geom"
+            )
         else:
-            if geom:
-                sel = sel.comma(
-                    pg_funcs.cast(logic.Func("ST_AsGeoJSON", geom), "json").as_(
-                        "tipg_geom"
-                    )
-                )
-            else:
-                sel = sel.comma(pg_funcs.cast(None, "json").as_("tipg_geom"))
+            cols.append(
+                f"CAST(ST_AsGeoJSON({geom}) AS json) AS tipg_geom"
+                if geom
+                else "CAST(NULL AS json) AS tipg_geom"
+            )
 
-        return sel
+        return "SELECT " + ", ".join(cols)
 
     def _select_mvt(
         self,
@@ -411,262 +711,84 @@ class PgCollection(Collection):
         geometry_column: Column,
         tms: TileMatrixSet,
         tile: Tile,
-    ):
-        """Create MVT from intersecting geometries."""
-        geom = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
+    ) -> str:
+        """Build the SELECT clause that emits an MVT geometry per row."""
+        cols = self._select_property_columns(properties)
 
-        # make sure the geometries do not overflow the TMS bbox
+        geom = f"CAST({_quote_ident(geometry_column.name)} AS geometry)"
+
+        # For tiles that fall outside the TMS's natural domain (e.g. an
+        # over-zoomed corner tile), clip the source geometry to the TMS's
+        # geographic bbox before reprojecting — otherwise ST_AsMVTGeom can
+        # produce garbage near the antimeridian / poles. ``tms.bbox`` is in
+        # the TMS's ``geographic_crs``, which is NOT always EPSG:4326 (e.g.
+        # CanadianNAD83_LCC uses 4269, EuropeanETRS89_LAEAQuad uses 4258,
+        # NZTM2000Quad uses 4167). When the geographic CRS has no EPSG code
+        # (WorldCRS84Quad → OGC:CRS84), 4326 is a safe fallback since the
+        # coordinate values are identical (only axis order differs, and
+        # PostGIS treats 4326 as lon/lat).
         if not tms.is_valid(tile):
-            geom = logic.Func(
-                "ST_Intersection",
-                logic.Func("ST_MakeEnvelope", *tms.bbox, 4326),
-                logic.Func(
-                    "ST_Transform",
-                    geom,
-                    pg_funcs.cast(4326, "int"),
-                ),
+            west, south, east, north = tms.bbox
+            geo_srid = tms.geographic_crs.to_epsg() or 4326
+            geom = (
+                f"ST_Intersection("
+                f"ST_MakeEnvelope({west}, {south}, {east}, {north}, {geo_srid}), "
+                f"ST_Transform({geom}, {geo_srid})"
+                f")"
             )
 
-        # Transform the geometries to TMS CRS using EPSG code
+        # Reproject to TMS CRS — prefer EPSG code, fall back to PROJ string.
         if tms_srid := tms.crs.to_epsg():
-            transform_logic = logic.Func(
-                "ST_Transform",
-                geom,
-                pg_funcs.cast(tms_srid, "int"),
-            )
-
-        # Transform the geometries to TMS CRS using PROJ String
+            transformed = f"ST_Transform({geom}, {tms_srid})"
         else:
-            tms_proj = tms.crs.to_proj4()
-            transform_logic = logic.Func(
-                "ST_Transform",
-                geom,
-                pg_funcs.cast(tms_proj, "text"),
-            )
+            tms_proj = tms.crs.to_proj4().replace("'", "''")
+            transformed = f"ST_Transform({geom}, '{tms_proj}')"
 
         bbox = tms.xy_bounds(tile)
-        sel = self._select_no_geo(properties, addid=False).comma(
-            logic.Func(
-                "ST_AsMVTGeom",
-                transform_logic,
-                logic.Func(
-                    "ST_Segmentize",
-                    logic.Func(
-                        "ST_MakeEnvelope",
-                        bbox.left,
-                        bbox.bottom,
-                        bbox.right,
-                        bbox.top,
-                    ),
-                    bbox.right - bbox.left,
-                ),
-                mvt_settings.tile_resolution,
-                mvt_settings.tile_buffer,
-                mvt_settings.tile_clip,
-            ).as_("geom")
+        envelope = (
+            f"ST_Segmentize("
+            f"ST_MakeEnvelope({bbox.left}, {bbox.bottom}, {bbox.right}, {bbox.top}), "
+            f"{bbox.right - bbox.left}"
+            f")"
+        )
+        cols.append(
+            f"ST_AsMVTGeom("
+            f"{transformed}, {envelope}, "
+            f"{int(mvt_settings.tile_resolution)}, "
+            f"{int(mvt_settings.tile_buffer)}, "
+            f"{'TRUE' if mvt_settings.tile_clip else 'FALSE'}"
+            f") AS geom"
         )
 
-        return sel
+        return "SELECT " + ", ".join(cols)
 
-    def _select_count(self):
-        return clauses.Select(pg_funcs.count("*"))
-
-    def _from(self, function_parameters: Optional[Dict[str, str]]):
-        if self.type == "Function":
-            if not function_parameters:
-                return clauses.From(self.id) + raw("()")
-            params = []
-            for p in self.parameters:
-                if p.name in function_parameters:
-                    params.append(
-                        pg_funcs.cast(
-                            pg_funcs.cast(function_parameters[p.name], "text"),
-                            p.type,
-                        )
-                    )
-            return clauses.From(logic.Func(self.id, *params))
-        return clauses.From(self.id)
-
-    def _geom(
+    def _from(
         self,
-        geometry_column: Optional[Column],
-        bbox_only: Optional[bool],
-        simplify: Optional[float],
-    ):
-        if geometry_column is None:
-            return None
+        function_parameters: Optional[Dict[str, str]],
+        params: List[Any],
+    ) -> str:
+        """Build the FROM clause. Function-table parameters are appended to
+        ``params`` and referenced via ``$N`` placeholders.
+        """
+        name = self._qualified_name
+        if self.type != "Function":
+            return f"FROM {name}"
 
-        g = pg_funcs.cast(logic.V(geometry_column.name), "geometry")
+        if not function_parameters:
+            return f"FROM {name}()"
 
-        # Reproject to WGS64 if needed
-        if geometry_column.srid != 4326:
-            g = logic.Func("ST_Transform", g, pg_funcs.cast(4326, "int"))
+        args = []
+        for p in self.parameters:
+            if p.name in function_parameters:
+                params.append(function_parameters[p.name])
+                # Double cast (value → text → target type): asyncpg sends
+                # Python strs as text, and the explicit cast to ``p.type``
+                # then coerces to whatever the function signature expects.
+                args.append(f"CAST(CAST(${len(params)} AS text) AS {p.type})")
+        return f"FROM {name}({', '.join(args)})"
 
-        # Return BBOX Only
-        if bbox_only:
-            g = logic.Func("ST_Envelope", g)
-
-        # Simplify the geometry
-        elif simplify:
-            g = logic.Func(
-                "ST_SnapToGrid",
-                logic.Func("ST_Simplify", g, simplify),
-                simplify,
-            )
-
-        return g
-
-    def _where(  # noqa: C901
-        self,
-        ids: Optional[List[str]] = None,
-        datetime: Optional[List[str]] = None,
-        bbox: Optional[List[float]] = None,
-        properties: Optional[List[Tuple[str, Any]]] = None,
-        cql: Optional[AstType] = None,
-        geom: Optional[str] = None,
-        dt: Optional[str] = None,
-        tile: Optional[Tile] = None,
-        tms: Optional[TileMatrixSet] = None,
-    ):
-        """Construct WHERE query."""
-        wheres = [logic.S(True)]
-
-        # `ids` filter
-        if ids is not None:
-            if len(ids) == 1:
-                wheres.append(
-                    logic.V(self.id_column.name)
-                    == pg_funcs.cast(pg_funcs.cast(ids[0], "text"), self.id_column.type)
-                )
-            else:
-                w = [
-                    logic.V(self.id_column.name)
-                    == logic.S(
-                        pg_funcs.cast(pg_funcs.cast(i, "text"), self.id_column.type)
-                    )
-                    for i in ids
-                ]
-                wheres.append(pg_funcs.OR(*w))
-
-        # `properties filter
-        if properties is not None:
-            w = []
-            for prop, val in properties:
-                col = self.get_column(prop)
-                if not col:
-                    raise InvalidPropertyName(f"Invalid property name: {prop}")
-
-                w.append(
-                    logic.V(col.name)
-                    == logic.S(pg_funcs.cast(pg_funcs.cast(val, "text"), col.type))
-                )
-
-            if w:
-                wheres.append(pg_funcs.AND(*w))
-
-        # `bbox` filter
-        geometry_column = self.get_geometry_column(geom)
-        if bbox is not None and geometry_column is not None:
-            wheres.append(
-                logic.Func(
-                    "ST_Intersects",
-                    logic.V(geometry_column.name),
-                    logic.Func(
-                        "ST_Transform",
-                        logic.S(bbox_to_wkt(bbox)),
-                        logic.Func("ST_SRID", logic.V(geometry_column.name)),
-                    ),
-                )
-            )
-
-        # `datetime` filter
-        if datetime:
-            if not self.datetime_columns:
-                raise MissingDatetimeColumn(
-                    "Must have timestamp/timestamptz/date typed column to filter with datetime."
-                )
-
-            datetime_column = self.get_datetime_column(dt)
-            if not datetime_column:
-                raise InvalidDatetimeColumnName(f"Invalid Datetime Column: {dt}.")
-
-            wheres.append(self._datetime_filter_to_sql(datetime, datetime_column.name))
-
-        # `CQL` filter
-        if cql is not None:
-            wheres.append(to_filter(cql, [p.name for p in self.properties]))
-
-        if tile and tms and geometry_column:
-            # Get tile bounds in the TMS coordinate system
-            bbox = tms.xy_bounds(tile)
-            left, bottom, right, top = bbox
-
-            # If the geometry column’s SRID does not match the TMS CRS, transform the bounds:
-            # Use a fallback of 4326 if tms.crs.to_epsg() returns a falsey value.
-            tms_epsg = tms.crs.to_epsg() or 4326
-            if geometry_column.srid != tms_epsg:
-                transformer = TransformerFromCRS(
-                    tms_epsg, geometry_column.srid, always_xy=True
-                )
-
-                left, bottom, right, top = transformer.transform_bounds(
-                    left, bottom, right, top
-                )
-
-            wheres.append(
-                logic.Func(
-                    "ST_Intersects",
-                    logic.Func(
-                        "ST_Segmentize",
-                        logic.Func(
-                            "ST_MakeEnvelope",
-                            left,
-                            bottom,
-                            right,
-                            top,
-                            geometry_column.srid,
-                        ),
-                        right - left,
-                    ),
-                    logic.V(geometry_column.name),
-                )
-            )
-
-        return clauses.Where(pg_funcs.AND(*wheres))
-
-    def _datetime_filter_to_sql(self, interval: List[str], dt_name: str):
-        if len(interval) == 1:
-            return logic.V(dt_name) == logic.S(
-                pg_funcs.cast(parse_rfc3339(interval[0]), "timestamptz")
-            )
-
-        else:
-            start = (
-                parse_rfc3339(interval[0]) if interval[0] not in ["..", ""] else None
-            )
-            end = parse_rfc3339(interval[1]) if interval[1] not in ["..", ""] else None
-
-            if start is None and end is None:
-                raise InvalidDatetime(
-                    "Double open-ended datetime intervals are not allowed."
-                )
-
-            if start is not None and end is not None and start > end:
-                raise InvalidDatetime("Start datetime cannot be before end datetime.")
-
-            if not start:
-                return logic.V(dt_name) <= logic.S(pg_funcs.cast(end, "timestamptz"))
-
-            elif not end:
-                return logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz"))
-
-            else:
-                return pg_funcs.AND(
-                    logic.V(dt_name) >= logic.S(pg_funcs.cast(start, "timestamptz")),
-                    logic.V(dt_name) < logic.S(pg_funcs.cast(end, "timestamptz")),
-                )
-
-    def _sortby(self, sortby: Optional[str]):
+    def _sortby(self, sortby: Optional[str]) -> str:
+        """Build the ORDER BY clause."""
         sorts = []
         if sortby:
             for s in sortby.strip().split(","):
@@ -674,35 +796,32 @@ class PgCollection(Collection):
 
                 direction = parts["direction"]
                 column = parts["column"].strip()
-                if self.get_column(column):
-                    if direction == "-":
-                        sorts.append(logic.V(column).desc())
-                    else:
-                        sorts.append(logic.V(column))
-                else:
+                if not self.get_column(column):
                     raise InvalidPropertyName(f"Property {column} does not exist.")
-
+                col_sql = _quote_ident(column)
+                sorts.append(f"{col_sql} DESC" if direction == "-" else col_sql)
+        elif self.id_column is not None:
+            sorts.append(_quote_ident(self.id_column.name))
         else:
-            if self.id_column is not None:
-                sorts.append(logic.V(self.id_column.name))
-            else:
-                sorts.append(logic.V(self.properties[0].name))
+            sorts.append(_quote_ident(self.properties[0].name))
 
-        return clauses.OrderBy(*sorts)
+        return "ORDER BY " + ", ".join(sorts)
+
+    @staticmethod
+    def _where_clause(where: Optional[Expr]) -> str:
+        """Render a cql2 ``Expr`` (or ``None``) as a WHERE clause."""
+        if where is None:
+            return "WHERE TRUE"
+        return f"WHERE {where.to_sql()}"
 
     async def _features_query(
         self,
         conn: asyncpg.Connection,
         *,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        where: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
-        dt: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         bbox_only: Optional[bool] = None,
@@ -710,35 +829,29 @@ class PgCollection(Collection):
         geom_as_wkt: bool = False,
         function_parameters: Optional[Dict[str, str]],
     ):
-        """Build Features query."""
+        """Build and run the Features query, yielding each row as a Feature."""
         limit = limit or features_settings.default_features_limit
         offset = offset or 0
+        params: List[Any] = []
 
-        c = clauses.Clauses(
-            self._select(
-                properties=properties,
-                geometry_column=self.get_geometry_column(geom),
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
-            ),
-            self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-            ),
-            self._sortby(sortby),
-            clauses.Limit(limit),
-            clauses.Offset(offset),
+        sql = " ".join(
+            [
+                self._select(
+                    properties=properties,
+                    geometry_column=self.get_geometry_column(geom),
+                    bbox_only=bbox_only,
+                    simplify=simplify,
+                    geom_as_wkt=geom_as_wkt,
+                ),
+                self._from(function_parameters, params),
+                self._where_clause(where),
+                self._sortby(sortby),
+                f"LIMIT {int(limit)}",
+                f"OFFSET {int(offset)}",
+            ]
         )
 
-        q, p = render(":c", c=c)
-        for r in await conn.fetch(q, *p):
+        for r in await conn.fetch(sql, *params):
             props = dict(r)
             g = props.pop("tipg_geom")
             id = props.pop("tipg_id")
@@ -749,33 +862,19 @@ class PgCollection(Collection):
         self,
         conn: asyncpg.Connection,
         *,
-        ids_filter: Optional[List[str]] = None,
-        bbox_filter: Optional[List[float]] = None,
-        datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
-        geom: Optional[str] = None,
-        dt: Optional[str] = None,
+        where: Optional[Expr] = None,
         function_parameters: Optional[Dict[str, str]],
     ) -> int:
-        """Build features COUNT query."""
-        c = clauses.Clauses(
-            self._select_count(),
-            self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-            ),
+        """Run the COUNT(*) query for the current filter."""
+        params: List[Any] = []
+        sql = " ".join(
+            [
+                "SELECT COUNT(*)",
+                self._from(function_parameters, params),
+                self._where_clause(where),
+            ]
         )
-
-        q, p = render(":c", c=c)
-        count = await conn.fetchval(q, *p)
-        return count
+        return await conn.fetchval(sql, *params)
 
     async def features(
         self,
@@ -785,7 +884,7 @@ class PgCollection(Collection):
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -811,31 +910,30 @@ class PgCollection(Collection):
                 f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
             )
 
-        matched = await self._features_count_query(
-            conn,
-            ids_filter=ids_filter,
-            datetime_filter=datetime_filter,
-            bbox_filter=bbox_filter,
-            properties_filter=properties_filter,
-            function_parameters=function_parameters,
-            cql_filter=cql_filter,
+        where_filter = self.cql_where(
+            ids=ids_filter,
+            datetime=datetime_filter,
+            bbox=bbox_filter,
+            properties=properties_filter,
+            cql=cql_filter,
             geom=geom,
             dt=dt,
+        )
+
+        matched = await self._features_count_query(
+            conn,
+            where=where_filter,
+            function_parameters=function_parameters,
         )
 
         features = [
             f
             async for f in self._features_query(
                 conn,
-                ids_filter=ids_filter,
-                datetime_filter=datetime_filter,
-                bbox_filter=bbox_filter,
-                properties_filter=properties_filter,
-                cql_filter=cql_filter,
+                where=where_filter,
                 sortby=sortby,
                 properties=properties,
                 geom=geom,
-                dt=dt,
                 limit=limit,
                 offset=offset,
                 bbox_only=bbox_only,
@@ -864,7 +962,7 @@ class PgCollection(Collection):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         function_parameters: Optional[Dict[str, str]] = None,
-        cql_filter: Optional[AstType] = None,
+        cql_filter: Optional[Expr] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         geom: Optional[str] = None,
@@ -883,40 +981,39 @@ class PgCollection(Collection):
                 f"Limit can not be set higher than the `tipg_max_features_per_tile` setting of {mvt_settings.max_features_per_tile}"
             )
 
-        c = clauses.Clauses(
-            self._select_mvt(
-                properties=properties,
-                geometry_column=geometry_column,
-                tms=tms,
-                tile=tile,
-            ),
-            self._from(function_parameters),
-            self._where(
-                ids=ids_filter,
-                datetime=datetime_filter,
-                bbox=bbox_filter,
-                properties=properties_filter,
-                cql=cql_filter,
-                geom=geom,
-                dt=dt,
-                tms=tms,
-                tile=tile,
-            ),
-            clauses.Limit(limit),
+        where_filter = self.cql_where(
+            ids=ids_filter,
+            datetime=datetime_filter,
+            bbox=bbox_filter,
+            properties=properties_filter,
+            cql=cql_filter,
+            geom=geom,
+            dt=dt,
+            tms=tms,
+            tile=tile,
         )
 
-        q, p = render(
-            """
-            WITH
-            t AS (:c)
-            SELECT ST_AsMVT(t.*, :l) FROM t
-            """,
-            c=c,
-            l=self.table if mvt_settings.set_mvt_layername is True else "default",
+        params: List[Any] = []
+        inner_sql = " ".join(
+            [
+                self._select_mvt(
+                    properties=properties,
+                    geometry_column=geometry_column,
+                    tms=tms,
+                    tile=tile,
+                ),
+                self._from(function_parameters, params),
+                self._where_clause(where_filter),
+                f"LIMIT {int(limit)}",
+            ]
         )
-        debug_query(q, *p)
 
-        tile = await conn.fetchval(q, *p)
+        layer = self.table if mvt_settings.set_mvt_layername is True else "default"
+        params.append(layer)
+        sql = f"WITH t AS ({inner_sql}) " f"SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
+        debug_query(sql, *params)
+
+        tile = await conn.fetchval(sql, *params)
 
         return bytes(tile)
 
@@ -933,31 +1030,22 @@ async def pg_get_collection_index(  # noqa: C901
 
     query = f"""
         SELECT {settings.tipg_schema}.tipg_catalog(
-            :schemas,
-            :tables,
-            :exclude_tables,
-            :exclude_table_schemas,
-            :functions,
-            :exclude_functions,
-            :exclude_function_schemas,
-            :spatial,
-            :spatial_extent,
-            :datetime_extent
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         );
-    """  # noqa: W605
+    """
 
-    rows = await conn.fetch_b(
+    rows = await conn.fetch(
         query,
-        schemas=schemas,
-        tables=settings.tables,
-        exclude_tables=settings.exclude_tables,
-        exclude_table_schemas=settings.exclude_table_schemas,
-        functions=settings.functions,
-        exclude_functions=settings.exclude_functions,
-        exclude_function_schemas=settings.exclude_function_schemas,
-        spatial=settings.only_spatial_tables,
-        spatial_extent=settings.spatial_extent,
-        datetime_extent=settings.datetime_extent,
+        schemas,
+        settings.tables,
+        settings.exclude_tables,
+        settings.exclude_table_schemas,
+        settings.functions,
+        settings.exclude_functions,
+        settings.exclude_function_schemas,
+        settings.only_spatial_tables,
+        settings.spatial_extent,
+        settings.datetime_extent,
     )
 
     collections: List[Collection] = []
