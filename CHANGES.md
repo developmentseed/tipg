@@ -9,6 +9,18 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 ## [unreleased]
 
 * switch from pygeofilter to cql2
+* split `tipg.collections` into focused modules
+    * move data models and the abstract `Collection` base class (`Column`, `Parameter`, `Feature`, `ItemList`, `Collection`, `CollectionList`, `Catalog`) to `tipg.dbmodel`
+    * move cql2 filter building (`cql_where`, ...) to `tipg.filter`
+    * move shared SQL helpers to `tipg.sqlhelpers`
+    * move the `PgCollection` implementation to `tipg.pgcollection`
+    * `tipg.collections` now defines the catalog builders `pg_get_collection_index` and `register_collection_catalog`, and re-exports the models, `PgCollection` and the settings singletons so existing `from tipg.collections import ...` imports keep working
+* split the `tipg.model` response models into a `tipg.models` package
+    * `tipg.models.common` (`Link`), `tipg.models.features` (Features/Common models), `tipg.models.tiles` (tile models)
+    * `tipg.model` is now a back-compat shim re-exporting from `tipg.models`, so existing `from tipg.model import ...` imports keep working
+* split the `tipg.factory` router factories into a `tipg.factories` package
+    * `tipg.factories.base` (`EndpointsFactory`, `FactoryExtension`), `tipg.factories.features` (`OGCFeaturesFactory`), `tipg.factories.tiles` (`OGCTilesFactory`), `tipg.factories.endpoints` (`Endpoints`), `tipg.factories.utils` (shared render helpers)
+    * `tipg.factory` is now a back-compat shim re-exporting from `tipg.factories`, so existing `from tipg.factory import ...` imports keep working
 
 ## [1.3.1] - 2026-02-26
 

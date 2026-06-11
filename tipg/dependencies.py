@@ -8,7 +8,7 @@ from cql2 import Expr
 from morecantile import Tile
 from morecantile import tms as default_tms
 
-from tipg.collections import Catalog, Collection, CollectionList
+from tipg.dbmodel import Catalog, Collection, CollectionList
 from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
 from tipg.resources.enums import MediaType
 from tipg.settings import TMSSettings
