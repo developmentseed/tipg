@@ -38,9 +38,8 @@ nav:
     - resources:
       - enums: api/tipg/resources/enums.md
       - response: api/tipg/resources/response.md
-    - filters:
-      - evaluate: api/tipg/filter/evaluate.md
-      - filters: api/tipg/filter/filters.md
+    - extensions:
+      - viewer: api/tipg/extensions/viewer.md
   - Development - Contributing: "contributing.md"
   - Release Notes: "release-notes.md"
   - Performance Benchmarks: benchmark.html
