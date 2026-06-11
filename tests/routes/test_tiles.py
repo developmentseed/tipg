@@ -253,7 +253,7 @@ def test_tile_simplify(app):
     """Test tile simplification."""
     name = "landsat_wrs"
     response = app.get(
-        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1"
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?id=1286"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
@@ -261,7 +261,7 @@ def test_tile_simplify(app):
     geom = decoded["default"]["features"][0]["geometry"]
 
     response = app.get(
-        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1&simplify=0.01"
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?id=1286&simplify=0.01"
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
