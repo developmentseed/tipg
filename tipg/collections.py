@@ -673,7 +673,7 @@ class PgCollection(Collection):
             g = f"ST_Envelope({g})"
         elif simplify:
             s = float(simplify)
-            g = f"ST_SnapToGrid(ST_Simplify({g}, {s}), {s})"
+            g = f"ST_SnapToGrid(ST_SimplifyPreserveTopology({g}, {s}), {s})"
 
         return g
 
@@ -711,11 +711,15 @@ class PgCollection(Collection):
         geometry_column: Column,
         tms: TileMatrixSet,
         tile: Tile,
+        simplify: float | None = None,
     ) -> str:
         """Build the SELECT clause that emits an MVT geometry per row."""
         cols = self._select_property_columns(properties)
 
         geom = f"CAST({_quote_ident(geometry_column.name)} AS geometry)"
+
+        if simplify:
+            geom = f"ST_SnapToGrid(ST_SimplifyPreserveTopology({geom}, {simplify}), {simplify})"
 
         # For tiles that fall outside the TMS's natural domain (e.g. an
         # over-zoomed corner tile), clip the source geometry to the TMS's
@@ -968,6 +972,7 @@ class PgCollection(Collection):
         geom: Optional[str] = None,
         dt: Optional[str] = None,
         limit: Optional[int] = None,
+        simplify: float | None = None,
     ):
         """Build query to get Vector Tile."""
         limit = limit or mvt_settings.max_features_per_tile
@@ -1001,6 +1006,7 @@ class PgCollection(Collection):
                     geometry_column=geometry_column,
                     tms=tms,
                     tile=tile,
+                    simplify=simplify,
                 ),
                 self._from(function_parameters, params),
                 self._where_clause(where_filter),
