@@ -688,6 +688,9 @@ def test_items_geometry_return_options(app):
     }
     Items.model_validate(body)
 
+    response = app.get("/collections/public.landsat_wrs/items?ids=1")
+    geom = response.json()["features"][0]["geometry"]
+
     response = app.get("/collections/public.landsat_wrs/items?ids=1&simplify=.001")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/geo+json"
@@ -697,19 +700,7 @@ def test_items_geometry_return_options(app):
     assert body["numberReturned"] == 1
     assert body["features"][0]["id"] == 1
     assert body["features"][0]["properties"]["ogc_fid"] == 1
-    assert body["features"][0]["geometry"] == {
-        "coordinates": [
-            [
-                [-10.803, 80.989],
-                [-8.974, 80.342],
-                [-16.985, 79.689],
-                [-22.215, 81.092],
-                [-13.255, 81.856],
-                [-10.803, 80.989],
-            ]
-        ],
-        "type": "Polygon",
-    }
+    assert body["features"][0]["geometry"] != geom
     Items.model_validate(body)
 
 

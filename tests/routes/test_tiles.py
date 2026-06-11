@@ -247,3 +247,31 @@ def test_stylejson(app):
         "/collections/public.landsat/tiles/WebMercatorQuad/style.json?geom-column=centroid"
     )
     assert response.status_code == 200
+
+
+def test_tile_simplify(app):
+    """Test tile simplification."""
+    name = "landsat_wrs"
+    response = app.get(
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1"
+    )
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"]) == 1
+    geom = decoded["default"]["features"][0]["geometry"]
+
+    response = app.get(
+        f"/collections/public.{name}/tiles/WebMercatorQuad/0/0/0?limit=1&simplify=0.01"
+    )
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    assert len(decoded["default"]["features"]) == 1
+    assert decoded["default"]["features"][0]["properties"] == {
+        "id": "1286",
+        "ogc_fid": 796,
+        "path": 182,
+        "pr": "182047",
+        "row": 47,
+    }
+    assert decoded["default"]["features"][0]["id"] == 0
+    assert decoded["default"]["features"][0]["geometry"] != geom
