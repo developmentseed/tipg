@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --group deploy
+          uv sync
 
       - name: Set tag version
         id: tag
@@ -35,7 +35,7 @@ jobs:
       - name: Set module version
         id: module
         run: |
-          echo "version=$(uv run hatch --quiet version)" >> $GITHUB_OUTPUT
+          echo "version=$(uv run --with hatch hatch --quiet version)" >> $GITHUB_OUTPUT
 
       - name: Check version match
         run: |
