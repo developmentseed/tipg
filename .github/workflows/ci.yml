@@ -99,43 +99,6 @@ jobs:
           # Make a commit only if main
           auto-push: ${{ github.ref == 'refs/heads/main' }}
 
-  publish:
-    needs: [tests]
-    runs-on: ubuntu-latest
-    if: contains(github.ref, 'tags') && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          version: "0.9.*" 
-          enable-cache: true
-          python-version: ${{ env.LATEST_PY_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          uv sync --group deploy
-
-      - name: Set tag version
-        id: tag
-        run: |
-          echo "version=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-
-      - name: Set module version
-        id: module
-        run: |
-          echo "version=$(uv run hatch --quiet version)" >> $GITHUB_OUTPUT
-
-      - name: Build and publish
-        if: ${{ steps.tag.outputs.version }} == ${{ steps.module.outputs.version}}
-        env:
-          HATCH_INDEX_USER: ${{ secrets.PYPI_USERNAME }}
-          HATCH_INDEX_AUTH: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          uv run hatch build 
-          uv run hatch publish
-
   publish-docker:
     needs: [tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'

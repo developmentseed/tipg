@@ -72,9 +72,9 @@ class MissingCollectionCatalog(TiPgError):
 
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
-    InvalidBBox: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    InvalidDatetime: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    InvalidLimit: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    InvalidBBox: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    InvalidDatetime: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    InvalidLimit: status.HTTP_422_UNPROCESSABLE_CONTENT,
     MissingGeometryColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     MissingDatetimeColumn: status.HTTP_500_INTERNAL_SERVER_ERROR,
     InvalidPropertyName: status.HTTP_404_NOT_FOUND,
@@ -82,8 +82,8 @@ DEFAULT_STATUS_CODES = {
     InvalidDatetimeColumnName: status.HTTP_404_NOT_FOUND,
     PostgresError: status.HTTP_500_INTERNAL_SERVER_ERROR,
     Exception: status.HTTP_500_INTERNAL_SERVER_ERROR,
-    NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    NoPrimaryKey: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_CONTENT,
     FunctionDirectoryDoesNotExist: status.HTTP_500_INTERNAL_SERVER_ERROR,
     MissingCollectionCatalog: status.HTTP_500_INTERNAL_SERVER_ERROR,
 }

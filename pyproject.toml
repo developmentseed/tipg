@@ -25,13 +25,14 @@ dependencies = [
     "cql2>=0.5,<0.6",
     "asyncpg>=0.23.0",
     "fastapi>=0.100.0",
+    "starlette>=1.0",
     "jinja2>=2.11.2,<4.0.0",
     "morecantile>=5.0,<7.0",
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
     "geojson-pydantic>=1.0,<3.0",
     "ciso8601~=2.3",
-    "starlette-cramjam>=0.4,<0.6",
+    "starlette-cramjam>=0.4,<1.0",
 ]
 
 [dependency-groups]
@@ -40,7 +41,7 @@ dev = [
     "pytest-cov",
     "pytest-asyncio",
     "pytest-benchmark",
-    "httpx",
+    "httpx2",
     "pytest-postgresql",
     "mapbox-vector-tile>=2.1",
     "numpy",
@@ -56,10 +57,6 @@ docs = [
     "mkdocs-material[imaging]>=9.5",
     "griffe-inherited-docstrings>=1.0.0",
     "mkdocstrings[python]>=0.25.1",
-]
-deploy = [
-    "hatch==1.16.4",
-    "virtualenv<21"
 ]
 
 [project.urls]

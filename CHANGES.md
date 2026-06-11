@@ -8,7 +8,12 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
-* switch from pygeofilter to cql2
+## [1.4.0] - 2026-06-11
+
+* change: switch from `pygeofilter` to `cql2` for CQL filter parsing and evaluation
+* change: update starlette dependency to `>=1.0`
+* remove: usage of `buildpg` library in favor of directly using `asyncpg`
+* add: allow simplifying geometries in OGC Tiles API
 
 ## [1.3.1] - 2026-02-26
 
@@ -431,7 +436,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.3.1...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.4.0...HEAD
+[1.4.0]: https://github.com/developmentseed/tipg/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/developmentseed/tipg/compare/1.3.0...1.3.1
 [1.3.0]: https://github.com/developmentseed/tipg/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/developmentseed/tipg/compare/1.2.0...1.2.1
