@@ -6,6 +6,7 @@ def test_health(app):
     response = app.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"ping": "pong!"}
+    assert "Cache-Control" not in response.headers
 
     response = app.get("/rawcatalog")
     assert response.status_code == 200

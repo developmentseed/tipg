@@ -156,8 +156,55 @@ prefix: **`TIPG_`**
 - **NAME** (str): Set custom name for `TiPG` app. Default is `TiPg: OGC Features and Tiles API`
 - **DEBUG** (bool): Default is `False`
 - **CORS_ORIGIN** (str): Default is `*`
-- **CACHECONTROL** (str): Default is `public, max-age=3600`
+- **CACHECONTROL** (str): Default is `public, max-age=3600`. `/healthz` and `/metrics` are excluded.
 - **TEMPLATE_DIRECTORY** (str): Path to custom template directory to overwrite the HTML files.
 - **ROOT_PATH** (str): A path prefix handled by a proxy that is not seen by the application but is seen by external clients.
 - **ADD_TILES_VIEWER** (bool): Defaults is `True`
 - **CATALOG_TTL** (int, in seconds): Tables/Functions catalog **Time To Live** cache (default to 300 seconds).
+
+## Prometheus metrics
+
+Install the optional `metrics` extra to expose HTTP request metrics at `/metrics`:
+
+```bash
+pip install 'tipg[metrics]'
+```
+
+The default project Docker image installs tipg without the `metrics` extra. To enable metrics in a custom image, install `tipg[metrics]` (for example `pip install '.[metrics]'`).
+
+Once installed, `/metrics` is live on startup and records:
+
+- `tipg_http_requests_total{operation,method,status}`
+- `tipg_http_request_duration_seconds{operation,method}`
+
+`operation` values are low-cardinality labels: `landing`, `conformance`, `list_collections`, `get_collection`, `queryables`, `list_items`, `get_item`, `tiles`, `tile_matrix_sets`, `other`, and `unknown`. `status` is grouped (`2xx`, `3xx`, `4xx`, `5xx`). `/healthz` and the scrape endpoint are excluded from request counters. Untemplated paths (for example bare 404s with no matching route) are also ignored. `/healthz` and `/metrics` are also excluded from Cache-Control so probes and scrapes are not cached by CDNs or proxies.
+
+### Multi-worker deployments
+
+For multi-worker deployments (for example `uvicorn --workers N` or Gunicorn), set `PROMETHEUS_MULTIPROC_DIR` to an existing writable directory **before** the application is imported, and clear that directory before each server start. An invalid path fails startup with `ValueError`.
+
+```bash
+export PROMETHEUS_MULTIPROC_DIR=/tmp/tipg-prometheus
+mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+rm -rf "$PROMETHEUS_MULTIPROC_DIR"/*
+```
+
+With Gunicorn, also mark workers dead on exit so stale metric files are cleaned up:
+
+```python
+from prometheus_client import multiprocess
+
+
+def child_exit(server, worker):
+    multiprocess.mark_process_dead(worker.pid)
+```
+
+### Custom apps
+
+Custom apps can enable the same instrumentation:
+
+```python
+from tipg.metrics import instrument_app
+
+instrument_app(app)
+```
