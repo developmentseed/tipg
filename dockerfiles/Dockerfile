@@ -21,7 +21,7 @@ COPY LICENSE LICENSE
 COPY tipg/ tipg/
 COPY pyproject.toml pyproject.toml
 
-RUN python -m pip install . --no-cache-dir
+RUN python -m pip install ".[metrics]" --no-cache-dir
 RUN rm -rf tipg/ README.md pyproject.toml LICENSE
 
 RUN groupadd -g 1000 user && \

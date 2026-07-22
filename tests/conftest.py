@@ -146,6 +146,7 @@ def app(database_url, monkeypatch):
 
     # API config
     monkeypatch.setenv("TIPG_TEMPLATE_DIRECTORY", TEMPLATE_DIRECTORY)
+    monkeypatch.setenv("TIPG_ADD_METRICS", "TRUE")
 
     # Custom Functions
     monkeypatch.setenv("TIPG_CUSTOM_SQL_DIRECTORY", SQL_FUNCTIONS_DIRECTORY)

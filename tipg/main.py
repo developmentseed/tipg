@@ -78,12 +78,10 @@ ogc_api = Endpoints(
 )
 app.include_router(ogc_api.router)
 
-try:
+
+if settings.add_metrics:
     from tipg.metrics import instrument_app
-except ImportError:
-    # Optional tipg[metrics] extra is not installed.
-    pass
-else:
+
     instrument_app(app)
 
 # Set all CORS enabled origins

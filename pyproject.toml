@@ -60,15 +60,15 @@ docs = [
     "mkdocstrings[python]>=0.25.1",
 ]
 
-[project.urls]
-Homepage = "https://developmentseed.org/tipg"
-Source = "https://github.com/developmentseed/tipg"
-Documentation = "https://developmentseed.org/tipg/"
-
 [project.optional-dependencies]
 metrics = [
     "prometheus-fastapi-instrumentator>=8.0.2",
 ]
+
+[project.urls]
+Homepage = "https://developmentseed.org/tipg"
+Source = "https://github.com/developmentseed/tipg"
+Documentation = "https://developmentseed.org/tipg/"
 
 [build-system]
 requires = ["hatchling"]

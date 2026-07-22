@@ -8,9 +8,10 @@ from weakref import WeakSet
 
 from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_fastapi_instrumentator.metrics import Info
 
 if TYPE_CHECKING:
+    from prometheus_fastapi_instrumentator.metrics import Info
+
     from fastapi import FastAPI
 
 _INSTRUMENTED_APPS: WeakSet[FastAPI] = WeakSet()
