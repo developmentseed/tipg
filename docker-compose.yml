@@ -11,6 +11,7 @@ services:
       - POSTGRES_HOST=database
       - POSTGRES_PORT=5432
       - DEBUG=TRUE
+      - TIPG_ENABLE_METRICS=TRUE
     ports:
       - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
     depends_on:

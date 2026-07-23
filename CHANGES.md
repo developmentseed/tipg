@@ -8,6 +8,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* add: optional Prometheus metrics endpoint at `/metrics` with low-cardinality `operation` labels
+* fix: exclude `/healthz` and `/metrics` from Cache-Control headers
+
 ## [1.4.0] - 2026-06-11
 
 * change: switch from `pygeofilter` to `cql2` for CQL filter parsing and evaluation
