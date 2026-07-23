@@ -78,6 +78,12 @@ ogc_api = Endpoints(
 )
 app.include_router(ogc_api.router)
 
+
+if settings.enable_metrics:
+    from tipg.metrics import instrument_app
+
+    instrument_app(app)
+
 # Set all CORS enabled origins
 if settings.cors_origins:
     app.add_middleware(
@@ -88,7 +94,11 @@ if settings.cors_origins:
         allow_headers=["*"],
     )
 
-app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
+app.add_middleware(
+    CacheControlMiddleware,
+    cachecontrol=settings.cachecontrol,
+    exclude_path={r"^/healthz$", r"^/metrics$"},
+)
 app.add_middleware(CompressionMiddleware, compression_level=6)
 
 if settings.catalog_ttl:
