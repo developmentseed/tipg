@@ -26,7 +26,7 @@ class APISettings(BaseSettings):
     template_directory: Optional[str] = None
     root_path: str = ""
 
-    add_metrics: bool = False
+    enable_metrics: bool = False
 
     add_tiles_viewer: bool = True
 

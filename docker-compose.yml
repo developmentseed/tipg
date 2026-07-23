@@ -11,13 +11,13 @@ services:
       - POSTGRES_HOST=database
       - POSTGRES_PORT=5432
       - DEBUG=TRUE
-      - TIPG_ADD_METRICS=TRUE
+      - TIPG_ENABLE_METRICS=TRUE
     ports:
       - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
     depends_on:
-      database:
-        condition: service_healthy
-    command: ["uvicorn", "tipg.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "5"]
+    - database
+    command:
+      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && uvicorn tipg.main:app --host 0.0.0.0 --port 8081 --workers 5"
     volumes:
       - ./dockerfiles/scripts:/tmp/scripts
 
@@ -34,12 +34,6 @@ services:
     command: postgres -N 500
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   # pg_featureserv:
   #   image: pramsey/pg_featureserv:latest

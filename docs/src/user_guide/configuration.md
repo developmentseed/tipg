@@ -160,19 +160,21 @@ prefix: **`TIPG_`**
 - **TEMPLATE_DIRECTORY** (str): Path to custom template directory to overwrite the HTML files.
 - **ROOT_PATH** (str): A path prefix handled by a proxy that is not seen by the application but is seen by external clients.
 - **ADD_TILES_VIEWER** (bool): Defaults is `True`
+- **ENABLE_METRICS** (bool): Enable the Prometheus `/metrics` endpoint. Default is `False`. Requires the optional `metrics` extra.
 - **CATALOG_TTL** (int, in seconds): Tables/Functions catalog **Time To Live** cache (default to 300 seconds).
 
 ## Prometheus metrics
 
-Install the optional `metrics` extra to expose HTTP request metrics at `/metrics`:
+Install the optional `metrics` extra and set `TIPG_ENABLE_METRICS=TRUE` to expose HTTP request metrics at `/metrics`:
 
 ```bash
 pip install 'tipg[metrics]'
+export TIPG_ENABLE_METRICS=TRUE
 ```
 
-The default project Docker image installs tipg without the `metrics` extra. To enable metrics in a custom image, install `tipg[metrics]` (for example `pip install '.[metrics]'`).
+The project Docker image installs the `metrics` extra. Enable the endpoint with `TIPG_ENABLE_METRICS=TRUE`.
 
-Once installed, `/metrics` is live on startup and records:
+Once enabled, `/metrics` records:
 
 - `tipg_http_requests_total{operation,method,status}`
 - `tipg_http_request_duration_seconds{operation,method}`

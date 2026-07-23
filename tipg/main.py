@@ -79,7 +79,7 @@ ogc_api = Endpoints(
 app.include_router(ogc_api.router)
 
 
-if settings.add_metrics:
+if settings.enable_metrics:
     from tipg.metrics import instrument_app
 
     instrument_app(app)
