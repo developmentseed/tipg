@@ -61,44 +61,6 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  benchmark:
-    needs: [tests]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: "0.9.*" 
-          enable-cache: false
-          python-version: ${{ matrix.python-version }}
-
-      - name: install lib postgres
-        uses: nyurik/action-setup-postgis@228cfe4dd41aad01801a0bdc767040e5024fff1d # v2
-
-      - name: Install dependencies
-        run: |
-          uv sync
-
-      - name: Run Benchmark
-        run: uv run pytest tests/benchmarks.py --benchmark-only --benchmark-columns 'min, max, mean, median' --benchmark-json output.json --asyncio-mode=strict
-
-      - name: Store and benchmark result
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
-        with:
-          name: TiPg Benchmarks
-          tool: 'pytest'
-          output-file-path: output.json
-          alert-threshold: '130%'
-          comment-on-alert: true
-          fail-on-alert: false
-          # GitHub API token to make a commit comment
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          gh-pages-branch: 'gh-benchmarks'
-          # Make a commit only if main
-          auto-push: ${{ github.ref == 'refs/heads/main' }}
-
   publish-docker:
     needs: [tests]
     if: github.ref == 'refs/heads/main' || startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'

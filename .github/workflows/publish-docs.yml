@@ -1,4 +1,4 @@
-name: Publish docs via GitHub Pages
+name: Publish Docs
 
 on:
   push:
@@ -10,7 +10,11 @@ on:
       - 'CHANGES.md'
       - 'CONTRIBUTING.md'
       - 'docs/**'
-      - '.github/workflows/deploy_mkdocs.yml'
+      - '.github/workflows/publish-docs.yml'
+
+concurrency:
+  group: docs-gh-pages
+  cancel-in-progress: false
 
 jobs:
   build:
