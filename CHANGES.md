@@ -441,7 +441,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.4.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.5.0...HEAD
+[1.5.0]: https://github.com/developmentseed/tipg/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/developmentseed/tipg/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/developmentseed/tipg/compare/1.3.0...1.3.1
 [1.3.0]: https://github.com/developmentseed/tipg/compare/1.2.1...1.3.0
