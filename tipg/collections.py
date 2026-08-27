@@ -1016,7 +1016,7 @@ class PgCollection(Collection):
 
         layer = self.table if mvt_settings.set_mvt_layername is True else "default"
         params.append(layer)
-        sql = f"WITH t AS ({inner_sql}) " f"SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
+        sql = f"WITH t AS ({inner_sql}) SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
         debug_query(sql, *params)
 
         tile = await conn.fetchval(sql, *params)

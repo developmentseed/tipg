@@ -13,8 +13,10 @@ def test_tilesets(app):
     assert len(body["tilesets"]) == len(tms.list())
     tileset = list(
         filter(
-            lambda m: m["title"]
-            == "'public.landsat' tileset tiled using WebMercatorQuad TileMatrixSet",
+            lambda m: (
+                m["title"]
+                == "'public.landsat' tileset tiled using WebMercatorQuad TileMatrixSet"
+            ),
             body["tilesets"],
         )
     )[0]
