@@ -1,8 +1,11 @@
 """tipg middlewares."""
 
+from __future__ import annotations
+
 import re
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional, Protocol, Set
+from typing import Any, Optional, Protocol
 
 from tipg.collections import Catalog
 from tipg.errors import MissingCollectionCatalog
@@ -14,28 +17,21 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
+@dataclass(frozen=True)
 class CacheControlMiddleware:
-    """MiddleWare to add CacheControl in response headers."""
+    """MiddleWare to add CacheControl in response headers.
 
-    def __init__(
-        self,
-        app: ASGIApp,
-        cachecontrol: Optional[str] = None,
-        cachecontrol_max_http_code: Optional[int] = 500,
-        exclude_path: Optional[Set[str]] = None,
-    ) -> None:
-        """Init Middleware.
+    Args:
+        app (ASGIApp): starlette/FastAPI application.
+        cachecontrol (str): Cache-Control string to add to the response.
+        exclude_path (set): Set of regex expression to use to filter the path.
 
-        Args:
-            app (ASGIApp): starlette/FastAPI application.
-            cachecontrol (str): Cache-Control string to add to the response.
-            exclude_path (set): Set of regex expression to use to filter the path.
+    """
 
-        """
-        self.app = app
-        self.cachecontrol = cachecontrol
-        self.cachecontrol_max_http_code = cachecontrol_max_http_code
-        self.exclude_path = exclude_path or set()
+    app: ASGIApp
+    cachecontrol: str | None = None
+    cachecontrol_max_http_code: int = 500
+    exclude_path: set[str] = field(default_factory=set)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         """Handle call."""
@@ -65,7 +61,7 @@ class CacheControlMiddleware:
 class CatalogUpdateFunc(Protocol):
     """Catalog update function protocol."""
 
-    def __call__(self, app: ASGIApp, **kwargs: Any) -> None:
+    async def __call__(self, app: ASGIApp, **kwargs: Any) -> None:
         """define input/output for the function."""
         ...
 

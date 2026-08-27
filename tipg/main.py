@@ -103,8 +103,8 @@ app.add_middleware(CompressionMiddleware, compression_level=6)
 
 if settings.catalog_ttl:
     app.add_middleware(
-        CatalogUpdateMiddleware,
-        func=register_collection_catalog,
+        CatalogUpdateMiddleware,  # type: ignore[arg-type]
+        func=register_collection_catalog,  # type: ignore[arg-type]
         ttl=settings.catalog_ttl,
         db_settings=db_settings,
     )

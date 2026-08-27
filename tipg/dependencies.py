@@ -383,7 +383,7 @@ def function_parameters_query(  # noqa: C901
                     "tileMatrixSetId", tms_settings.default_tms
                 )
                 tms = default_tms.get(tms_id)
-                left, bottom, right, top = tms.bounds(x, y, z)
+                left, bottom, right, top = tms.bounds(Tile(x, y, z))
 
                 function_parameters[col_param.name] = (
                     "srid=4326;"

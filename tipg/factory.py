@@ -62,7 +62,7 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 
 tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
-features_settings = FeaturesSettings()
+features_settings = FeaturesSettings()  # type: ignore [call-arg]
 
 
 jinja2_env = jinja2.Environment(
@@ -1679,7 +1679,7 @@ class OGCTilesFactory(EndpointsFactory):
             tms = self.supported_tms.get(tileMatrixSetId)
 
             async with request.app.state.pool.acquire() as conn:
-                tile = await collection.get_tile(
+                t = await collection.get_tile(
                     conn,
                     tms=tms,
                     tile=tile,
@@ -1697,7 +1697,7 @@ class OGCTilesFactory(EndpointsFactory):
                     simplify=simplify,
                 )
 
-            return Response(tile, media_type=MediaType.mvt.value)
+            return Response(t, media_type=MediaType.mvt.value)
 
     def _tilejson_routes(self):
         ############################################################################
