@@ -35,7 +35,7 @@ from tipg.settings import (
 from fastapi import FastAPI
 
 mvt_settings = MVTSettings()
-features_settings = FeaturesSettings()
+features_settings = FeaturesSettings()  # type: ignore [call-arg]
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
 
@@ -731,7 +731,7 @@ class PgCollection(Collection):
         # (WorldCRS84Quad → OGC:CRS84), 4326 is a safe fallback since the
         # coordinate values are identical (only axis order differs, and
         # PostGIS treats 4326 as lon/lat).
-        if not tms.is_valid(tile):
+        if not tms.is_valid(tile, strict=False):
             west, south, east, north = tms.bbox
             geo_srid = tms.geographic_crs.to_epsg() or 4326
             geom = (

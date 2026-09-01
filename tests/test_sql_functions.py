@@ -202,7 +202,7 @@ def test_tiles_functions(app_functions):
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 25
+    assert len(decoded["default"]["features"]) == 30
 
     # Check default's function are used
     response = app_functions.get(
@@ -210,7 +210,7 @@ def test_tiles_functions(app_functions):
     )
     assert response.status_code == 200
     decoded = mapbox_vector_tile.decode(response.content)
-    assert len(decoded["default"]["features"]) == 483
+    assert len(decoded["default"]["features"]) == 504
 
     # Check any geometry input column will work
     response = app_functions.get(
