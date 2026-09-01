@@ -15,12 +15,10 @@ services:
     ports:
       - "${MY_DOCKER_IP:-127.0.0.1}:8081:8081"
     depends_on:
-    - database
-    command:
-      bash -c "bash /tmp/scripts/wait-for-it.sh database:5432 --timeout=30 && uvicorn tipg.main:app --host 0.0.0.0 --port 8081 --workers 5"
-    volumes:
-      - ./dockerfiles/scripts:/tmp/scripts
-
+      database:
+        condition: service_healthy
+    command: ["uvicorn", "tipg.main:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "5"]
+  
   database:
     build:
       context: .
@@ -34,6 +32,12 @@ services:
     command: postgres -N 500
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgis"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   # pg_featureserv:
   #   image: pramsey/pg_featureserv:latest
@@ -42,7 +46,8 @@ services:
   #   ports:
   #     - "9000:9000"
   #   depends_on:
-  #   - database
+  #     database:
+  #       condition: service_healthy
 
   # fast_features:
   #   image: ghcr.io/microsoft/ogc-api-fast-features:main
@@ -57,7 +62,8 @@ services:
   #   ports:
   #     - "8080:80"
   #   depends_on:
-  #   - database
+  #     database:
+  #       condition: service_healthy
 
   # pg_tileserv:
   #   image: pramsey/pg_tileserv:latest
@@ -66,7 +72,8 @@ services:
   #   ports:
   #     - "7800:7800"
   #   depends_on:
-  #   - database
+  #     database:
+  #       condition: service_healthy
 
   # martin:
   #   platform: linux/amd64
@@ -76,7 +83,8 @@ services:
   #   ports:
   #     - "3000:3000"
   #   depends_on:
-  #   - database
+  #     database:
+  #       condition: service_healthy
 
   # t-rex:
   #   platform: linux/amd64
@@ -86,5 +94,5 @@ services:
   #   command:
   #     serve --dbconn postgresql://username:password@database:5432/postgis --bind=0.0.0.0 --port 3000
   #   depends_on:
-  #     - database
-
+  #     database:
+  #       condition: service_healthy

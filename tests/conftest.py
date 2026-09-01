@@ -27,7 +27,6 @@ def database(postgresql_proc):
         host=postgresql_proc.host,
         port=postgresql_proc.port,
         dbname="test_db",
-        version=postgresql_proc.version,
         password="password",
     ) as jan:
         yield jan

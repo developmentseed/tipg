@@ -8,6 +8,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* change: update `morecantile` dependency to `>=7.0,<8.0`
+* change: update docker-compose and use healthcheck instead of `wait-for-it.sh` script
+
 ## [1.5.0] - 2026-07-23
 
 * add: optional Prometheus metrics endpoint at `/metrics` with low-cardinality `operation` labels
@@ -235,6 +238,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
         next: Optional[int]
         prev: Optional[int]
 
+
     class CollectionList(TypedDict):
         """Collections."""
 
@@ -282,11 +286,11 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 - `Collection.features()` method now returns an `ItemList` dict
 
     ```python
-    #before
+    # before
     collection = Collection()
     features_collection, matched = collection.features(...)
 
-    #now
+    # now
     collection = Collection()
     items_list = collection.features(...)
     print(items_list["matched"])  # Number of matched items for the query
