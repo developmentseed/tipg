@@ -22,7 +22,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "orjson",
-    "cql2>=0.5,<0.6",
+    "cql2>=0.5,<0.7",
     "asyncpg>=0.23.0",
     "fastapi>=0.100.0",
     "starlette>=1.0",
