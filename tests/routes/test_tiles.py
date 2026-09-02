@@ -124,6 +124,38 @@ def test_tile(app):
     mvt_settings.set_mvt_layername = init_value
 
 
+def test_tile_sortby(app):
+    """Features inside a tile are ordered by `sortby`."""
+    init_value = mvt_settings.set_mvt_layername
+    mvt_settings.set_mvt_layername = False
+
+    url = "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0?limit=100&properties=ogc_fid"
+
+    response = app.get(f"{url}&sortby=ogc_fid")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    asc = [f["properties"]["ogc_fid"] for f in decoded["default"]["features"]]
+    assert len(asc) == 100
+    assert asc == sorted(asc)
+
+    response = app.get(f"{url}&sortby=-ogc_fid")
+    assert response.status_code == 200
+    decoded = mapbox_vector_tile.decode(response.content)
+    desc = [f["properties"]["ogc_fid"] for f in decoded["default"]["features"]]
+    assert len(desc) == 100
+    assert desc == sorted(desc, reverse=True)
+
+    mvt_settings.set_mvt_layername = init_value
+
+
+def test_tile_sortby_invalid_column(app):
+    """An unknown `sortby` column is rejected, as it is on /items."""
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0?sortby=not_a_real_column"
+    )
+    assert response.status_code == 404
+
+
 def test_tile_custom_name(app):
     """Test custom layer name."""
     init_value = mvt_settings.set_mvt_layername
