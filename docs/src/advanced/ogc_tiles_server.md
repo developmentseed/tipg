@@ -100,5 +100,4 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 def ping():
     """Health check."""
     return {"ping": "pong!"}
-
 ```

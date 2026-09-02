@@ -66,12 +66,10 @@ from tipg.factory import Endpoints
 
 app = FastAPI(openapi_url="/api", docs_url="/api.html")
 
-templates_location = (
-    [
-        jinja2.FileSystemLoader("{PATH TO YOUR CUSTOM TEMPLATE DIRECTORY}"),
-        jinja2.PackageLoader("tipg", "templates"),  # Fallback to default's tipg templates
-    ]
-)
+templates_location = [
+    jinja2.FileSystemLoader("{PATH TO YOUR CUSTOM TEMPLATE DIRECTORY}"),
+    jinja2.PackageLoader("tipg", "templates"),  # Fallback to default's tipg templates
+]
 
 jinja2_env = jinja2.Environment(loader=jinja2.ChoiceLoader(templates_location))
 templates = Jinja2Templates(env=jinja2_env)
@@ -103,6 +101,7 @@ from tipg.settings import PostgresSettings, DatabaseSettings
 postgres_settings = PostgresSettings()
 
 app = FastAPI()
+
 
 @app.on_event("startup")
 async def startup_event() -> None:

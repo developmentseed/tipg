@@ -4,11 +4,12 @@
 ```python
 # pseudo code
 class Factory:
-
     collections_dependency: Callable
     collection_dependency: Callable
 
-    def __init__(self, collections_dependency: Callable, collection_dependency: Callable):
+    def __init__(
+        self, collections_dependency: Callable, collection_dependency: Callable
+    ):
         self.collections_dependency = collections_dependency
         self.collection_dependency = collection_dependency
         self.router = APIRouter()
@@ -21,15 +22,13 @@ class Factory:
         def collections(
             request: Request,
             collection_list=Depends(self.collections_dependency),
-        ):
-            ...
+        ): ...
 
         @self.router.get("/collections/{collectionId}")
         def collection(
             request: Request,
             collection=Depends(self.collection_dependency),
-        ):
-            ...
+        ): ...
 
         @self.router.get("/collections/{collectionId}/items")
         def items(
@@ -47,7 +46,6 @@ class Factory:
         ):
             item_list = collection.features(ids_filter=[itemId])
             ...
-
 
 
 # Create FastAPI Application
