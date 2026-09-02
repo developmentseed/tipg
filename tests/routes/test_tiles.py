@@ -1,8 +1,11 @@
 """Test Tiles endpoints."""
 
+import re
+
 import mapbox_vector_tile
 import numpy as np
 
+from tipg import collections
 from tipg.collections import mvt_settings
 
 
@@ -154,6 +157,41 @@ def test_tile_sortby_invalid_column(app):
         "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0?sortby=not_a_real_column"
     )
     assert response.status_code == 404
+
+
+def test_tile_sortby_orders_inside_the_mvt_aggregate(app, monkeypatch):
+    """The ORDER BY must sit inside the ST_AsMVT call, not only in the CTE.
+
+    A CTE has not been an optimisation fence since PG12 — it can be inlined
+    and a parallel plan may reorder freely. PostgreSQL only guarantees the
+    order rows reach an aggregate when the ORDER BY is inside the aggregate
+    call itself, so a CTE-level ORDER BY can silently regress.
+    """
+    queries = []
+    monkeypatch.setattr(collections, "debug_query", lambda q, *p: queries.append(q))
+
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0"
+        "?limit=10&properties=ogc_fid&sortby=-ogc_fid"
+    )
+    assert response.status_code == 200
+
+    sql = next(q for q in queries if "ST_AsMVT" in q)
+    assert re.search(r"ST_AsMVT\([^()]*ORDER BY", sql), sql
+
+
+def test_tile_sortby_column_must_be_selected(app):
+    """Sorting by a column excluded from `properties` is rejected, not ignored.
+
+    The aggregate can only order by columns present in its input row, so a
+    sort column that `properties` filters out cannot be honoured.
+    """
+    response = app.get(
+        "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0"
+        "?properties=pr&sortby=ogc_fid"
+    )
+    assert response.status_code == 404
+    assert "ogc_fid" in response.json()["detail"]
 
 
 def test_tile_custom_name(app):

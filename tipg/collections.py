@@ -791,10 +791,14 @@ class PgCollection(Collection):
                 args.append(f"CAST(CAST(${len(params)} AS text) AS {p.type})")
         return f"FROM {name}({', '.join(args)})"
 
-    def _sortby(self, sortby: Optional[str]) -> str:
-        """Build the ORDER BY clause."""
-        sorts = []
+    def _sort_expressions(self, sortby: Optional[str]) -> List[Tuple[str, str]]:
+        """Parse ``sortby`` into ``(column name, SQL fragment)`` pairs.
+
+        The column name is returned alongside the fragment so callers can
+        check it against the columns they actually project.
+        """
         if sortby:
+            sorts = []
             for s in sortby.strip().split(","):
                 parts = re.match("^(?P<direction>[+-]?)(?P<column>.*)$", s).groupdict()  # type:ignore
 
@@ -803,13 +807,21 @@ class PgCollection(Collection):
                 if not self.get_column(column):
                     raise InvalidPropertyName(f"Property {column} does not exist.")
                 col_sql = _quote_ident(column)
-                sorts.append(f"{col_sql} DESC" if direction == "-" else col_sql)
-        elif self.id_column is not None:
-            sorts.append(_quote_ident(self.id_column.name))
-        else:
-            sorts.append(_quote_ident(self.properties[0].name))
+                sorts.append(
+                    (column, f"{col_sql} DESC" if direction == "-" else col_sql)
+                )
+            return sorts
 
-        return "ORDER BY " + ", ".join(sorts)
+        if self.id_column is not None:
+            column = self.id_column.name
+        else:
+            column = self.properties[0].name
+
+        return [(column, _quote_ident(column))]
+
+    def _sortby(self, sortby: Optional[str]) -> str:
+        """Build the ORDER BY clause."""
+        return "ORDER BY " + ", ".join(sql for _, sql in self._sort_expressions(sortby))
 
     @staticmethod
     def _where_clause(where: Optional[Expr]) -> str:
@@ -998,6 +1010,9 @@ class PgCollection(Collection):
             tile=tile,
         )
 
+        sorts = self._sort_expressions(sortby)
+        order_by = "ORDER BY " + ", ".join(sql for _, sql in sorts)
+
         params: List[Any] = []
         inner_sql = " ".join(
             [
@@ -1010,14 +1025,29 @@ class PgCollection(Collection):
                 ),
                 self._from(function_parameters, params),
                 self._where_clause(where_filter),
-                self._sortby(sortby),
+                order_by,
                 f"LIMIT {int(limit)}",
             ]
         )
 
+        # The ORDER BY above makes LIMIT truncation deterministic, but it does
+        # not fix the order rows reach ST_AsMVT: a CTE has not been an
+        # optimisation fence since PG12, so it can be inlined and a parallel
+        # plan may reorder freely. Only an ORDER BY *inside* the aggregate call
+        # guarantees the feature order in the tile. It can only reference
+        # columns of ``t``, so an explicit sort column must be projected.
+        aggregate_order = ""
+        if sortby:
+            selected = self.columns(properties)
+            if missing := [col for col, _ in sorts if col not in selected]:
+                raise InvalidPropertyName(
+                    f"Cannot sort by {', '.join(missing)}: not in the selected `properties`."
+                )
+            aggregate_order = f" {order_by}"
+
         layer = self.table if mvt_settings.set_mvt_layername is True else "default"
         params.append(layer)
-        sql = f"WITH t AS ({inner_sql}) SELECT ST_AsMVT(t.*, ${len(params)}) FROM t"
+        sql = f"WITH t AS ({inner_sql}) SELECT ST_AsMVT(t.*, ${len(params)}{aggregate_order}) FROM t"
         debug_query(sql, *params)
 
         tile = await conn.fetchval(sql, *params)
