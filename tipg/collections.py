@@ -1010,6 +1010,7 @@ class PgCollection(Collection):
                 ),
                 self._from(function_parameters, params),
                 self._where_clause(where_filter),
+                self._sortby(sortby),
                 f"LIMIT {int(limit)}",
             ]
         )
