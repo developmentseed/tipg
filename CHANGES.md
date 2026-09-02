@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* fix: apply `sortby` when building vector tiles. `Collection.get_tile()` accepted the parameter but never used it, so `?sortby=` had no effect on the order of features within a tile. The ordering is applied inside the `ST_AsMVT` aggregate, which also makes `limit` truncation deterministic. An invalid sort column now returns a `404` on the tile endpoint, as it already did on `/items`
+
 ## [1.6.0] - 2026-09-02
 
 * change: update `morecantile` dependency to `>=7.0,<8.0`
