@@ -10,6 +10,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 * change: update `morecantile` dependency to `>=7.0,<8.0`
 * change: update docker-compose and use healthcheck instead of `wait-for-it.sh` script
+* change: refactor docker image to use wolfi base image and use uv to manage the dependencies
 
 ## [1.5.0] - 2026-07-23
 
