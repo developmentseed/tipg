@@ -629,11 +629,15 @@ QueryParams:
 - **filter-lang** (str, one of [`cql2-text`, `cql2-json`]): `Filter` language. Defaults to `cql2-text`.
 - **geom-column** * (str): Select geometry column to apply filter on and to create geometry from.
 - **datetime-column** * (str): Select datetime column to apply filter on.
-- **sortby** (str): Sort the items by a specific column (ascending (default) or descending). argument should be in form of `-/+{column}`.
+- **sortby** (str): Sort the features within the tile by a specific column (ascending (default) or descending). argument should be in form of `-/+{column}`. This controls the order features appear in the vector tile, which is the only draw-order control available to renderers such as deck.gl, and it also decides which features are kept when a tile exceeds `limit`. The sort column must be present in **properties** when that parameter is used.
 - **bbox-only**  * (bool): Only return the bounding box of the feature.
 - **simplify** * (float): Simplify the output geometry to given threshold in decimal degrees.
 
 \*  **Not in OGC API Features Specification**
+
+Example:
+
+- `http://127.0.0.1:8081/collections/public.countries/tiles/WebMercatorQuad/0/0/0?sortby=pop_est` *ascending, so the most populous countries are drawn last and sit on top of the others*
 
 
 ### Tileset list
