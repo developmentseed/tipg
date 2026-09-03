@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [1.6.1] - 2026-09-03
+
 * fix: apply `sortby` when building vector tiles. `Collection.get_tile()` accepted the parameter but never used it, so `?sortby=` had no effect on the order of features within a tile. The ordering is applied inside the `ST_AsMVT` aggregate, which also makes `limit` truncation deterministic. An invalid sort column now returns a `404` on the tile endpoint, as it already did on `/items`
 
 ## [1.6.0] - 2026-09-02
@@ -450,7 +452,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.6.0...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/1.6.1...HEAD
+[1.6.1]: https://github.com/developmentseed/tipg/compare/1.6.0...1.6.1
 [1.6.0]: https://github.com/developmentseed/tipg/compare/1.5.0...1.6.0
 [1.5.0]: https://github.com/developmentseed/tipg/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/developmentseed/tipg/compare/1.3.1...1.4.0
