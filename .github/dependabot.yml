@@ -36,10 +36,13 @@ updates:
   - package-ecosystem: "docker"
     cooldown:
       default-days: 7
-    directory: "/"
+    directory: "/dockerfiles"
     schedule:
       interval: "weekly"
     groups:
       docker:
         patterns:
         - "*"
+        # Dockerfile.db is the local dev database: its Postgres bumps get their own PR.
+        exclude-patterns:
+        - "vincentsarago/postgis"
