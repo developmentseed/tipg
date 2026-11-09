@@ -18,7 +18,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * change: remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
 * change: add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
 * change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
-* fix: use built-in generics and `X | None` syntax in type hints (instead of `typing.List`, `Optional`, ...)
+* perf: compute datetime extents with `min(col)::timestamptz` / `max(col)::timestamptz` instead of casting each value before aggregating, so btree indexes on `timestamp` / `date` columns are used instead of a full table scan on every catalog refresh
+* perf: use `ST_EstimatedExtent` for spatial extents whenever table statistics exist.
+* perf: cache `Collection.extent`, `bounds`, `dt_bounds`, `geometry_columns` and `datetime_columns` (`functools.cached_property`) instead of recomputing them on every access
+* perf: skip SQL statement formatting in `tipg.pg.collections.debug_query` when `DEBUG` logging is disabled
 
 ## [1.6.1] - 2026-09-03
 
