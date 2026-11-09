@@ -8,20 +8,17 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
-* move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
+* change: move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
     * `tipg.collections.PgCollection` and `tipg.collections.pg_get_collection_index` → `tipg.pg.collections`
     * `tipg.database` → `tipg.pg.database` (`connect_to_db`, `close_db_connection`)
     * `tipg.settings.PostgresSettings`, `DatabaseSettings`, `CustomSQLSettings`, `TableSettings` and `TableConfig` → `tipg.pg.settings`
     * `tipg/sql/dbcatalog.sql` → `tipg/pg/sql/dbcatalog.sql`
     * `connect_to_db`, `close_db_connection`, `pg_get_collection_index`, `PostgresSettings`, `DatabaseSettings` and `CustomSQLSettings` are re-exported from `tipg.pg`
-* `tipg.collections` now only holds backend-agnostic models (abstract `Collection`, `Column`, `Parameter`, `Catalog`, ...)
-* use built-in generics and `X | None` syntax in type hints (instead of `typing.List`, `Optional`, ...)
-
-* add required `connection_pool: asyncpg.Pool` attribute to `PgCollection` (reference to the shared pool, excluded from serialization) **breaking change**
-* remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
-* add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
-* move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
-* the `Endpoints` factory no longer reads `request.app.state.pool`, enabling catalogs mixing collections from different databases/backends
+* change: add required `connection_pool: asyncpg.Pool` attribute to `PgCollection` (reference to the shared pool, excluded from serialization) **breaking change**
+* change: remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
+* change: add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
+* change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
+* fix: use built-in generics and `X | None` syntax in type hints (instead of `typing.List`, `Optional`, ...)
 
 ## [1.6.1] - 2026-09-03
 
