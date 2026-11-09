@@ -1,5 +1,6 @@
 """tipg PostgreSQL collection models."""
 
+import logging
 import re
 from typing import Any
 
@@ -24,6 +25,9 @@ features_settings = FeaturesSettings()  # type: ignore [call-arg]
 
 def debug_query(q, *p):
     """Utility to print raw statement to use for debugging."""
+    # Formatting the statement is not free: skip it when DEBUG is disabled.
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
 
     # Escape literal `{` and `}` (cql2 emits GeoJSON literals containing them)
     # then turn `$N` placeholders into `{N}` format slots.

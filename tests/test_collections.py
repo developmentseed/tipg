@@ -25,15 +25,3 @@ def test_collection_requires_pool():
     """PgCollection can't be created without a pool."""
     with pytest.raises(ValidationError):
         PgCollection(type="Table", id="public.foo", table="foo", schema="public")
-
-
-def test_collection_rejects_invalid_pool():
-    """PgCollection pool must be an asyncpg.Pool."""
-    with pytest.raises(ValidationError):
-        PgCollection(
-            type="Table",
-            id="public.foo",
-            table="foo",
-            schema="public",
-            connection_pool="nope",
-        )

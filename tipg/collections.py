@@ -2,7 +2,7 @@
 
 import abc
 import datetime
-from functools import lru_cache, reduce
+from functools import cached_property, lru_cache, reduce
 from typing import Any, TypedDict
 
 from ciso8601 import parse_rfc3339
@@ -238,7 +238,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
     datetime_column: Column | None = None
     parameters: list[Parameter] = []
 
-    @property
+    @cached_property
     def extent(self) -> Extent | None:
         """Return extent."""
         extent: dict[str, Any] = {}
@@ -281,7 +281,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return None
 
-    @property
+    @cached_property
     def bounds(self) -> list[float] | None:
         """Return spatial bounds from collection extent."""
         if self.extent and self.extent.spatial:
@@ -289,7 +289,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return None
 
-    @property
+    @cached_property
     def dt_bounds(self) -> list[str] | None:
         """Return temporal bounds from collection extent."""
         if self.extent and self.extent.temporal:
@@ -303,12 +303,12 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         if self.geometry_column:
             return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
 
-    @property
+    @cached_property
     def geometry_columns(self) -> list[Column]:
         """Return geometry columns."""
         return [c for c in self.table_columns if c.is_geometry]
 
-    @property
+    @cached_property
     def datetime_columns(self) -> list[Column]:
         """Return datetime columns."""
         return [c for c in self.table_columns if c.is_datetime]
