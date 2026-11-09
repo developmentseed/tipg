@@ -1,16 +1,14 @@
 """tipg PostgreSQL collection models."""
 
-import datetime
 import re
 from typing import Any
 
 import asyncpg
 from cql2 import Expr
-from fastapi import FastAPI
 from morecantile import Tile, TileMatrixSet
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
-from ..collections import Catalog, Collection, Column, Feature, ItemList
+from ..collections import Collection, Column, Feature, ItemList
 from ..errors import (
     InvalidGeometryColumnName,
     InvalidLimit,
@@ -54,6 +52,12 @@ class PgCollection(Collection):
     """Model for DB Table and Function."""
 
     dbschema: str = Field(alias="schema")
+
+    # Reference to the (shared) asyncpg pool serving this collection.
+    # Excluded from serialization and repr.
+    connection_pool: asyncpg.Pool = Field(exclude=True, repr=False)
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def _qualified_name(self) -> str:
@@ -315,7 +319,6 @@ class PgCollection(Collection):
 
     async def features(
         self,
-        conn: asyncpg.Connection,
         *,
         ids_filter: list[str] | None = None,
         bbox_filter: list[float] | None = None,
@@ -357,28 +360,30 @@ class PgCollection(Collection):
             dt=dt,
         )
 
-        matched = await self._features_count_query(
-            conn,
-            where=where_filter,
-            function_parameters=function_parameters,
-        )
-
-        features = [
-            f
-            async for f in self._features_query(
+        async with self.connection_pool.acquire() as conn:
+            matched = await self._features_count_query(
                 conn,
                 where=where_filter,
-                sortby=sortby,
-                properties=properties,
-                geom=geom,
-                limit=limit,
-                offset=offset,
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
                 function_parameters=function_parameters,
             )
-        ]
+
+            features = [
+                f
+                async for f in self._features_query(
+                    conn,
+                    where=where_filter,
+                    sortby=sortby,
+                    properties=properties,
+                    geom=geom,
+                    limit=limit,
+                    offset=offset,
+                    bbox_only=bbox_only,
+                    simplify=simplify,
+                    geom_as_wkt=geom_as_wkt,
+                    function_parameters=function_parameters,
+                )
+            ]
+
         returned = len(features)
 
         return ItemList(
@@ -390,7 +395,6 @@ class PgCollection(Collection):
 
     async def get_tile(
         self,
-        conn: asyncpg.Connection,
         *,
         tms: TileMatrixSet,
         tile: Tile,
@@ -471,7 +475,8 @@ class PgCollection(Collection):
         sql = f"WITH t AS ({inner_sql}) SELECT ST_AsMVT(t.*, ${len(params)}{aggregate_order}) FROM t"
         debug_query(sql, *params)
 
-        tile = await conn.fetchval(sql, *params)  # type: ignore
+        async with self.connection_pool.acquire() as conn:
+            tile = await conn.fetchval(sql, *params)  # type: ignore
 
         return bytes(tile)
 
@@ -479,6 +484,8 @@ class PgCollection(Collection):
 async def pg_get_collection_index(  # noqa: C901
     conn: asyncpg.Connection,
     settings: DatabaseSettings | None = None,
+    *,
+    connection_pool: asyncpg.Pool,
 ) -> list[Collection]:
     """Fetch Table and Functions index."""
     if not settings:
@@ -554,34 +561,20 @@ async def pg_get_collection_index(  # noqa: C901
                 if table_conf.geomcol == c["name"] or geometry_column is None:
                     geometry_column = c
 
-        collections.append(
-            PgCollection(
-                type=table["entity"],
-                id=table_id,
-                table=table["name"],
-                schema=table["schema"],
-                description=table.get("description", None),
-                table_columns=columns,
-                properties=[p for p in columns if p["name"] in properties_setting],
-                id_column=id_column,
-                datetime_column=datetime_column,
-                geometry_column=geometry_column,
-                parameters=table.get("parameters") or [],
-            )
+        collection = PgCollection(
+            type=table["entity"],
+            id=table_id,
+            table=table["name"],
+            schema=table["schema"],
+            description=table.get("description", None),
+            table_columns=columns,
+            properties=[p for p in columns if p["name"] in properties_setting],
+            id_column=id_column,
+            datetime_column=datetime_column,
+            geometry_column=geometry_column,
+            parameters=table.get("parameters") or [],
+            connection_pool=connection_pool,
         )
+        collections.append(collection)
 
     return collections
-
-
-async def register_collection_catalog(
-    app: FastAPI,
-    db_settings: DatabaseSettings | None = None,
-) -> None:
-    """Register Table catalog."""
-    async with app.state.pool.acquire() as conn:
-        db_collections = await pg_get_collection_index(conn, settings=db_settings)
-
-    app.state.collection_catalog = Catalog(
-        collections={col.id: col for col in [*db_collections]},
-        last_updated=datetime.datetime.now(),
-    )

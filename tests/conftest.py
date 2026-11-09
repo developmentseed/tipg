@@ -106,7 +106,7 @@ def create_tipg_app(
     """Create TiPG Application."""
 
     from tipg.factory import Endpoints
-    from tipg.pg.collections import register_collection_catalog
+    from tipg.main import register_collection_catalog
     from tipg.pg.database import close_db_connection, connect_to_db
 
     @asynccontextmanager
@@ -478,8 +478,8 @@ def app_user_schema(database_url):
 def app_middleware_refresh(database_url, monkeypatch):
     """Create APP with CatalogUpdateMiddleware middleware."""
 
+    from tipg.main import register_collection_catalog
     from tipg.middleware import CatalogUpdateMiddleware
-    from tipg.pg.collections import register_collection_catalog
     from tipg.pg.database import close_db_connection, connect_to_db
 
     postgres_settings = PostgresSettings(database_url=database_url)

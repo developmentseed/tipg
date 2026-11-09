@@ -31,20 +31,20 @@ class Factory:
         ): ...
 
         @self.router.get("/collections/{collectionId}/items")
-        def items(
+        async def items(
             request: Request,
             collection=Depends(self.collection_dependency),
         ):
-            item_list = collection.features(...)
+            item_list = await collection.features(...)
             ...
 
         @self.router.get("/collections/{collectionId}/items/{itemId}")
-        def item(
+        async def item(
             request: Request,
             collection=Depends(self.collection_dependency),
             itemId: str = Path(..., description="Item identifier"),
         ):
-            item_list = collection.features(ids_filter=[itemId])
+            item_list = await collection.features(ids_filter=[itemId])
             ...
 
 
