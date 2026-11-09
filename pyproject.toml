@@ -99,11 +99,7 @@ exclude_lines = [
 [tool.isort]
 profile = "black"
 known_first_party = ["tipg"]
-known_third_party = ["geojson_pydantic", "pydantic"]
-forced_separate = [
-    "fastapi",
-    "starlette",
-]
+known_third_party = ["geojson_pydantic", "pydantic", "fastapi"]
 default_section = "THIRDPARTY"
 
 [tool.mypy]

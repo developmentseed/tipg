@@ -7,12 +7,10 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
+from starlette.testclient import TestClient
 
 from tipg.metrics import REQUESTS, instrument_app, resolve_operation
-
-from fastapi import FastAPI
-
-from starlette.testclient import TestClient
 
 
 def _counter_total() -> float:

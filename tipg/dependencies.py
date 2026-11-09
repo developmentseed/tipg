@@ -1,21 +1,19 @@
 """tipg dependencies."""
 
 import re
-from typing import Annotated, Dict, List, Literal, Optional, Tuple, get_args
+from typing import Annotated, Literal, get_args
 
 from ciso8601 import parse_rfc3339
 from cql2 import Expr
+from fastapi import Depends, HTTPException, Path, Query
 from morecantile import Tile
 from morecantile import tms as default_tms
-
-from tipg.collections import Catalog, Collection, CollectionList
-from tipg.errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
-from tipg.resources.enums import MediaType
-from tipg.settings import TMSSettings
-
-from fastapi import Depends, HTTPException, Path, Query
-
 from starlette.requests import Request
+
+from .collections import Catalog, Collection, CollectionList
+from .errors import InvalidBBox, MissingCollectionCatalog, MissingFunctionParameter
+from .resources.enums import MediaType
+from .settings import TMSSettings
 
 tms_settings = TMSSettings()
 
@@ -28,7 +26,7 @@ VectorType = Literal["pbf", "mvt"]
 FilterLang = Literal["cql2-text", "cql2-json"]
 
 
-def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
+def s_intersects(bbox: list[float], spatial_extent: list[float]) -> bool:
     """Check if bbox intersects with spatial extent."""
     return (
         (bbox[0] < spatial_extent[2])
@@ -38,7 +36,7 @@ def s_intersects(bbox: List[float], spatial_extent: List[float]) -> bool:
     )
 
 
-def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
+def t_intersects(interval: list[str], temporal_extent: list[str]) -> bool:
     """Check if dates intersect with temporal extent."""
     if len(interval) == 1:
         start = end = parse_rfc3339(interval[0])
@@ -67,7 +65,7 @@ def t_intersects(interval: List[str], temporal_extent: List[str]) -> bool:
     return False
 
 
-def accept_media_type(accept: str, mediatypes: List[MediaType]) -> Optional[MediaType]:
+def accept_media_type(accept: str, mediatypes: list[MediaType]) -> MediaType | None:
     """Return MediaType based on accept header and available mediatype.
 
     Links:
@@ -117,12 +115,12 @@ def accept_media_type(accept: str, mediatypes: List[MediaType]) -> Optional[Medi
 def OutputType(
     request: Request,
     f: Annotated[
-        Optional[ResponseType],
+        ResponseType | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[MediaType]:
+) -> MediaType | None:
     """Output MediaType: json or html."""
     if f:
         return MediaType[f]
@@ -134,12 +132,12 @@ def OutputType(
 def QueryablesOutputType(
     request: Request,
     f: Annotated[
-        Optional[QueryablesResponseType],
+        QueryablesResponseType | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[MediaType]:
+) -> MediaType | None:
     """Output MediaType: schemajson or html."""
     if f:
         return MediaType[f]
@@ -151,12 +149,12 @@ def QueryablesOutputType(
 def ItemsOutputType(
     request: Request,
     f: Annotated[
-        Optional[ItemsResponseType],
+        ItemsResponseType | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[MediaType]:
+) -> MediaType | None:
     """Output MediaType: geojson, html, json, csv, geojsonseq, ndjson."""
     if f:
         return MediaType[f]
@@ -168,12 +166,12 @@ def ItemsOutputType(
 def ItemOutputType(
     request: Request,
     f: Annotated[
-        Optional[ItemResponseType],
+        ItemResponseType | None,
         Query(
             description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
         ),
     ] = None,
-) -> Optional[MediaType]:
+) -> MediaType | None:
     """Output MediaType: geojson, json or html."""
     if f:
         return MediaType[f]
@@ -184,10 +182,10 @@ def ItemOutputType(
 
 def bbox_query(
     bbox: Annotated[
-        Optional[str],
+        str | None,
         Query(description="Spatial Filter."),
     ] = None,
-) -> Optional[List[float]]:
+) -> list[float] | None:
     """BBox dependency."""
     if bbox:
         bounds = list(map(float, bbox.split(",")))
@@ -212,15 +210,15 @@ def bbox_query(
 
 
 def ids_query(
-    ids: Annotated[Optional[str], Query(description="Filter by Ids.")] = None,
-) -> Optional[List[str]]:
+    ids: Annotated[str | None, Query(description="Filter by Ids.")] = None,
+) -> list[str] | None:
     """Ids dependency."""
     return ids.split(",") if ids else None
 
 
 def datetime_query(
-    datetime: Annotated[Optional[str], Query(description="Temporal Filter.")] = None,
-) -> Optional[List[str]]:
+    datetime: Annotated[str | None, Query(description="Temporal Filter.")] = None,
+) -> list[str] | None:
     """Datetime dependency."""
     if datetime:
         dt = datetime.split("/")
@@ -234,12 +232,12 @@ def datetime_query(
 
 def properties_query(
     properties: Annotated[
-        Optional[str],
+        str | None,
         Query(
             description="Return only specific properties (comma-separated). If PROP-LIST is empty, no properties are returned. If not present, all properties are returned.",
         ),
     ] = None,
-) -> Optional[List[str]]:
+) -> list[str] | None:
     """Return property list."""
     if properties is not None:
         return [p.strip() for p in properties.split(",")]
@@ -250,7 +248,7 @@ def properties_query(
 def properties_filter_query(
     request: Request,
     collection: Collection,
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """Get properties to filter on excluding reserved keys."""
     exclude = [
         "f",
@@ -278,16 +276,16 @@ def properties_filter_query(
 
 def filter_query(
     query: Annotated[
-        Optional[str], Query(description="CQL2 Filter", alias="filter")
+        str | None, Query(description="CQL2 Filter", alias="filter")
     ] = None,
     filter_lang: Annotated[
-        Optional[FilterLang],
+        FilterLang | None,
         Query(
             description="CQL2 Language (cql2-text, cql2-json). Defaults to cql2-text.",
             alias="filter-lang",
         ),
     ] = None,
-) -> Optional[Expr]:
+) -> Expr | None:
     """Parse Filter Query.
 
     Per OGC API - Features - Part 3: Filtering, Requirement 7
@@ -314,7 +312,7 @@ def filter_query(
 
 def sortby_query(
     sortby: Annotated[
-        Optional[str],
+        str | None,
         Query(
             description="Column Sort the items by Column (ascending (default) or descending).",
         ),
@@ -351,7 +349,7 @@ def TileParams(
 def function_parameters_query(  # noqa: C901
     request: Request,
     collection: Collection,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Get parameters for function layers."""
     function_parameters = {}
     errors = []
@@ -440,14 +438,14 @@ def CollectionParams(
 
 def CollectionsParams(
     request: Request,
-    bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
-    datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
+    bbox_filter: Annotated[list[float] | None, Depends(bbox_query)],
+    datetime_filter: Annotated[list[str] | None, Depends(datetime_query)],
     type_filter: Annotated[
-        Optional[Literal["Function", "Table"]],
+        Literal["Function", "Table"] | None,
         Query(alias="type", description="Filter based on Collection type."),
     ] = None,
     limit: Annotated[
-        Optional[int],
+        int | None,
         Query(
             ge=0,
             le=1000,
@@ -455,7 +453,7 @@ def CollectionsParams(
         ),
     ] = None,
     offset: Annotated[
-        Optional[int],
+        int | None,
         Query(
             ge=0,
             description="Starts the response at an offset.",

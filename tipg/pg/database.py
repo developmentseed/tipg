@@ -2,15 +2,13 @@
 
 import pathlib
 from importlib.resources import files as resources_files
-from typing import List, Optional
 
 import asyncpg
 import orjson
-
-from tipg.logger import logger
-from tipg.settings import PostgresSettings
-
 from fastapi import FastAPI
+
+from ..logger import logger
+from .settings import PostgresSettings
 
 DB_CATALOG_FILE = resources_files(__package__) / "sql" / "dbcatalog.sql"
 
@@ -18,15 +16,15 @@ DB_CATALOG_FILE = resources_files(__package__) / "sql" / "dbcatalog.sql"
 class connection_factory:
     """Connection creation."""
 
-    schemas: List[str]
+    schemas: list[str]
     tipg_schema: str
-    user_sql_files: List[pathlib.Path]
+    user_sql_files: list[pathlib.Path]
 
     def __init__(
         self,
-        schemas: List[str],
+        schemas: list[str],
         tipg_schema: str,
-        user_sql_files: Optional[List[pathlib.Path]] = None,
+        user_sql_files: list[pathlib.Path] | None = None,
     ) -> None:
         """Init."""
         self.schemas = schemas
@@ -70,10 +68,10 @@ class connection_factory:
 async def connect_to_db(
     app: FastAPI,
     *,
-    schemas: List[str],
+    schemas: list[str],
     tipg_schema: str = "pg_temp",
-    user_sql_files: Optional[List[pathlib.Path]] = None,
-    settings: Optional[PostgresSettings] = None,
+    user_sql_files: list[pathlib.Path] | None = None,
+    settings: PostgresSettings | None = None,
     **kwargs,
 ) -> None:
     """Connect."""

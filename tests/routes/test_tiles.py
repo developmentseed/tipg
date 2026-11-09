@@ -5,8 +5,8 @@ import re
 import mapbox_vector_tile
 import numpy as np
 
-from tipg import collections
-from tipg.collections import mvt_settings
+from tipg.pg import collections
+from tipg.pg.collections import mvt_settings
 
 
 def test_tilejson(app):

@@ -1,7 +1,6 @@
 """TiPG openapi tools."""
 
 from fastapi import FastAPI
-
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Route, request_response

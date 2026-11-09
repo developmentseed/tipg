@@ -5,16 +5,16 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional, Protocol
-
-from tipg.collections import Catalog
-from tipg.errors import MissingCollectionCatalog
-from tipg.logger import logger
+from typing import Any, Protocol
 
 from starlette.background import BackgroundTask
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from .collections import Catalog
+from .errors import MissingCollectionCatalog
+from .logger import logger
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ class CatalogUpdateMiddleware:
             return
 
         request = Request(scope)
-        background: Optional[BackgroundTask] = None
+        background: BackgroundTask | None = None
 
         catalog: Catalog = getattr(request.app.state, "collection_catalog", None)
         if not catalog:

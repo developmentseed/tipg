@@ -3,30 +3,31 @@
 import abc
 import csv
 import re
+from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass, field
 from typing import (
     Annotated,
     Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
     Literal,
-    Optional,
 )
 from urllib.parse import urlencode
 
 import jinja2
 import orjson
 from cql2 import Expr
+from fastapi import APIRouter, Depends, Path, Query
 from morecantile import Tile, TileMatrixSet
 from morecantile import tms as default_tms
 from morecantile.defaults import TileMatrixSets
+from starlette.datastructures import QueryParams
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response, StreamingResponse
+from starlette.routing import NoMatchFound, compile_path, replace_params
+from starlette.templating import Jinja2Templates, _TemplateResponse
 
-from tipg import model
-from tipg.collections import Collection, CollectionList
-from tipg.dependencies import (
+from . import model
+from .collections import Collection, CollectionList
+from .dependencies import (
     CollectionParams,
     CollectionsParams,
     ItemsOutputType,
@@ -42,23 +43,15 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
-from tipg.resources.enums import MediaType
-from tipg.resources.response import (
+from .errors import MissingGeometryColumn, NoPrimaryKey, NotFound
+from .resources.enums import MediaType
+from .resources.response import (
     GeoJSONResponse,
     ORJSONResponse,
     SchemaJSONResponse,
     orjsonDumps,
 )
-from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
-
-from fastapi import APIRouter, Depends, Path, Query
-
-from starlette.datastructures import QueryParams
-from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response, StreamingResponse
-from starlette.routing import NoMatchFound, compile_path, replace_params
-from starlette.templating import Jinja2Templates, _TemplateResponse
+from .settings import FeaturesSettings, MVTSettings, TMSSettings
 
 tms_settings = TMSSettings()
 mvt_settings = MVTSettings()
@@ -97,7 +90,7 @@ TILES_CONFORMS = [
 ]
 
 
-def create_csv_rows(data: Iterable[Dict]) -> Generator[str, None, None]:
+def create_csv_rows(data: Iterable[dict]) -> Generator[str, None, None]:
     """Creates an iterator that returns lines of csv from an iterable of dicts."""
 
     class DummyWriter:
@@ -128,8 +121,8 @@ def create_html_response(
     data: Any,
     templates: Jinja2Templates,
     template_name: str,
-    title: Optional[str] = None,
-    router_prefix: Optional[str] = None,
+    title: str | None = None,
+    router_prefix: str | None = None,
     **kwargs: Any,
 ) -> _TemplateResponse:
     """Create Template response."""
@@ -201,7 +194,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
     # e.g if you mount the route with `/foo` prefix, set router_prefix to foo
     router_prefix: str = ""
 
-    extensions: List[FactoryExtension] = field(default_factory=list)
+    extensions: list[FactoryExtension] = field(default_factory=list)
 
     templates: Jinja2Templates = DEFAULT_TEMPLATES
 
@@ -245,7 +238,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         request: Request,
         data: Any,
         template_name: str,
-        title: Optional[str] = None,
+        title: str | None = None,
         **kwargs: Any,
     ) -> _TemplateResponse:
         return create_html_response(
@@ -265,12 +258,12 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def conforms_to(self) -> List[str]:
+    def conforms_to(self) -> list[str]:
         """Endpoints conformances."""
         ...
 
     @abc.abstractmethod
-    def links(self, request: Request) -> List[model.Link]:
+    def links(self, request: Request) -> list[model.Link]:
         """Register factory Routes."""
         ...
 
@@ -294,7 +287,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         )
         def conformance(
             request: Request,
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """Get conformance."""
             data = model.Conformance(conformsTo=[*COMMON_CONFORMS, *self.conforms_to])
@@ -328,7 +321,7 @@ class EndpointsFactory(metaclass=abc.ABCMeta):
         )
         def landing(
             request: Request,
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """Get landing page."""
             data = model.Landing(
@@ -381,11 +374,11 @@ class OGCFeaturesFactory(EndpointsFactory):
     collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
     @property
-    def conforms_to(self) -> List[str]:
+    def conforms_to(self) -> list[str]:
         """Factory conformances."""
         return FEATURES_CONFORMS
 
-    def links(self, request: Request) -> List[model.Link]:
+    def links(self, request: Request) -> list[model.Link]:
         """OGC Features API links."""
         return [
             model.Link(
@@ -439,7 +432,7 @@ class OGCFeaturesFactory(EndpointsFactory):
 
     def _additional_collection_tiles_links(
         self, request: Request, collection: Collection
-    ) -> List[model.Link]:
+    ) -> list[model.Link]:
         links = []
         base_url = str(request.base_url)
         try:
@@ -527,7 +520,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                 Depends(self.collections_dependency),
             ],
             output_type: Annotated[
-                Optional[MediaType],
+                MediaType | None,
                 Depends(OutputType),
             ] = None,
         ):
@@ -648,7 +641,7 @@ class OGCFeaturesFactory(EndpointsFactory):
         def collection(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """Metadata for a feature collection."""
             data = model.Collection(
@@ -743,7 +736,7 @@ class OGCFeaturesFactory(EndpointsFactory):
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             output_type: Annotated[
-                Optional[MediaType], Depends(QueryablesOutputType)
+                MediaType | None, Depends(QueryablesOutputType)
             ] = None,
         ):
             """Queryables for a feature collection.
@@ -790,21 +783,21 @@ class OGCFeaturesFactory(EndpointsFactory):
         async def items(  # noqa: C901
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
-            ids_filter: Annotated[Optional[List[str]], Depends(ids_query)],
-            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],
-            datetime_filter: Annotated[Optional[List[str]], Depends(datetime_query)],
-            properties: Annotated[Optional[List[str]], Depends(properties_query)],
-            cql_filter: Annotated[Optional[Expr], Depends(filter_query)],
-            sortby: Annotated[Optional[str], Depends(sortby_query)],
+            ids_filter: Annotated[list[str] | None, Depends(ids_query)],
+            bbox_filter: Annotated[list[float] | None, Depends(bbox_query)],
+            datetime_filter: Annotated[list[str] | None, Depends(datetime_query)],
+            properties: Annotated[list[str] | None, Depends(properties_query)],
+            cql_filter: Annotated[Expr | None, Depends(filter_query)],
+            sortby: Annotated[str | None, Depends(sortby_query)],
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
                 ),
             ] = None,
             datetime_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select datetime column.",
                     alias="datetime-column",
@@ -819,28 +812,26 @@ class OGCFeaturesFactory(EndpointsFactory):
                 ),
             ] = features_settings.default_features_limit,
             offset: Annotated[
-                Optional[int],
+                int | None,
                 Query(
                     ge=0,
                     description="Starts the response at an offset.",
                 ),
             ] = None,
             bbox_only: Annotated[
-                Optional[bool],
+                bool | None,
                 Query(
                     description="Only return the bounding box of the feature.",
                     alias="bbox-only",
                 ),
             ] = None,
             simplify: Annotated[
-                Optional[float],
+                float | None,
                 Query(
                     description="Simplify the output geometry to given threshold in decimal degrees.",
                 ),
             ] = None,
-            output_type: Annotated[
-                Optional[MediaType], Depends(ItemsOutputType)
-            ] = None,
+            output_type: Annotated[MediaType | None, Depends(ItemsOutputType)] = None,
         ):
             output_type = output_type or MediaType.geojson
             geom_as_wkt = output_type not in [
@@ -919,7 +910,7 @@ class OGCFeaturesFactory(EndpointsFactory):
                     )
 
             qs = "?" + str(request.query_params) if request.query_params else ""
-            links: List[Dict] = [
+            links: list[dict] = [
                 {
                     "title": "Collection",
                     "href": self.url_for(
@@ -1059,36 +1050,34 @@ class OGCFeaturesFactory(EndpointsFactory):
             collection: Annotated[Collection, Depends(self.collection_dependency)],
             itemId: Annotated[str, Path(description="Item identifier")],
             bbox_only: Annotated[
-                Optional[bool],
+                bool | None,
                 Query(
                     description="Only return the bounding box of the feature.",
                     alias="bbox-only",
                 ),
             ] = None,
             simplify: Annotated[
-                Optional[float],
+                float | None,
                 Query(
                     description="Simplify the output geometry to given threshold in decimal degrees.",
                 ),
             ] = None,
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
                 ),
             ] = None,
             datetime_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select datetime column.",
                     alias="datetime-column",
                 ),
             ] = None,
-            properties: Optional[List[str]] = Depends(properties_query),
-            output_type: Annotated[
-                Optional[MediaType], Depends(ItemsOutputType)
-            ] = None,
+            properties: list[str] | None = Depends(properties_query),
+            output_type: Annotated[MediaType | None, Depends(ItemsOutputType)] = None,
         ):
             if collection.id_column is None:
                 raise NoPrimaryKey("No primary key is set on this table")
@@ -1202,11 +1191,11 @@ class OGCTilesFactory(EndpointsFactory):
     with_viewer: bool = True
 
     @property
-    def conforms_to(self) -> List[str]:
+    def conforms_to(self) -> list[str]:
         """Factory conformances."""
         return TILES_CONFORMS
 
-    def links(self, request: Request) -> List[model.Link]:
+    def links(self, request: Request) -> list[model.Link]:
         """OGC Tiles API links."""
         links = [
             model.Link(
@@ -1317,7 +1306,7 @@ class OGCTilesFactory(EndpointsFactory):
         )
         async def tilematrixsets(
             request: Request,
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixsets
@@ -1373,7 +1362,7 @@ class OGCTilesFactory(EndpointsFactory):
                 Literal[tuple(self.supported_tms.list())],
                 Path(description="Identifier for a supported TileMatrixSet."),
             ],
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """
             OGC Specification: http://docs.opengeospatial.org/per/19-069.html#_tilematrixset
@@ -1415,7 +1404,7 @@ class OGCTilesFactory(EndpointsFactory):
         async def collection_tileset_list(
             request: Request,
             collection: Annotated[Collection, Depends(self.collection_dependency)],
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """Retrieve a list of available vector tilesets for the specified collection."""
             collection_bbox = None
@@ -1504,7 +1493,7 @@ class OGCTilesFactory(EndpointsFactory):
                 Literal[tuple(self.supported_tms.list())],
                 Path(description="Identifier for a supported TileMatrixSet."),
             ],
-            output_type: Annotated[Optional[MediaType], Depends(OutputType)] = None,
+            output_type: Annotated[MediaType | None, Depends(OutputType)] = None,
         ):
             """Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set)."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -1638,32 +1627,30 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
             ],
             tile: Annotated[Tile, Depends(TileParams)],
-            ids_filter: Annotated[Optional[List[str]], Depends(ids_query)] = None,
-            bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)] = None,
+            ids_filter: Annotated[list[str] | None, Depends(ids_query)] = None,
+            bbox_filter: Annotated[list[float] | None, Depends(bbox_query)] = None,
             datetime_filter: Annotated[
-                Optional[List[str]], Depends(datetime_query)
+                list[str] | None, Depends(datetime_query)
             ] = None,
-            properties: Annotated[
-                Optional[List[str]], Depends(properties_query)
-            ] = None,
-            cql_filter: Annotated[Optional[Expr], Depends(filter_query)] = None,
-            sortby: Annotated[Optional[str], Depends(sortby_query)] = None,
+            properties: Annotated[list[str] | None, Depends(properties_query)] = None,
+            cql_filter: Annotated[Expr | None, Depends(filter_query)] = None,
+            sortby: Annotated[str | None, Depends(sortby_query)] = None,
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
                 ),
             ] = None,
             datetime_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select datetime column.",
                     alias="datetime-column",
                 ),
             ] = None,
             limit: Annotated[
-                Optional[int],
+                int | None,
                 Query(
                     description="Limits the number of features in the response. Defaults to 10000 or TIPG_MAX_FEATURES_PER_TILE environment variable."
                 ),
@@ -1722,15 +1709,15 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
             ],
             minzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default minzoom."),
             ] = None,
             maxzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
@@ -1744,7 +1731,7 @@ class OGCTilesFactory(EndpointsFactory):
             if not geom:
                 raise MissingGeometryColumn
 
-            path_params: Dict[str, Any] = {
+            path_params: dict[str, Any] = {
                 "tileMatrixSetId": tileMatrixSetId,
                 "collectionId": collection.id,
                 "z": "{z}",
@@ -1816,18 +1803,18 @@ class OGCTilesFactory(EndpointsFactory):
                 ),
             ],
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
                 ),
             ] = None,
             minzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default minzoom."),
             ] = None,
             maxzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
         ):
@@ -1838,7 +1825,7 @@ class OGCTilesFactory(EndpointsFactory):
             if not geom:
                 raise MissingGeometryColumn
 
-            path_params: Dict[str, Any] = {
+            path_params: dict[str, Any] = {
                 "collectionId": collection.id,
                 "tileMatrixSetId": tileMatrixSetId,
                 "z": "{z}",
@@ -1945,15 +1932,15 @@ class OGCTilesFactory(EndpointsFactory):
                     ),
                 ],
                 minzoom: Annotated[
-                    Optional[int],
+                    int | None,
                     Query(description="Overwrite default minzoom."),
                 ] = None,
                 maxzoom: Annotated[
-                    Optional[int],
+                    int | None,
                     Query(description="Overwrite default maxzoom."),
                 ] = None,
                 geom_column: Annotated[
-                    Optional[str],
+                    str | None,
                     Query(
                         description="Select geometry column.",
                         alias="geom-column",
@@ -2000,14 +1987,14 @@ class Endpoints(EndpointsFactory):
     ogc_tiles: OGCTilesFactory = field(init=False)
 
     @property
-    def conforms_to(self) -> List[str]:
+    def conforms_to(self) -> list[str]:
         """Endpoints conformances."""
         return [
             *self.ogc_features.conforms_to,
             *self.ogc_tiles.conforms_to,
         ]
 
-    def links(self, request: Request) -> List[model.Link]:
+    def links(self, request: Request) -> list[model.Link]:
         """List of available links."""
         return [
             *self.ogc_features.links(request),
