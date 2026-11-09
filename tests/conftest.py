@@ -5,14 +5,12 @@ from contextlib import asynccontextmanager
 
 import psycopg
 import pytest
-from pytest_postgresql.janitor import DatabaseJanitor
-
-from tipg.settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
-
 from fastapi import FastAPI
-
+from pytest_postgresql.janitor import DatabaseJanitor
 from starlette.requests import Request
 from starlette.testclient import TestClient
+
+from tipg.pg.settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 TEMPLATE_DIRECTORY = os.path.join(FIXTURES_DIR, "templates")
@@ -107,9 +105,9 @@ def create_tipg_app(
 ) -> FastAPI:
     """Create TiPG Application."""
 
-    from tipg.collections import register_collection_catalog
-    from tipg.database import close_db_connection, connect_to_db
     from tipg.factory import Endpoints
+    from tipg.main import register_collection_catalog
+    from tipg.pg.database import close_db_connection, connect_to_db
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -480,9 +478,9 @@ def app_user_schema(database_url):
 def app_middleware_refresh(database_url, monkeypatch):
     """Create APP with CatalogUpdateMiddleware middleware."""
 
-    from tipg.collections import register_collection_catalog
-    from tipg.database import close_db_connection, connect_to_db
+    from tipg.main import register_collection_catalog
     from tipg.middleware import CatalogUpdateMiddleware
+    from tipg.pg.database import close_db_connection, connect_to_db
 
     postgres_settings = PostgresSettings(database_url=database_url)
     db_settings = DatabaseSettings(

@@ -8,6 +8,21 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* change: move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
+    * `tipg.collections.PgCollection` and `tipg.collections.pg_get_collection_index` → `tipg.pg.collections`
+    * `tipg.database` → `tipg.pg.database` (`connect_to_db`, `close_db_connection`)
+    * `tipg.settings.PostgresSettings`, `DatabaseSettings`, `CustomSQLSettings`, `TableSettings` and `TableConfig` → `tipg.pg.settings`
+    * `tipg/sql/dbcatalog.sql` → `tipg/pg/sql/dbcatalog.sql`
+    * `connect_to_db`, `close_db_connection`, `pg_get_collection_index`, `PostgresSettings`, `DatabaseSettings` and `CustomSQLSettings` are re-exported from `tipg.pg`
+* change: add required `connection_pool: asyncpg.Pool` attribute to `PgCollection` (reference to the shared pool, excluded from serialization) **breaking change**
+* change: remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
+* change: add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
+* change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
+* perf: compute datetime extents with `min(col)::timestamptz` / `max(col)::timestamptz` instead of casting each value before aggregating, so btree indexes on `timestamp` / `date` columns are used instead of a full table scan on every catalog refresh
+* perf: use `ST_EstimatedExtent` for spatial extents whenever table statistics exist.
+* perf: cache `Collection.extent`, `bounds`, `dt_bounds`, `geometry_columns` and `datetime_columns` (`functools.cached_property`) instead of recomputing them on every access
+* perf: skip SQL statement formatting in `tipg.pg.collections.debug_query` when `DEBUG` logging is disabled
+
 ## [1.6.1] - 2026-09-03
 
 * fix: apply `sortby` when building vector tiles. `Collection.get_tile()` accepted the parameter but never used it, so `?sortby=` had no effect on the order of features within a tile. The ordering is applied inside the `ST_AsMVT` aggregate, which also makes `limit` truncation deterministic. An invalid sort column now returns a `404` on the tile endpoint, as it already did on `/items`

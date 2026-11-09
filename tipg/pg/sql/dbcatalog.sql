@@ -46,14 +46,13 @@ DECLARE
     _schemaname text;
     _relname text;
     _n_live_tup bigint;
-    _n_mod_since_analyze bigint;
     bounds_geom geometry;
     bounds float[];
 BEGIN
     IF atttype IN ('timestamp', 'timestamptz', 'date') AND datetime_extent THEN
         EXECUTE FORMAT(
             $q$
-                SELECT to_json(min(%I::timestamptz)), to_json(max(%I::timestamptz))
+                SELECT to_json(min(%I)::timestamptz), to_json(max(%I)::timestamptz)
                 FROM %s;
             $q$,
             attname,
@@ -65,12 +64,17 @@ BEGIN
         srid = coalesce(nullif(postgis_typmod_srid(att.atttypmod),0), 4326);
 
         IF spatial_extent THEN
-            SELECT schemaname, relname, n_live_tup, n_mod_since_analyze
-            INTO _schemaname, _relname, _n_live_tup, _n_mod_since_analyze
+            SELECT schemaname, relname, n_live_tup
+            INTO _schemaname, _relname, _n_live_tup
             FROM pg_stat_user_tables
             WHERE relid = att.attrelid;
 
-            IF _n_live_tup > 0 AND _n_mod_since_analyze = 0 THEN
+            -- Use the planner statistics whenever they exist (cheap), even if
+            -- rows were modified since the last ANALYZE: the extent may be
+            -- slightly stale until autovacuum re-analyzes the table.
+            -- `st_estimatedextent` returns NULL when there are no statistics,
+            -- in which case we fall back to a full `ST_Extent` scan below.
+            IF _n_live_tup > 0 THEN
                 bounds_geom := st_setsrid(st_estimatedextent(_schemaname, _relname, attname), srid);
             END IF;
 

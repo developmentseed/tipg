@@ -5,7 +5,6 @@ from typing import Any
 
 import orjson
 from asyncpg.pgproto import pgproto
-
 from fastapi.responses import JSONResponse
 
 

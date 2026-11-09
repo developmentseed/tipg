@@ -2,12 +2,11 @@
 
 import time
 
-from tipg.middleware import CacheControlMiddleware
-
 from fastapi import FastAPI
-
 from starlette.responses import Response
 from starlette.testclient import TestClient
+
+from tipg.middleware import CacheControlMiddleware
 
 
 def test_middleware(app_middleware_refresh):

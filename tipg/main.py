@@ -1,29 +1,52 @@
 """tipg app."""
 
+import datetime
 from contextlib import asynccontextmanager
-from typing import Any, List
+from typing import Any
 
 import jinja2
-
-from tipg import __version__ as tipg_version
-from tipg.collections import register_collection_catalog
-from tipg.database import close_db_connection, connect_to_db
-from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from tipg.extensions.viewer import viewerExtension
-from tipg.factory import Endpoints
-from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
-from tipg.openapi import _update_openapi
-from tipg.settings import APISettings, CustomSQLSettings, DatabaseSettings
-
 from fastapi import FastAPI, Request
-
 from starlette.middleware.cors import CORSMiddleware
 from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
+from . import __version__ as tipg_version
+from .collections import Catalog
+from .errors import DEFAULT_STATUS_CODES, add_exception_handlers
+from .extensions.viewer import viewerExtension
+from .factory import Endpoints
+from .middleware import CacheControlMiddleware, CatalogUpdateMiddleware
+from .openapi import _update_openapi
+from .pg import (
+    CustomSQLSettings,
+    DatabaseSettings,
+    close_db_connection,
+    connect_to_db,
+    pg_get_collection_index,
+)
+from .settings import APISettings
+
 settings = APISettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
+
+
+async def register_collection_catalog(
+    app: FastAPI,
+    db_settings: DatabaseSettings | None = None,
+) -> None:
+    """Register Table catalog."""
+    async with app.state.pool.acquire() as conn:
+        pg_collections = await pg_get_collection_index(
+            conn,
+            settings=db_settings,
+            connection_pool=app.state.pool,
+        )
+
+    app.state.collection_catalog = Catalog(
+        collections={col.id: col for col in [*pg_collections]},
+        last_updated=datetime.datetime.now(),
+    )
 
 
 @asynccontextmanager
@@ -59,7 +82,7 @@ app = FastAPI(
 _update_openapi(app)
 
 # custom template directory
-templates_location: List[Any] = (
+templates_location: list[Any] = (
     [jinja2.FileSystemLoader(settings.template_directory)]
     if settings.template_directory
     else []

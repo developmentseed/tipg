@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from tipg.settings import DatabaseSettings, PostgresSettings
+from tipg.pg.settings import DatabaseSettings, PostgresSettings
 
 
 def test_pg_settings(monkeypatch):

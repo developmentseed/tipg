@@ -1,16 +1,15 @@
 """viewer Extension."""
 
 from dataclasses import dataclass
-from typing import Annotated, Optional
+from typing import Annotated
 from urllib.parse import urlencode
 
-from tipg.collections import Collection
-from tipg.factory import EndpointsFactory, FactoryExtension
-
 from fastapi import Depends, Query
-
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
+
+from ..collections import Collection
+from ..factory import EndpointsFactory, FactoryExtension
 
 
 @dataclass
@@ -30,15 +29,15 @@ class viewerExtension(FactoryExtension):
             request: Request,
             collection: Annotated[Collection, Depends(factory.collection_dependency)],
             minzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default minzoom."),
             ] = None,
             maxzoom: Annotated[
-                Optional[int],
+                int | None,
                 Query(description="Overwrite default maxzoom."),
             ] = None,
             geom_column: Annotated[
-                Optional[str],
+                str | None,
                 Query(
                     description="Select geometry column.",
                     alias="geom-column",
