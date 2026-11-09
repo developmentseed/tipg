@@ -6,16 +6,23 @@ The code below shows how to create a simple OGC Features service.
 ```python
 """OGC Features service."""
 
+import datetime
 from contextlib import asynccontextmanager
 
 import jinja2
 
-from tipg.collections import register_collection_catalog
-from tipg.database import close_db_connection, connect_to_db
+from tipg.collections import Catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
-from tipg.settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
+from tipg.pg import (
+    CustomSQLSettings,
+    DatabaseSettings,
+    PostgresSettings,
+    close_db_connection,
+    connect_to_db,
+    pg_get_collection_index,
+)
 
 from fastapi import FastAPI
 
@@ -26,6 +33,24 @@ from starlette_cramjam.middleware import CompressionMiddleware
 postgres_settings = PostgresSettings()
 db_settings = DatabaseSettings()
 custom_sql_settings = CustomSQLSettings()
+
+
+async def register_collection_catalog(
+    app: FastAPI,
+    db_settings: DatabaseSettings | None = None,
+) -> None:
+    """Register Collection catalog."""
+    async with app.state.pool.acquire() as conn:
+        collections = await pg_get_collection_index(
+            conn,
+            settings=db_settings,
+            connection_pool=app.state.pool,
+        )
+
+    app.state.collection_catalog = Catalog(
+        collections={col.id: col for col in collections},
+        last_updated=datetime.datetime.now(),
+    )
 
 
 @asynccontextmanager
@@ -56,9 +81,10 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(
-    directory="",  # we need to set a dummy directory variable, see https://github.com/encode/starlette/issues/1214
-    loader=jinja2.ChoiceLoader([jinja2.PackageLoader("tipg", "templates")]),
-)  # type: ignore
+    env=jinja2.Environment(
+        loader=jinja2.ChoiceLoader([jinja2.PackageLoader("tipg", "templates")])
+    )
+)
 
 ogc_features = OGCFeaturesFactory(
     title="TiPG Features Server",

@@ -8,6 +8,12 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* add required `connection_pool: asyncpg.Pool` attribute to `PgCollection` (reference to the shared pool, excluded from serialization) **breaking change**
+* remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
+* add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
+* move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
+* the `Endpoints` factory no longer reads `request.app.state.pool`, enabling catalogs mixing collections from different databases/backends
+
 ## [1.6.1] - 2026-09-03
 
 * fix: apply `sortby` when building vector tiles. `Collection.get_tile()` accepted the parameter but never used it, so `?sortby=` had no effect on the order of features within a tile. The ordering is applied inside the `ST_AsMVT` aggregate, which also makes `limit` truncation deterministic. An invalid sort column now returns a `404` on the tile endpoint, as it already did on `/items`

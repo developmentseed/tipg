@@ -1,11 +1,11 @@
 """tipg.pg package"""
 
-from .collections import register_collection_catalog
+from .collections import pg_get_collection_index
 from .database import close_db_connection, connect_to_db
 from .settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
 
 __all__ = [
-    "register_collection_catalog",
+    "pg_get_collection_index",
     "close_db_connection",
     "connect_to_db",
     "CustomSQLSettings",

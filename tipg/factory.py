@@ -840,25 +840,23 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            async with request.app.state.pool.acquire() as conn:
-                item_list = await collection.features(
-                    conn,
-                    ids_filter=ids_filter,
-                    bbox_filter=bbox_filter,
-                    datetime_filter=datetime_filter,
-                    properties_filter=properties_filter_query(request, collection),
-                    function_parameters=function_parameters_query(request, collection),
-                    cql_filter=cql_filter,
-                    sortby=sortby,
-                    properties=properties,
-                    limit=limit,
-                    offset=offset,
-                    geom=geom_column,
-                    dt=datetime_column,
-                    bbox_only=bbox_only,
-                    simplify=simplify,
-                    geom_as_wkt=geom_as_wkt,
-                )
+            item_list = await collection.features(
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter_query(request, collection),
+                function_parameters=function_parameters_query(request, collection),
+                cql_filter=cql_filter,
+                sortby=sortby,
+                properties=properties,
+                limit=limit,
+                offset=offset,
+                geom=geom_column,
+                dt=datetime_column,
+                bbox_only=bbox_only,
+                simplify=simplify,
+                geom_as_wkt=geom_as_wkt,
+            )
 
             if output_type in (
                 MediaType.csv,
@@ -1089,18 +1087,16 @@ class OGCFeaturesFactory(EndpointsFactory):
                 MediaType.html,
             ]
 
-            async with request.app.state.pool.acquire() as conn:
-                item_list = await collection.features(
-                    conn,
-                    ids_filter=[itemId],
-                    bbox_only=bbox_only,
-                    simplify=simplify,
-                    properties=properties,
-                    function_parameters=function_parameters_query(request, collection),
-                    geom=geom_column,
-                    dt=datetime_column,
-                    geom_as_wkt=geom_as_wkt,
-                )
+            item_list = await collection.features(
+                ids_filter=[itemId],
+                bbox_only=bbox_only,
+                simplify=simplify,
+                properties=properties,
+                function_parameters=function_parameters_query(request, collection),
+                geom=geom_column,
+                dt=datetime_column,
+                geom_as_wkt=geom_as_wkt,
+            )
 
             if not item_list["items"]:
                 raise NotFound(
@@ -1665,24 +1661,22 @@ class OGCTilesFactory(EndpointsFactory):
             """Return Vector Tile."""
             tms = self.supported_tms.get(tileMatrixSetId)
 
-            async with request.app.state.pool.acquire() as conn:
-                t = await collection.get_tile(
-                    conn,
-                    tms=tms,
-                    tile=tile,
-                    ids_filter=ids_filter,
-                    bbox_filter=bbox_filter,
-                    datetime_filter=datetime_filter,
-                    properties_filter=properties_filter_query(request, collection),
-                    function_parameters=function_parameters_query(request, collection),
-                    cql_filter=cql_filter,
-                    sortby=sortby,
-                    properties=properties,
-                    limit=limit,
-                    geom=geom_column,
-                    dt=datetime_column,
-                    simplify=simplify,
-                )
+            t = await collection.get_tile(
+                tms=tms,
+                tile=tile,
+                ids_filter=ids_filter,
+                bbox_filter=bbox_filter,
+                datetime_filter=datetime_filter,
+                properties_filter=properties_filter_query(request, collection),
+                function_parameters=function_parameters_query(request, collection),
+                cql_filter=cql_filter,
+                sortby=sortby,
+                properties=properties,
+                limit=limit,
+                geom=geom_column,
+                dt=datetime_column,
+                simplify=simplify,
+            )
 
             return Response(t, media_type=MediaType.mvt.value)
 

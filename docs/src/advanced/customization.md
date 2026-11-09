@@ -7,14 +7,39 @@
 While `Tipg` provides a default application `tipg.main:app`, users can easily create their own FastAPI application and register the OGC API endpoints using the [endpoint factories](/tipg/user_guide/factories/) provided by `Tipg`.
 
 ```python
+import datetime
 from contextlib import asynccontextmanager
-from tipg.database import close_db_connection, connect_to_db
-from tipg.collections import register_collection_catalog
+
+from tipg.collections import Catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
-from tipg.settings import PostgresSettings, DatabaseSettings
+from tipg.pg import (
+    DatabaseSettings,
+    PostgresSettings,
+    close_db_connection,
+    connect_to_db,
+    pg_get_collection_index,
+)
 
 from fastapi import FastAPI
+
+
+async def register_collection_catalog(
+    app: FastAPI,
+    db_settings: DatabaseSettings | None = None,
+) -> None:
+    """Register Collection catalog."""
+    async with app.state.pool.acquire() as conn:
+        collections = await pg_get_collection_index(
+            conn,
+            settings=db_settings,
+            connection_pool=app.state.pool,
+        )
+
+    app.state.collection_catalog = Catalog(
+        collections={col.id: col for col in collections},
+        last_updated=datetime.datetime.now(),
+    )
 
 
 @asynccontextmanager
@@ -22,7 +47,7 @@ async def lifespan(app: FastAPI):
     """FastAPI Lifespan
 
     - Create DB connection POOL and `register` the custom tipg SQL function within `pg_temp`
-    - Create the collection_catalog
+    - Create the collection_catalog (see `register_collection_catalog` above)
     - Close the connection pool when closing the application
 
     """
@@ -94,9 +119,9 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in [tipg.db.connect_to_db](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/main.py#L90-L109).
 
 ```python
-from tipg.database import connect_to_db
-from tipg.collections import register_collection_catalog
-from tipg.settings import PostgresSettings, DatabaseSettings
+from tipg.pg import DatabaseSettings, PostgresSettings, connect_to_db
+
+# `register_collection_catalog` defined as in the "Application" example above
 
 postgres_settings = PostgresSettings()
 
