@@ -1,5 +1,6 @@
 """tipg DuckDB collection models."""
 
+import datetime
 import re
 from typing import Any
 
@@ -13,7 +14,8 @@ from starlette.concurrency import run_in_threadpool
 from ..collections import Collection, Column, Feature, ItemList, _quote_ident
 from ..errors import InvalidGeometryColumnName, InvalidLimit, InvalidPropertyName
 from ..logger import logger
-from ..settings import FeaturesSettings, MVTSettings
+from ..settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
+from .settings import DuckDBCatalogSettings
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()  # type: ignore [call-arg]
@@ -440,3 +442,293 @@ class DuckCollection(Collection):
         sql = f"WITH t AS ({inner_sql}) SELECT ST_AsMVT(t, $1{aggregate_order}) FROM t"
 
         return await run_in_threadpool(self._run_tile_query, sql, layer)
+
+
+_DUCK_TYPES = {
+    "BOOLEAN": "boolean",
+    "TINYINT": "smallint",
+    "SMALLINT": "smallint",
+    "UTINYINT": "smallint",
+    "INTEGER": "integer",
+    "USMALLINT": "integer",
+    "BIGINT": "bigint",
+    "UINTEGER": "bigint",
+    "UBIGINT": "numeric",
+    "HUGEINT": "numeric",
+    "UHUGEINT": "numeric",
+    "FLOAT": "real",
+    "DOUBLE": "float8",
+    "DATE": "date",
+    "TIMESTAMP": "timestamp",
+    "TIMESTAMP_S": "timestamp",
+    "TIMESTAMP_MS": "timestamp",
+    "TIMESTAMP_NS": "timestamp",
+    "TIMESTAMP WITH TIME ZONE": "timestamptz",
+    "JSON": "json",
+}
+
+# ST_GeometryType values → PostGIS-style geometry type names
+_GEOMETRY_TYPES = {
+    "POINT": "Point",
+    "LINESTRING": "LineString",
+    "POLYGON": "Polygon",
+    "MULTIPOINT": "MultiPoint",
+    "MULTILINESTRING": "MultiLineString",
+    "MULTIPOLYGON": "MultiPolygon",
+    "GEOMETRYCOLLECTION": "GeometryCollection",
+}
+
+_GEOMETRY_CRS = re.compile(r"^GEOMETRY\('(?P<crs>[^']+)'\)$", re.IGNORECASE)
+
+
+def _normalize_type(data_type: str) -> str:
+    """Map a DuckDB type name to the type names `tipg.collections.Column` understands."""
+    t = data_type.upper()
+    if t == "GEOMETRY" or _GEOMETRY_CRS.match(t):
+        return "geometry"
+
+    if t.endswith("[]"):
+        return _normalize_type(data_type[:-2]) + "[]"
+
+    if t.startswith("DECIMAL"):
+        return "numeric"
+
+    return _DUCK_TYPES.get(t, "text")
+
+
+def _geometry_srid(data_type: str) -> int:
+    """SRID of a geometry column, from its type (e.g `GEOMETRY('EPSG:26915')`).
+
+    Geometries without CRS (or in OGC:CRS84) are assumed to be in EPSG:4326.
+    """
+    if m := _GEOMETRY_CRS.match(data_type):
+        auth, _, code = m.group("crs").partition(":")
+        if auth.upper() == "EPSG" and code.isdigit():
+            return int(code)
+
+        if m.group("crs").upper() not in ("OGC:CRS84", "CRS84"):
+            logger.warning(
+                f"Unsupported geometry CRS {m.group('crs')}, assuming EPSG:4326"
+            )
+
+    return 4326
+
+
+def _iso_datetime(value: Any) -> str | None:
+    """ISO format a date/datetime extent (naive values are assumed to be UTC)."""
+    if value is None:
+        return None
+
+    if not isinstance(value, datetime.datetime):
+        value = datetime.datetime.combine(value, datetime.time())
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+
+    return value.isoformat()
+
+
+def _table_metadata(  # noqa: C901
+    cursor: duckdb.DuckDBPyConnection,
+    qualified_name: str,
+    columns: list[dict[str, Any]],
+    settings: DuckDBCatalogSettings,
+) -> None:
+    """Add geometry type, bounds and datetime extents to the columns (in place)."""
+    exprs: list[str] = []
+    for c in columns:
+        q = _quote_ident(c["name"])
+        if c["type"] == "geometry":
+            c["geometry_type"] = "Geometry"
+            if settings.spatial_extent:
+                extent = f"ST_Extent_Agg({q})"
+                if c["srid"] != 4326:
+                    extent = (
+                        f"ST_Transform({extent}, '{_crs(c['srid'])}', '{_crs(4326)}')"
+                    )
+                exprs.extend(
+                    [
+                        f"ST_XMin({extent})",
+                        f"ST_YMin({extent})",
+                        f"ST_XMax({extent})",
+                        f"ST_YMax({extent})",
+                        f"CAST(min(ST_GeometryType({q})) AS VARCHAR)",
+                        f"CAST(max(ST_GeometryType({q})) AS VARCHAR)",
+                    ]
+                )
+
+        elif (
+            c["type"] in ("timestamp", "timestamptz", "date")
+            and settings.datetime_extent
+        ):
+            exprs.extend([f"min({q})", f"max({q})"])
+
+    if not exprs:
+        return
+
+    values = iter(
+        cursor.execute(f"SELECT {', '.join(exprs)} FROM {qualified_name}").fetchone()  # type: ignore [arg-type]
+    )
+    for c in columns:
+        if c["type"] == "geometry" and settings.spatial_extent:
+            xmin, ymin, xmax, ymax, gmin, gmax = (next(values) for _ in range(6))
+            if xmin is not None:
+                c["bounds"] = [xmin, ymin, xmax, ymax]
+            if gmin is not None and gmin == gmax:
+                c["geometry_type"] = _GEOMETRY_TYPES.get(gmin.upper(), "Geometry")
+
+        elif (
+            c["type"] in ("timestamp", "timestamptz", "date")
+            and settings.datetime_extent
+        ):
+            c["mindt"] = _iso_datetime(next(values))
+            c["maxdt"] = _iso_datetime(next(values))
+
+
+def _collection_index(  # noqa: C901
+    connection: duckdb.DuckDBPyConnection,
+    settings: DuckDBCatalogSettings,
+) -> list[Collection]:
+    """Fetch Tables and Views index (blocking)."""
+    cursor = connection.cursor()
+    try:
+        relations = cursor.execute(
+            """
+            SELECT database_name, schema_name, table_name, 'Table', comment
+            FROM duckdb_tables()
+            WHERE NOT internal AND NOT temporary
+            UNION ALL
+            SELECT database_name, schema_name, view_name, 'View', comment
+            FROM duckdb_views()
+            WHERE NOT internal AND NOT temporary
+            ORDER BY 1, 2, 3
+            """
+        ).fetchall()
+
+        columns_rows = cursor.execute(
+            """
+            SELECT database_name, schema_name, table_name, column_name, data_type, comment
+            FROM duckdb_columns()
+            WHERE NOT internal
+            ORDER BY database_name, schema_name, table_name, column_index
+            """
+        ).fetchall()
+
+        pk_rows = cursor.execute(
+            """
+            SELECT database_name, schema_name, table_name, constraint_column_names
+            FROM duckdb_constraints()
+            WHERE constraint_type = 'PRIMARY KEY'
+            """
+        ).fetchall()
+
+        table_columns: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for db, schema, table, name, data_type, comment in columns_rows:
+            col: dict[str, Any] = {
+                "name": name,
+                "type": _normalize_type(data_type),
+                "description": comment,
+            }
+            if col["type"] == "geometry":
+                col["srid"] = _geometry_srid(data_type)
+            table_columns.setdefault((db, schema, table), []).append(col)
+
+        pks = {
+            (db, schema, table): names[0]
+            for db, schema, table, names in pk_rows
+            if len(names) == 1
+        }
+
+        table_settings = TableSettings()
+        table_confs = table_settings.table_config
+        fallback_key_names = table_settings.fallback_key_names
+
+        collections: dict[str, Collection] = {}
+        for db, schema, table, entity, comment in relations:
+            if schema not in settings.schemas:
+                continue
+
+            table_id = f"{schema}.{table}"
+            if settings.tables is not None and table_id not in settings.tables:
+                continue
+
+            if settings.exclude_tables and table_id in settings.exclude_tables:
+                continue
+
+            if table_id in collections:
+                logger.warning(
+                    f"Collection {table_id} already registered, skipping `{db}`.{table_id}"
+                )
+                continue
+
+            columns = table_columns.get((db, schema, table), [])
+            if settings.only_spatial_tables and not any(
+                c["type"] == "geometry" for c in columns
+            ):
+                continue
+
+            qualified_name = ".".join(_quote_ident(p) for p in (db, schema, table))
+            _table_metadata(cursor, qualified_name, columns, settings)
+
+            table_conf = table_confs.get(f"{schema}_{table}", TableConfig())
+
+            if table_settings.sort_columns:
+                columns = sorted(columns, key=lambda d: d["name"])
+
+            cols = [Column(**c) for c in columns]
+            properties_setting = table_conf.properties or [c.name for c in cols]
+
+            # ID Column
+            id_column = None
+            if id_name := table_conf.pk or pks.get((db, schema, table)):
+                for column in cols:
+                    if id_name == column.name:
+                        id_column = column
+                        break
+
+            if id_column is None and fallback_key_names:
+                for column in cols:
+                    if column.name in fallback_key_names:
+                        id_column = column
+                        break
+
+            datetime_column = None
+            geometry_column = None
+            for column in cols:
+                if column.is_datetime:
+                    if table_conf.datetimecol == column.name or datetime_column is None:
+                        datetime_column = column
+
+                if column.is_geometry:
+                    if table_conf.geomcol == column.name or geometry_column is None:
+                        geometry_column = column
+
+            collections[table_id] = DuckCollection(
+                type=entity,
+                id=table_id,
+                table=table,
+                database=db,
+                schema=schema,
+                description=comment,
+                table_columns=cols,
+                properties=[c for c in cols if c.name in properties_setting],
+                id_column=id_column,
+                datetime_column=datetime_column,
+                geometry_column=geometry_column,
+                connection=connection,
+            )
+
+    finally:
+        cursor.close()
+
+    return list(collections.values())
+
+
+async def duck_get_collection_index(
+    connection: duckdb.DuckDBPyConnection,
+    settings: DuckDBCatalogSettings | None = None,
+) -> list[Collection]:
+    """Fetch Tables and Views index."""
+    return await run_in_threadpool(
+        _collection_index, connection, settings or DuckDBCatalogSettings()
+    )
