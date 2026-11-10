@@ -145,3 +145,8 @@ tag_name = "{new_version}"
 filename = "tipg/__init__.py"
 search = '__version__ = "{current_version}"'
 replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = ".release-please-manifest.json"
+search = '".": "{current_version}"'
+replace = '".": "{new_version}"'
