@@ -63,6 +63,14 @@ class PgCollection(Collection):
         """SQL-quoted ``"schema"."table"`` identifier for this collection."""
         return f"{_quote_ident(self.dbschema)}.{_quote_ident(self.table)}"
 
+    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+        """Tag a geometry literal with its SRID (PostGIS ``ST_SetSRID``)."""
+        return {"op": "st_setsrid", "args": [geom, srid]}
+
+    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+        """Reproject a EPSG:4326 geometry literal to ``srid`` (PostGIS ``ST_Transform``)."""
+        return {"op": "st_transform", "args": [geom, srid]}
+
     def _select_property_columns(self, properties: list[str] | None) -> list[str]:
         """Quoted column-name fragments for the property columns to SELECT."""
         return [_quote_ident(c) for c in self.columns(properties)]

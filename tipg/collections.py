@@ -32,16 +32,6 @@ def _quote_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
-def _pg_setsrid(geom: Any, srid: int) -> Any:
-    """Tag a geometry literal with ``srid`` (PostGIS ``ST_SetSRID``)."""
-    return {"op": "st_setsrid", "args": [geom, srid]}
-
-
-def _pg_transform(geom: Any, srid: int) -> Any:
-    """Reproject a EPSG:4326 geometry literal to ``srid`` (PostGIS ``ST_Transform``)."""
-    return {"op": "st_transform", "args": [geom, srid]}
-
-
 _INT_PG_TYPES = frozenset(
     {
         "smallint",
@@ -81,12 +71,13 @@ def _s_intersects_bbox(
     east: float,
     north: float,
     srid: int | None = None,
-    tag: GeometryLiteralWrapper = _pg_setsrid,
+    *,
+    tag: GeometryLiteralWrapper,
 ) -> Expr:
     """Build a cql2 S_INTERSECTS expression against a polygon envelope.
 
     Coordinates are taken to be in ``srid``; if ``srid`` is non-4326, the
-    polygon literal is wrapped with ``tag`` (``ST_SetSRID`` by default) so
+    polygon literal is wrapped with ``tag`` (e.g PostGIS ``ST_SetSRID``) so
     the database does not pick up ``ST_GeomFromGeoJSON``'s 4326 default.
     Pass ``srid=None`` or ``srid=4326`` for the no-op case.
     """
@@ -123,10 +114,10 @@ _GEOJSON_GEOMETRY_TYPES = frozenset(
 def _transform_cql_geom_literals(
     node: Any,
     target_srid: int,
-    reproject: GeometryLiteralWrapper = _pg_transform,
+    reproject: GeometryLiteralWrapper,
 ) -> Any:
     """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
-    literal with ``reproject`` (``ST_Transform(<literal>, target_srid)`` by default).
+    literal with ``reproject`` (e.g PostGIS ``ST_Transform(<literal>, target_srid)``).
 
     Per OGC API Features Part 3 Req 7, geometries in a CQL filter are
     CRS84 (≈ EPSG:4326). Wrapping the literal side (rather than the
@@ -409,17 +400,19 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return {**geoms, **props}
 
+    @abc.abstractmethod
     def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
         """Tag a cql2-json geometry literal, whose coordinates are already in
-        ``srid``, with that CRS. Defaults to PostGIS ``ST_SetSRID``.
+        ``srid``, with that CRS (returns a cql2-json function call node).
         """
-        return _pg_setsrid(geom, srid)
+        ...
 
+    @abc.abstractmethod
     def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
-        """Reproject a EPSG:4326 cql2-json geometry literal to ``srid``.
-        Defaults to PostGIS ``ST_Transform``.
+        """Reproject a EPSG:4326 cql2-json geometry literal to ``srid``
+        (returns a cql2-json function call node).
         """
-        return _pg_transform(geom, srid)
+        ...
 
     def cql_where(  # noqa: C901
         self,
