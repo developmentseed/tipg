@@ -23,6 +23,10 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * perf: use `ST_EstimatedExtent` for spatial extents whenever table statistics exist.
 * perf: cache `Collection.extent`, `bounds`, `dt_bounds`, `geometry_columns` and `datetime_columns` (`functools.cached_property`) instead of recomputing them on every access
 * perf: skip SQL statement formatting in `tipg.pg.collections.debug_query` when `DEBUG` logging is disabled
+* feat: add DuckDB backend (`tipg.duck`, `tipg[duckdb]` extra) to serve DuckDB tables, views and files (GeoParquet, `ST_Read` formats) as OGC Features and Tiles collections, alone or mixed with PostgreSQL collections in the same catalog
+    * `connect_to_duckdb` / `close_duckdb_connection` to manage the connection (`app.state.duckdb_connection`)
+    * `duck_get_collection_index(*, connection, settings=None)` to list the collections
+    * `DuckDBSettings` / `DuckDBCatalogSettings` (`TIPG_DUCKDB_` env prefix)
 * change: add `Collection._tag_geometry_literal` and `Collection._reproject_geometry_literal` abstract methods, defining how CQL2/bbox geometry literals are tagged with, or reprojected to, the geometry column CRS for each backend **breaking change** (custom `Collection` subclasses must implement them)
 * change: move `_quote_ident` from `tipg.pg.collections` to `tipg.collections`
 * docs: update the `examples/non_app_usage.ipynb` notebook for the new `tipg.pg` API
