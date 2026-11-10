@@ -287,3 +287,26 @@ def test_mixed_catalog(mixed_app):
         "/collections/public.landsat_wrs/tiles/WebMercatorQuad/0/0/0"
     )
     assert response.status_code == 200
+
+
+def test_sources_only(duck_app_sources_only):
+    """Without database file, only the file sources are served."""
+    body = duck_app_sources_only.get("/collections").json()
+    assert [c["id"] for c in body["collections"]] == ["main.landmarks"]
+
+    body = duck_app_sources_only.get("/collections/main.landmarks/items").json()
+    assert body["numberMatched"] == 5
+
+
+def test_database_alias(duckdb_files):
+    """The database file is attached under its file name, also for URLs."""
+    from tipg.duck import DuckDBSettings, create_connection
+
+    conn = create_connection(
+        DuckDBSettings(database=f"file://{duckdb_files['database']}")
+    )
+    rows = conn.execute(
+        "SELECT database_name, readonly FROM duckdb_databases() WHERE NOT internal"
+    ).fetchall()
+    assert ("test", True) in rows
+    conn.close()

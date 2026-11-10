@@ -7,8 +7,8 @@ class DuckDBSettings(BaseSettings):
     """DuckDB connection settings.
 
     Attributes:
-        database: path to a DuckDB database file, attached under its file name
-            (default to an in-memory database only).
+        database: path or URL to a DuckDB database file, attached under its
+            file name (without extension). If not set, only `sources` are served.
         read_only: attach the database file in read-only mode.
         threads: number of threads DuckDB can use.
         memory_limit: maximum memory DuckDB can use (e.g `4GB`).
@@ -19,7 +19,7 @@ class DuckDBSettings(BaseSettings):
 
     """
 
-    database: str = ":memory:"
+    database: str | None = None
     read_only: bool = True
     threads: int | None = None
     memory_limit: str | None = None

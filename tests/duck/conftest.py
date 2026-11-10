@@ -186,3 +186,13 @@ def mixed_app(database_url, duckdb_settings):
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture
+def duck_app_sources_only(duckdb_files):
+    """DuckDB TiPg app without database file (file sources only)."""
+    settings = DuckDBSettings(sources={"landmarks": duckdb_files["parquet"]})
+    assert settings.database is None
+    app = create_duck_app(settings, DuckDBCatalogSettings())
+    with TestClient(app) as client:
+        yield client

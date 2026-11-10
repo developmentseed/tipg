@@ -17,7 +17,7 @@ python -m pip install "tipg[duckdb]"
 
 | Setting | Env | Default | Description |
 | ------- | --- | ------- | ----------- |
-| `database` | `TIPG_DUCKDB_DATABASE` | `:memory:` | Path to a DuckDB database file, attached under its file name (without extension) |
+| `database` | `TIPG_DUCKDB_DATABASE` | | Path or URL to a DuckDB database file, attached under its file name (without extension). If not set, only `sources` are served |
 | `read_only` | `TIPG_DUCKDB_READ_ONLY` | `True` | Attach the database file in read-only mode |
 | `threads` | `TIPG_DUCKDB_THREADS` | | Number of threads DuckDB can use |
 | `memory_limit` | `TIPG_DUCKDB_MEMORY_LIMIT` | | Maximum memory DuckDB can use (e.g `4GB`) |
