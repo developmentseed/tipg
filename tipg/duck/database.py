@@ -36,7 +36,7 @@ def create_connection(settings: DuckDBSettings) -> duckdb.DuckDBPyConnection:
     which creates a new connection to the same database instance, so we
     can't use TEMP views (connection-local) nor session-level `SET`.
     """
-    config: dict[str, str | int] = {}
+    config: dict[str, str | bool | int | float | list[str]] = {}
     if settings.threads:
         config["threads"] = settings.threads
     if settings.memory_limit:
