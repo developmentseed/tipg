@@ -10,7 +10,11 @@ from pytest_postgresql.janitor import DatabaseJanitor
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
-from tipg.pg.settings import CustomSQLSettings, DatabaseSettings, PostgresSettings
+from tipg.pg.settings import (
+    CustomSQLSettings,
+    PostgresCatalogSettings,
+    PostgresSettings,
+)
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 TEMPLATE_DIRECTORY = os.path.join(FIXTURES_DIR, "templates")
@@ -100,7 +104,7 @@ def database_url(database):
 
 def create_tipg_app(
     postgres_settings: PostgresSettings,
-    db_settings: DatabaseSettings,
+    postgres_catalog_settings: PostgresCatalogSettings,
     sql_settings: CustomSQLSettings,
 ) -> FastAPI:
     """Create TiPG Application."""
@@ -114,12 +118,14 @@ def create_tipg_app(
         """FastAPI Lifespan."""
         await connect_to_db(
             app,
-            schemas=db_settings.schemas,
-            tipg_schema=db_settings.tipg_schema,
+            schemas=postgres_catalog_settings.schemas,
+            tipg_schema=postgres_catalog_settings.tipg_schema,
             user_sql_files=sql_settings.sql_files,
             settings=postgres_settings,
         )
-        await register_collection_catalog(app, db_settings=db_settings)
+        await register_collection_catalog(
+            app, catalog_settings=postgres_catalog_settings
+        )
         yield
         await close_db_connection(app)
 
@@ -164,12 +170,12 @@ def app(database_url, monkeypatch):
 
     monkeypatch.setenv("TIPG_DEBUG", "TRUE")
 
-    from tipg.main import app, db_settings
+    from tipg.main import app, pg_catalog_settings
 
-    db_settings.only_spatial_tables = False
-    db_settings.exclude_tables = None
-    db_settings.tables = None
-    db_settings.functions = None
+    pg_catalog_settings.only_spatial_tables = False
+    pg_catalog_settings.exclude_tables = None
+    pg_catalog_settings.tables = None
+    pg_catalog_settings.functions = None
 
     with TestClient(app) as app:
         yield app
@@ -179,7 +185,7 @@ def app(database_url, monkeypatch):
 def app_excludes(database_url, monkeypatch):
     """Create APP with but excludes `public.nongeo_data` and `public.minnesota` tables."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    pg_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         exclude_tables=["public.nongeo_data", "public.minnesota"],
         functions=[],
@@ -189,7 +195,7 @@ def app_excludes(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=pg_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -201,7 +207,7 @@ def app_excludes(database_url, monkeypatch):
 def app_includes(database_url, monkeypatch):
     """Create APP with only `public.nongeo_data` and `public.minnesota` table."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         tables=["public.nongeo_data", "public.minnesota"],
         functions=[],
@@ -211,7 +217,7 @@ def app_includes(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -223,7 +229,7 @@ def app_includes(database_url, monkeypatch):
 def app_excludes_function(database_url, monkeypatch):
     """Create APP with but excludes `pg_temp.squares` and `public.st_squaregrid` functions."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         tables=[],
         exclude_functions=["pg_temp.squares", "public.st_squaregrid"],
@@ -232,7 +238,7 @@ def app_excludes_function(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -244,7 +250,7 @@ def app_excludes_function(database_url, monkeypatch):
 def app_includes_function(database_url, monkeypatch):
     """Create APP with only `public.nongeo_data` table."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=[],
         tables=[],
         functions=["pg_temp.hexagons"],
@@ -253,7 +259,7 @@ def app_includes_function(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -265,7 +271,7 @@ def app_includes_function(database_url, monkeypatch):
 def app_empty(database_url, monkeypatch):
     """Create APP with only no table nor function."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=[],
         tables=[],
         functions=[],
@@ -274,7 +280,7 @@ def app_empty(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -289,7 +295,7 @@ def app_myschema(database_url):
     Available tables should come from `myschema` and functions from `pg_temp`.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["myschema"],
         only_spatial_tables=False,
     )
@@ -297,7 +303,7 @@ def app_myschema(database_url):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -312,7 +318,7 @@ def app_myschema_public(database_url, monkeypatch):
     Available tables should come from `myschema` and `public` and functions from `pg_temp`.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["myschema", "public"],
         exclude_function_schemas=["public"],
         only_spatial_tables=False,
@@ -321,7 +327,7 @@ def app_myschema_public(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -337,7 +343,7 @@ def app_no_extents(database_url, monkeypatch):
     Available tables should come from `myschema` and `public` and functions from `pg_temp`.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["myschema", "public"],
         spatial_extent=False,
         datetime_extent=False,
@@ -347,7 +353,7 @@ def app_no_extents(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -363,7 +369,7 @@ def app_no_spatial_extent(database_url, monkeypatch):
     Available tables should come from `myschema` and `public` and functions from `pg_temp`.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["myschema", "public"],
         spatial_extent=False,
         datetime_extent=True,
@@ -373,7 +379,7 @@ def app_no_spatial_extent(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -388,7 +394,7 @@ def app_myschema_public_functions(database_url, monkeypatch):
     Available tables should come from `myschema` and functions from `pg_temp` and `public` schema.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["myschema", "public"],
         exclude_table_schemas=["public"],
         only_spatial_tables=False,
@@ -397,7 +403,7 @@ def app_myschema_public_functions(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -412,7 +418,7 @@ def app_only_public_functions(database_url, monkeypatch):
     Available functions from `pg_temp` and `public` schema (no tables available).
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         exclude_table_schemas=["public"],
         only_spatial_tables=False,
@@ -421,7 +427,7 @@ def app_only_public_functions(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -436,7 +442,7 @@ def app_myschema_public_order(database_url, monkeypatch):
     Available tables should come from `myschema` and `public` and functions from `pg_temp`.
     """
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public", "myschema"],
         exclude_function_schemas=["public"],
         only_spatial_tables=False,
@@ -445,7 +451,7 @@ def app_myschema_public_order(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -457,7 +463,7 @@ def app_myschema_public_order(database_url, monkeypatch):
 def app_user_schema(database_url):
     """Create APP with only tables from `userschema` schemas."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["userschema"],
         exclude_table_schemas=["public"],
         only_spatial_tables=False,
@@ -466,7 +472,7 @@ def app_user_schema(database_url):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -483,7 +489,7 @@ def app_middleware_refresh(database_url, monkeypatch):
     from tipg.pg.database import close_db_connection, connect_to_db
 
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         exclude_function_schemas=["public"],
     )
@@ -493,11 +499,13 @@ def app_middleware_refresh(database_url, monkeypatch):
         """FastAPI Lifespan."""
         await connect_to_db(
             app,
-            schemas=db_settings.schemas,
-            tipg_schema=db_settings.tipg_schema,
+            schemas=postgres_catalog_settings.schemas,
+            tipg_schema=postgres_catalog_settings.tipg_schema,
             settings=postgres_settings,
         )
-        await register_collection_catalog(app, db_settings=db_settings)
+        await register_collection_catalog(
+            app, catalog_settings=postgres_catalog_settings
+        )
         yield
         await close_db_connection(app)
 
@@ -513,7 +521,7 @@ def app_middleware_refresh(database_url, monkeypatch):
         CatalogUpdateMiddleware,
         func=register_collection_catalog,
         ttl=2,
-        db_settings=db_settings,
+        catalog_settings=postgres_catalog_settings,
     )
 
     with TestClient(app) as client:
@@ -524,12 +532,14 @@ def app_middleware_refresh(database_url, monkeypatch):
 def app_functions(database_url, monkeypatch):
     """Create APP with only custom functions."""
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(schemas=["badschema"], only_spatial_tables=False)
+    postgres_catalog_settings = PostgresCatalogSettings(
+        schemas=["badschema"], only_spatial_tables=False
+    )
     sql_settings = CustomSQLSettings(custom_sql_directory=SQL_FUNCTIONS_DIRECTORY)
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 
@@ -543,7 +553,7 @@ def app_public_table(database_url, monkeypatch):
     monkeypatch.setenv("TIPG_TABLE_CONFIG__public_landsat_wrs__properties", '["pr"]')
 
     postgres_settings = PostgresSettings(database_url=database_url)
-    db_settings = DatabaseSettings(
+    postgres_catalog_settings = PostgresCatalogSettings(
         schemas=["public"],
         functions=[],
     )
@@ -551,7 +561,7 @@ def app_public_table(database_url, monkeypatch):
 
     app = create_tipg_app(
         postgres_settings=postgres_settings,
-        db_settings=db_settings,
+        postgres_catalog_settings=postgres_catalog_settings,
         sql_settings=sql_settings,
     )
 

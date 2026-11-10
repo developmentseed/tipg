@@ -14,7 +14,7 @@ from tipg.collections import Catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import OGCFeaturesFactory
 from tipg.pg import (
-    DatabaseSettings,
+    PostgresCatalogSettings,
     PostgresSettings,
     close_db_connection,
     connect_to_db,
@@ -26,15 +26,13 @@ from fastapi import FastAPI
 
 async def register_collection_catalog(
     app: FastAPI,
-    db_settings: DatabaseSettings | None = None,
+    catalog_settings: PostgresCatalogSettings | None = None,
 ) -> None:
     """Register Collection catalog."""
-    async with app.state.pool.acquire() as conn:
-        collections = await pg_get_collection_index(
-            conn,
-            settings=db_settings,
-            connection_pool=app.state.pool,
-        )
+    collections = await pg_get_collection_index(
+        connection_pool=app.state.pool,
+        settings=catalog_settings,
+    )
 
     app.state.collection_catalog = Catalog(
         collections={col.id: col for col in collections},
@@ -59,7 +57,10 @@ async def lifespan(app: FastAPI):
     )
     await register_collection_catalog(
         app,
-        db_settings=DatabaseSettings(schemas=["public"], application_schema="pg_temp"),
+        catalog_settings=PostgresCatalogSettings(
+            schemas=["public"],
+            application_schema="pg_temp",
+        ),
     )
 
     yield
@@ -116,10 +117,10 @@ In [`eoAPI`](https://github.com/developmentseed/eoAPI), we use a custom logo by 
 
 `Functions` will be either found by `tipg` at startup within the specified schemas or by registering them dynamically to the [`pg_temp`](https://www.postgresql.org/docs/current/runtime-config-client.html) schema when creating the [Database connection](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/db.py#L63-L65).
 
-To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in [tipg.db.connect_to_db](https://github.com/developmentseed/tipg/blob/2543707238a97a0527effff710a83f9bea66440f/tipg/main.py#L90-L109).
+To `register` custom SQL functions, user can set `TIPG_CUSTOM_SQL_DIRECTORY` environment variable when using `tipg` demo application or set `user_sql_files` option in `tipg.pg.connect_to_db`.
 
 ```python
-from tipg.pg import DatabaseSettings, PostgresSettings, connect_to_db
+from tipg.pg import PostgresCatalogSettings, PostgresSettings, connect_to_db
 
 # `register_collection_catalog` defined as in the "Application" example above
 
@@ -139,7 +140,7 @@ async def startup_event() -> None:
     )
     await register_collection_catalog(
         app,
-        db_settings=DatabaseSettings(
+        catalog_settings=PostgresCatalogSettings(
             schemas=["public"],
             exclude_function_schemas=["public"],
         ),

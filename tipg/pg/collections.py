@@ -17,7 +17,7 @@ from ..errors import (
 )
 from ..logger import logger
 from ..settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
-from .settings import DatabaseSettings
+from .settings import PostgresCatalogSettings
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()  # type: ignore [call-arg]
@@ -489,14 +489,13 @@ class PgCollection(Collection):
 
 
 async def pg_get_collection_index(  # noqa: C901
-    conn: asyncpg.Connection,
-    settings: DatabaseSettings | None = None,
     *,
     connection_pool: asyncpg.Pool,
+    settings: PostgresCatalogSettings | None = None,
 ) -> list[Collection]:
     """Fetch Table and Functions index."""
     if not settings:
-        settings = DatabaseSettings()
+        settings = PostgresCatalogSettings()
 
     schemas = settings.schemas or ["public"]
 
@@ -506,82 +505,83 @@ async def pg_get_collection_index(  # noqa: C901
         );
     """
 
-    rows = await conn.fetch(
-        query,
-        schemas,
-        settings.tables,
-        settings.exclude_tables,
-        settings.exclude_table_schemas,
-        settings.functions,
-        settings.exclude_functions,
-        settings.exclude_function_schemas,
-        settings.only_spatial_tables,
-        settings.spatial_extent,
-        settings.datetime_extent,
-    )
-
-    collections: list[Collection] = []
-    table_settings = TableSettings()
-    table_confs = table_settings.table_config
-    fallback_key_names = table_settings.fallback_key_names
-
-    for row in rows:
-        table = row[0]
-        table_id = table["schema"] + "." + table["name"]
-        confid = table["schema"] + "_" + table["name"]
-
-        if table_id == f"{settings.tipg_schema}.tipg_catalog":
-            continue
-
-        table_conf = table_confs.get(confid, TableConfig())
-
-        # Make sure that any properties set in conf exist in table
-        columns = table.get("properties", [])
-        if table_settings.sort_columns:
-            columns = sorted(columns, key=lambda d: d["name"])
-
-        properties_setting = table_conf.properties or [c["name"] for c in columns]
-
-        # ID Column
-        id_column = None
-        if id_name := table_conf.pk or table.get("pk"):
-            for p in columns:
-                if id_name == p["name"]:
-                    id_column = p
-                    break
-
-        if id_column is None and fallback_key_names:
-            for p in columns:
-                if p["name"] in fallback_key_names:
-                    id_column = p
-                    break
-
-        datetime_column = None
-        geometry_column = None
-
-        for c in columns:
-            if c.get("type") in ("timestamp", "timestamptz", "date"):
-                if table_conf.datetimecol == c["name"] or datetime_column is None:
-                    datetime_column = c
-
-            if c.get("type") in ("geometry", "geography"):
-                if table_conf.geomcol == c["name"] or geometry_column is None:
-                    geometry_column = c
-
-        collection = PgCollection(
-            type=table["entity"],
-            id=table_id,
-            table=table["name"],
-            schema=table["schema"],
-            description=table.get("description", None),
-            table_columns=columns,
-            properties=[p for p in columns if p["name"] in properties_setting],
-            id_column=id_column,
-            datetime_column=datetime_column,
-            geometry_column=geometry_column,
-            parameters=table.get("parameters") or [],
-            connection_pool=connection_pool,
+    async with connection_pool.acquire() as conn:
+        rows = await conn.fetch(
+            query,
+            schemas,
+            settings.tables,
+            settings.exclude_tables,
+            settings.exclude_table_schemas,
+            settings.functions,
+            settings.exclude_functions,
+            settings.exclude_function_schemas,
+            settings.only_spatial_tables,
+            settings.spatial_extent,
+            settings.datetime_extent,
         )
-        collections.append(collection)
+
+        collections: list[Collection] = []
+        table_settings = TableSettings()
+        table_confs = table_settings.table_config
+        fallback_key_names = table_settings.fallback_key_names
+
+        for row in rows:
+            table = row[0]
+            table_id = table["schema"] + "." + table["name"]
+            confid = table["schema"] + "_" + table["name"]
+
+            if table_id == f"{settings.tipg_schema}.tipg_catalog":
+                continue
+
+            table_conf = table_confs.get(confid, TableConfig())
+
+            # Make sure that any properties set in conf exist in table
+            columns = table.get("properties", [])
+            if table_settings.sort_columns:
+                columns = sorted(columns, key=lambda d: d["name"])
+
+            properties_setting = table_conf.properties or [c["name"] for c in columns]
+
+            # ID Column
+            id_column = None
+            if id_name := table_conf.pk or table.get("pk"):
+                for p in columns:
+                    if id_name == p["name"]:
+                        id_column = p
+                        break
+
+            if id_column is None and fallback_key_names:
+                for p in columns:
+                    if p["name"] in fallback_key_names:
+                        id_column = p
+                        break
+
+            datetime_column = None
+            geometry_column = None
+
+            for c in columns:
+                if c.get("type") in ("timestamp", "timestamptz", "date"):
+                    if table_conf.datetimecol == c["name"] or datetime_column is None:
+                        datetime_column = c
+
+                if c.get("type") in ("geometry", "geography"):
+                    if table_conf.geomcol == c["name"] or geometry_column is None:
+                        geometry_column = c
+
+            collection = PgCollection(
+                type=table["entity"],
+                id=table_id,
+                table=table["name"],
+                schema=table["schema"],
+                description=table.get("description", None),
+                table_columns=columns,
+                properties=[p for p in columns if p["name"] in properties_setting],
+                id_column=id_column,
+                datetime_column=datetime_column,
+                geometry_column=geometry_column,
+                parameters=table.get("parameters") or [],
+                connection_pool=connection_pool,
+            )
+            collections.append(collection)
 
     return collections

@@ -55,8 +55,8 @@ class PostgresSettings(BaseSettings):
         )
 
 
-class DatabaseSettings(BaseSettings):
-    """TiPg Database settings."""
+class PostgresCatalogSettings(BaseSettings):
+    """TiPg Postgres Catalog settings."""
 
     schemas: list[str] = ["public"]
     application_schema: str = "pg_temp"

@@ -17,7 +17,7 @@ from tipg.factory import OGCTilesFactory
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.pg import (
     CustomSQLSettings,
-    DatabaseSettings,
+    PostgresCatalogSettings,
     PostgresSettings,
     close_db_connection,
     connect_to_db,
@@ -31,21 +31,19 @@ from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
 postgres_settings = PostgresSettings()
-db_settings = DatabaseSettings()
+postgres_catalog_settings = PostgresCatalogSettings()
 custom_sql_settings = CustomSQLSettings()
 
 
 async def register_collection_catalog(
     app: FastAPI,
-    db_settings: DatabaseSettings | None = None,
+    catalog_settings: PostgresCatalogSettings | None = None,
 ) -> None:
     """Register Collection catalog."""
-    async with app.state.pool.acquire() as conn:
-        collections = await pg_get_collection_index(
-            conn,
-            settings=db_settings,
-            connection_pool=app.state.pool,
-        )
+    collections = await pg_get_collection_index(
+        connection_pool=app.state.pool,
+        settings=catalog_settings,
+    )
 
     app.state.collection_catalog = Catalog(
         collections={col.id: col for col in collections},
@@ -60,14 +58,14 @@ async def lifespan(app: FastAPI):
     await connect_to_db(
         app,
         settings=postgres_settings,
-        schemas=db_settings.schemas,
+        schemas=postgres_catalog_settings.schemas,
         user_sql_files=custom_sql_settings.sql_files,
     )
 
     # Register Collection Catalog
     await register_collection_catalog(
         app,
-        db_settings=db_settings,
+        catalog_settings=postgres_catalog_settings,
     )
 
     yield
@@ -110,7 +108,7 @@ app.add_middleware(
     CatalogUpdateMiddleware,
     func=register_collection_catalog,
     ttl=300,
-    db_settings=db_settings,
+    catalog_settings=postgres_catalog_settings,
 )
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
