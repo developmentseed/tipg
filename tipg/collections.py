@@ -2,6 +2,7 @@
 
 import abc
 import datetime
+from collections.abc import Callable
 from functools import cached_property, lru_cache, reduce
 from typing import Any, TypedDict
 
@@ -21,6 +22,15 @@ from .errors import (
 from .model import Extent
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
+
+# Wraps a cql2-json geometry node into a backend-specific function call
+GeometryLiteralWrapper = Callable[[Any, int], Any]
+
+
+def _quote_ident(name: str) -> str:
+    """Quote a SQL identifier (column/table/schema) safely."""
+    return '"' + name.replace('"', '""') + '"'
+
 
 _INT_PG_TYPES = frozenset(
     {
@@ -61,13 +71,15 @@ def _s_intersects_bbox(
     east: float,
     north: float,
     srid: int | None = None,
+    *,
+    tag: GeometryLiteralWrapper,
 ) -> Expr:
     """Build a cql2 S_INTERSECTS expression against a polygon envelope.
 
     Coordinates are taken to be in ``srid``; if ``srid`` is non-4326, the
-    polygon literal is wrapped in ``ST_SetSRID`` so PostGIS does not pick
-    up ``ST_GeomFromGeoJSON``'s 4326 default. Pass ``srid=None`` or
-    ``srid=4326`` for the no-op case.
+    polygon literal is wrapped with ``tag`` (e.g PostGIS ``ST_SetSRID``) so
+    the database does not pick up ``ST_GeomFromGeoJSON``'s 4326 default.
+    Pass ``srid=None`` or ``srid=4326`` for the no-op case.
     """
     polygon: Any = {
         "type": "Polygon",
@@ -82,7 +94,7 @@ def _s_intersects_bbox(
         ],
     }
     if srid is not None and srid != 4326:
-        polygon = {"op": "st_setsrid", "args": [polygon, srid]}
+        polygon = tag(polygon, srid)
     return Expr({"op": "s_intersects", "args": [{"property": prop}, polygon]})
 
 
@@ -99,9 +111,13 @@ _GEOJSON_GEOMETRY_TYPES = frozenset(
 )
 
 
-def _transform_cql_geom_literals(node: Any, target_srid: int) -> Any:
+def _transform_cql_geom_literals(
+    node: Any,
+    target_srid: int,
+    reproject: GeometryLiteralWrapper,
+) -> Any:
     """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
-    literal in ``ST_Transform(<literal>, target_srid)``.
+    literal with ``reproject`` (e.g PostGIS ``ST_Transform(<literal>, target_srid)``).
 
     Per OGC API Features Part 3 Req 7, geometries in a CQL filter are
     CRS84 (≈ EPSG:4326). Wrapping the literal side (rather than the
@@ -112,12 +128,15 @@ def _transform_cql_geom_literals(node: Any, target_srid: int) -> Any:
         if node.get("type") in _GEOJSON_GEOMETRY_TYPES and (
             "coordinates" in node or "geometries" in node
         ):
-            return {"op": "st_transform", "args": [node, target_srid]}
+            return reproject(node, target_srid)
         return {
-            k: _transform_cql_geom_literals(v, target_srid) for k, v in node.items()
+            k: _transform_cql_geom_literals(v, target_srid, reproject)
+            for k, v in node.items()
         }
     if isinstance(node, list):
-        return [_transform_cql_geom_literals(item, target_srid) for item in node]
+        return [
+            _transform_cql_geom_literals(item, target_srid, reproject) for item in node
+        ]
     return node
 
 
@@ -381,6 +400,20 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return {**geoms, **props}
 
+    @abc.abstractmethod
+    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+        """Tag a cql2-json geometry literal, whose coordinates are already in
+        ``srid``, with that CRS (returns a cql2-json function call node).
+        """
+        ...
+
+    @abc.abstractmethod
+    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+        """Reproject a EPSG:4326 cql2-json geometry literal to ``srid``
+        (returns a cql2-json function call node).
+        """
+        ...
+
     def cql_where(  # noqa: C901
         self,
         ids: list[str] | None = None,
@@ -408,7 +441,11 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         if cql is not None:
             if needs_srid_wrap:
-                cql = Expr(_transform_cql_geom_literals(cql.to_json(), col_srid))
+                cql = Expr(
+                    _transform_cql_geom_literals(
+                        cql.to_json(), col_srid, self._reproject_geometry_literal
+                    )
+                )
             exprs.append(cql)
 
         # `ids` filter
@@ -443,7 +480,13 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                 )
             exprs.append(
                 _s_intersects_bbox(
-                    geometry_column.name, west, south, east, north, srid=col_srid
+                    geometry_column.name,
+                    west,
+                    south,
+                    east,
+                    north,
+                    srid=col_srid,
+                    tag=self._tag_geometry_literal,
                 )
             )
 
@@ -547,6 +590,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                     east,
                     north,
                     srid=tile_target_srid,
+                    tag=self._tag_geometry_literal,
                 )
             )
 

@@ -11,17 +11,21 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * change: move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
     * `tipg.collections.PgCollection` and `tipg.collections.pg_get_collection_index` → `tipg.pg.collections`
     * `tipg.database` → `tipg.pg.database` (`connect_to_db`, `close_db_connection`)
-    * `tipg.settings.PostgresSettings`, `DatabaseSettings` and `CustomSQLSettings` → `tipg.pg.settings`
+    * `tipg.settings.PostgresSettings` and `CustomSQLSettings` → `tipg.pg.settings`
+    * `tipg.settings.DatabaseSettings` → `tipg.pg.settings.PostgresCatalogSettings` (renamed, still using the `TIPG_DB_` env prefix)
     * `tipg/sql/dbcatalog.sql` → `tipg/pg/sql/dbcatalog.sql`
-    * `connect_to_db`, `close_db_connection`, `pg_get_collection_index`, `PostgresSettings`, `DatabaseSettings` and `CustomSQLSettings` are re-exported from `tipg.pg`
+    * `connect_to_db`, `close_db_connection`, `pg_get_collection_index`, `PostgresSettings`, `PostgresCatalogSettings` and `CustomSQLSettings` are re-exported from `tipg.pg`
 * change: add required `connection_pool: asyncpg.Pool` attribute to `PgCollection` (reference to the shared pool, excluded from serialization) **breaking change**
 * change: remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
-* change: add required `connection_pool` keyword argument to `tipg.pg.collections.pg_get_collection_index` **breaking change**
-* change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) **breaking change**
+* change: update `tipg.pg.collections.pg_get_collection_index` signature to `pg_get_collection_index(*, connection_pool: asyncpg.Pool, settings: PostgresCatalogSettings | None = None)`: it acquires a connection from the pool instead of taking an `asyncpg.Connection` **breaking change**
+* change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) and replace its `db_settings` option with a required `catalog_settings: PostgresCatalogSettings` argument **breaking change**
 * perf: compute datetime extents with `min(col)::timestamptz` / `max(col)::timestamptz` instead of casting each value before aggregating, so btree indexes on `timestamp` / `date` columns are used instead of a full table scan on every catalog refresh
 * perf: use `ST_EstimatedExtent` for spatial extents whenever table statistics exist.
 * perf: cache `Collection.extent`, `bounds`, `dt_bounds`, `geometry_columns` and `datetime_columns` (`functools.cached_property`) instead of recomputing them on every access
 * perf: skip SQL statement formatting in `tipg.pg.collections.debug_query` when `DEBUG` logging is disabled
+* change: add `Collection._tag_geometry_literal` and `Collection._reproject_geometry_literal` abstract methods, defining how CQL2/bbox geometry literals are tagged with, or reprojected to, the geometry column CRS for each backend **breaking change** (custom `Collection` subclasses must implement them)
+* change: move `_quote_ident` from `tipg.pg.collections` to `tipg.collections`
+* docs: update the `examples/non_app_usage.ipynb` notebook for the new `tipg.pg` API
 
 ## [1.6.1] - 2026-09-03
 

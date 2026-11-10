@@ -19,7 +19,7 @@ from .middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from .openapi import _update_openapi
 from .pg import (
     CustomSQLSettings,
-    DatabaseSettings,
+    PostgresCatalogSettings,
     close_db_connection,
     connect_to_db,
     pg_get_collection_index,
@@ -27,21 +27,21 @@ from .pg import (
 from .settings import APISettings
 
 settings = APISettings()
-db_settings = DatabaseSettings()
+
+# Postgres Catalog Settings
+pg_catalog_settings = PostgresCatalogSettings()
 custom_sql_settings = CustomSQLSettings()
 
 
 async def register_collection_catalog(
     app: FastAPI,
-    db_settings: DatabaseSettings | None = None,
+    catalog_settings: PostgresCatalogSettings,
 ) -> None:
     """Register Table catalog."""
-    async with app.state.pool.acquire() as conn:
-        pg_collections = await pg_get_collection_index(
-            conn,
-            settings=db_settings,
-            connection_pool=app.state.pool,
-        )
+    pg_collections = await pg_get_collection_index(
+        connection_pool=app.state.pool,
+        settings=catalog_settings,
+    )
 
     app.state.collection_catalog = Catalog(
         collections={col.id: col for col in [*pg_collections]},
@@ -55,13 +55,16 @@ async def lifespan(app: FastAPI):
     # Create Connection Pool
     await connect_to_db(
         app,
-        schemas=db_settings.schemas,
-        tipg_schema=db_settings.tipg_schema,
+        schemas=pg_catalog_settings.schemas,
+        tipg_schema=pg_catalog_settings.tipg_schema,
         user_sql_files=custom_sql_settings.sql_files,
     )
 
     # Register Collection Catalog
-    await register_collection_catalog(app, db_settings=db_settings)
+    await register_collection_catalog(
+        app,
+        catalog_settings=pg_catalog_settings,
+    )
 
     yield
 
@@ -129,7 +132,7 @@ if settings.catalog_ttl:
         CatalogUpdateMiddleware,  # type: ignore[arg-type]
         func=register_collection_catalog,  # type: ignore[arg-type]
         ttl=settings.catalog_ttl,
-        db_settings=db_settings,
+        catalog_settings=pg_catalog_settings,
     )
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
@@ -159,6 +162,6 @@ if settings.debug:
         """Return parsed catalog data for testing."""
         await register_collection_catalog(
             request.app,
-            db_settings=db_settings,
+            catalog_settings=pg_catalog_settings,
         )
         return request.app.state.collection_catalog

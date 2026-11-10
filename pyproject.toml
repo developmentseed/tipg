@@ -46,6 +46,9 @@ dev = [
     "mapbox-vector-tile>=2.1",
     "numpy",
     "pre-commit",
+    "IPython",
+    "jupyter",
+    "folium",
     "bump-my-version",
     "tipg[metrics]",
 ]

@@ -1,1 +1,1 @@
-::: tipg.collections
+::: tipg.pg.database

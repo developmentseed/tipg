@@ -5,7 +5,7 @@ Example of `.env` file can be found in [.env.example](https://github.com/develop
 
 ## DB connection settings
 
-class: `tipg.settings.PostgresSettings`
+class: `tipg.pg.settings.PostgresSettings`
 
 #### Database address
 
@@ -45,7 +45,7 @@ ref: https://magicstack.github.io/asyncpg/current/api/index.html#connection-pool
 
 ## DB visibility settings
 
-class: `tipg.settings.DatabaseSettings`
+class: `tipg.pg.settings.PostgresCatalogSettings`
 
 prefix: **`TIPG_DB_`**
 
@@ -94,7 +94,7 @@ TIPG_TABLE_CONFIG__pgstac_items__PK=id
 
 `TiPG` allows for exposing custom `SQL Functions` as collections (see https://developmentseed.org/tipg/advanced/functions/)
 
-class: `tipg.settings.CustomSQLSettings`
+class: `tipg.pg.settings.CustomSQLSettings`
 
 prefix: **`TIPG_`**
 
