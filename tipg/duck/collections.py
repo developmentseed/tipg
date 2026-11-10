@@ -21,18 +21,16 @@ mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()  # type: ignore [call-arg]
 
 # Column types (as normalized in the catalog) ST_AsMVT can encode as-is
-_MVT_NATIVE_TYPES = frozenset(
-    {
-        "smallint",
-        "integer",
-        "bigint",
-        "real",
-        "float8",
-        "boolean",
-        "text",
-        "json",
-    }
-)
+_MVT_NATIVE_TYPES = frozenset({"real", "float8", "boolean", "text", "json"})
+
+# Integer types (as normalized in the catalog) → DuckDB type ST_AsMVT accepts.
+# The normalized name may come from a type ST_AsMVT rejects (e.g. ``UINTEGER``
+# is normalized to ``bigint``, ``TINYINT`` to ``smallint``), so always cast.
+_MVT_INTEGER_CASTS = {
+    "smallint": "INTEGER",
+    "integer": "INTEGER",
+    "bigint": "BIGINT",
+}
 
 
 def _quote_literal(value: str) -> str:
@@ -88,6 +86,8 @@ class DuckCollection(Collection):
             q = _quote_ident(name)
             if col is None or col.type in _MVT_NATIVE_TYPES:
                 cols.append(q)
+            elif cast := _MVT_INTEGER_CASTS.get(col.type):
+                cols.append(f"CAST({q} AS {cast}) AS {q}")
             elif col.type == "numeric":
                 cols.append(f"CAST({q} AS DOUBLE) AS {q}")
             else:

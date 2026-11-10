@@ -246,6 +246,10 @@ def test_tiles_options(duck_app):
     assert props["price"] == 2.25
     assert props["day"] == "2020-01-02"
     assert props["tags"] == "[a, b]"
+    # integer types ST_AsMVT rejects (TINYINT, USMALLINT, UINTEGER) are cast
+    assert props["rank"] == 1
+    assert props["code"] == 100
+    assert props["count"] == 1000000
 
     response = duck_app.get(
         url, params={"sortby": "-id", "limit": 3, "properties": "id"}

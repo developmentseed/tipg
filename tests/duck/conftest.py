@@ -30,6 +30,9 @@ CREATE TABLE points (
     day DATE,
     tags VARCHAR[],
     props JSON,
+    rank TINYINT,
+    code USMALLINT,
+    count UINTEGER,
     geom GEOMETRY
 );
 INSERT INTO points
@@ -42,6 +45,9 @@ SELECT
     DATE '2020-01-01' + x::INTEGER,
     ['a', 'b'],
     '{"rank": ' || x || '}',
+    x,
+    x * 100,
+    x * 1000000,
     ST_Point(x, x)
 FROM range(1, 21) r(x);
 
