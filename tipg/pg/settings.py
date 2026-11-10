@@ -1,51 +1,14 @@
 """tipg config."""
 
-import json
 import pathlib
-from typing import Any
 
 from pydantic import (
-    BaseModel,
     DirectoryPath,
     PostgresDsn,
     ValidationInfo,
     field_validator,
 )
 from pydantic_settings import BaseSettings
-
-
-class TableConfig(BaseModel):
-    """Configuration to add table options with env variables."""
-
-    geomcol: str | None = None
-    datetimecol: str | None = None
-    pk: str | None = None
-    properties: list[str] | None = None
-
-    model_config = {"extra": "ignore"}
-
-    @field_validator("properties", mode="before")
-    def _properties(cls, v: Any) -> Any:
-        """set geometry from geo interface or input"""
-        if isinstance(v, str):
-            return json.loads(v)
-        else:
-            return v
-
-
-class TableSettings(BaseSettings):
-    """Table configuration settings"""
-
-    fallback_key_names: list[str] = ["ogc_fid", "id", "pkey", "gid"]
-    table_config: dict[str, TableConfig] = {}
-    sort_columns: bool = True
-
-    model_config = {
-        "env_prefix": "TIPG_",
-        "env_file": ".env",
-        "env_nested_delimiter": "__",
-        "extra": "ignore",
-    }
 
 
 class PostgresSettings(BaseSettings):
