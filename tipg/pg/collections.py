@@ -16,8 +16,8 @@ from ..errors import (
     InvalidPropertyName,
 )
 from ..logger import logger
-from ..settings import FeaturesSettings, MVTSettings
-from .settings import DatabaseSettings, TableConfig, TableSettings
+from ..settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
+from .settings import DatabaseSettings
 
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()  # type: ignore [call-arg]
