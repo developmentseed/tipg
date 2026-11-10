@@ -45,4 +45,6 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 
 - `fix:`, `perf:`, `deps:`, `revert:` and `docs:` lead to a patch release, `feat:` to a minor one, and a breaking change (`feat!:` or a `BREAKING CHANGE:` footer) to a major one.
 - `chore:`, `ci:`, `test:`, `build:`, `refactor:` and `style:` don't trigger a release on their own.
-- release-please keeps a release PR open with the next version; merging it tags the release and publishes it. CHANGES.md is still written by hand.
+- release-please keeps a release PR open with the next version; merging it tags the release and publishes it.
+- CHANGES.md is written by hand: add your change under `## [unreleased]`. For a breaking change, also mark the commit with `!` (e.g. `feat!:`), otherwise the release gets a patch or minor version.
+- At release time, a maintainer adds the `## [X.Y.Z] - date` heading under `## [unreleased]` and updates the links at the bottom of CHANGES.md. If the version should differ from the one release-please proposes, that commit also ends with a `Release-As: X.Y.Z` line.
