@@ -1,4 +1,9 @@
-"""tipg app with DuckDB backend."""
+"""tipg app with DuckDB backend.
+
+export TIPG_DUCKDB_SOURCES='{"test":"https://data.source.coop/vida/google-microsoft-osm-open-buildings/geoparquet/by_country/country_iso=FRA/FRA.parquet"}'
+uv run --group server uvicorn main:app
+
+"""
 
 import datetime
 from contextlib import asynccontextmanager

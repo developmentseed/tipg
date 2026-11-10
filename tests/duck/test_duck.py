@@ -139,7 +139,26 @@ def test_items_filters(duck_app):
         url,
         params={"datetime": "2020-01-01T03:00:00Z/..", "datetime-column": "dt"},
     ).json()
-    assert body["numberMatched"] == 18
+    # filtered requests don't count the matched features (full scan)
+    assert body.get("numberMatched") is None
+    assert [f["id"] for f in body["features"]] == list(range(3, 13))
+    assert "next" in {link["rel"] for link in body["links"]}
+
+    body = duck_app.get(
+        url,
+        params={
+            "datetime": "2020-01-01T03:00:00Z/..",
+            "datetime-column": "dt",
+            "offset": 10,
+        },
+    ).json()
+    assert [f["id"] for f in body["features"]] == list(range(13, 21))
+    assert "next" not in {link["rel"] for link in body["links"]}
+
+    # exactly `limit` features left: no next link
+    body = duck_app.get(url, params={"ids": "2,4", "limit": 2}).json()
+    assert len(body["features"]) == 2
+    assert "next" not in {link["rel"] for link in body["links"]}
 
     body = duck_app.get(url, params={"name": "point 3"}).json()
     assert [f["id"] for f in body["features"]] == [3]

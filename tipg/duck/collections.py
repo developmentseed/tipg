@@ -1,6 +1,8 @@
 """tipg DuckDB collection models."""
 
+import math
 import re
+from collections.abc import Iterator
 from typing import Any
 
 import duckdb
@@ -19,8 +21,10 @@ from .settings import DuckDBCatalogSettings
 mvt_settings = MVTSettings()
 features_settings = FeaturesSettings()  # type: ignore [call-arg]
 
-# Column types (as normalized in the catalog) ST_AsMVT can encode as-is
-_MVT_NATIVE_TYPES = frozenset({"real", "float8", "boolean", "text", "json"})
+# Column types (as normalized in the catalog) ST_AsMVT can encode as-is.
+# NOTE: `text` is not one of them: unknown DuckDB types (e.g STRUCT, MAP) are
+# normalized to `text`, so they must be cast to VARCHAR.
+_MVT_NATIVE_TYPES = frozenset({"real", "float8", "boolean", "json"})
 
 # Integer types (as normalized in the catalog) → DuckDB type ST_AsMVT accepts.
 # The normalized name may come from a type ST_AsMVT rejects (e.g. ``UINTEGER``
@@ -30,6 +34,90 @@ _MVT_INTEGER_CASTS = {
     "integer": "INTEGER",
     "bigint": "BIGINT",
 }
+
+
+# cql2 spatial predicates which imply that the bboxes of the geometries intersect
+_BBOX_PREDICATES = frozenset(
+    {
+        "s_intersects",
+        "s_equals",
+        "s_touches",
+        "s_within",
+        "s_overlaps",
+        "s_crosses",
+        "s_contains",
+    }
+)
+
+
+def _conjuncts(expr: Any) -> Iterator[Any]:
+    """Terms of the top-level ``AND`` of a cql2-json expression."""
+    if isinstance(expr, dict) and expr.get("op") == "and":
+        for arg in expr.get("args") or []:
+            yield from _conjuncts(arg)
+    else:
+        yield expr
+
+
+def _coords_bounds(coords: Any) -> list[float] | None:
+    """[xmin, ymin, xmax, ymax] of (nested) GeoJSON coordinates."""
+    if not isinstance(coords, list) or not coords:
+        return None
+
+    # a position
+    if all(isinstance(v, (int, float)) for v in coords):
+        if len(coords) < 2:
+            return None
+        x, y = float(coords[0]), float(coords[1])
+        return [x, y, x, y]
+
+    bounds = [_coords_bounds(c) for c in coords]
+    if any(b is None for b in bounds):
+        return None
+
+    return [
+        min(b[0] for b in bounds),  # type: ignore [index]
+        min(b[1] for b in bounds),  # type: ignore [index]
+        max(b[2] for b in bounds),  # type: ignore [index]
+        max(b[3] for b in bounds),  # type: ignore [index]
+    ]
+
+
+def _literal_bounds(literal: Any, srid: int) -> list[float] | None:
+    """Bounds of a cql2-json geometry literal, in the column CRS (``srid``).
+
+    Literals of columns not in EPSG:4326 are expected to be tagged with their
+    CRS (``st_setcrs``, see ``DuckCollection._tag_geometry_literal``), other
+    ones (e.g reprojected with ``st_transform``) are ignored.
+    """
+    if isinstance(literal, dict) and literal.get("op") == "st_setcrs":
+        literal = (literal.get("args") or [None])[0]
+    elif srid != 4326:
+        return None
+
+    if not isinstance(literal, dict):
+        return None
+
+    if bbox := literal.get("bbox"):
+        if len(bbox) == 6:
+            bbox = [bbox[0], bbox[1], bbox[3], bbox[4]]
+        bounds = [float(v) for v in bbox] if len(bbox) == 4 else None
+
+    elif literal.get("type") == "GeometryCollection":
+        parts = [_literal_bounds(g, 4326) for g in literal.get("geometries") or []]
+        if not parts or any(p is None for p in parts):
+            return None
+        bounds = _coords_bounds(
+            [[p[0], p[1]] for p in parts] + [[p[2], p[3]] for p in parts]
+        )  # type: ignore [index]
+
+    else:
+        bounds = _coords_bounds(literal.get("coordinates"))
+
+    if bounds is None or not all(math.isfinite(v) for v in bounds):
+        return None
+
+    return bounds
 
 
 def _quote_literal(value: str) -> str:
@@ -51,6 +139,10 @@ class DuckCollection(Collection):
     # Reference to the (shared) DuckDB connection serving this collection.
     # Excluded from serialization and repr.
     connection: duckdb.DuckDBPyConnection = Field(exclude=True, repr=False)
+
+    # GeoParquet bbox covering of geometry columns: column name → SQL
+    # expression of its ``xmin``, ``ymin``, ``xmax`` and ``ymax`` columns.
+    bbox_coverings: dict[str, dict[str, str]] = {}
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -93,14 +185,16 @@ class DuckCollection(Collection):
                 cols.append(f"CAST({q} AS VARCHAR) AS {q}")
         return cols
 
-    def _select_id(self) -> str:
+    def _select_id(self) -> str | None:
         """SQL fragment that selects the primary-key column as ``tipg_id``.
 
-        Falls back to ``ROW_NUMBER()`` when the collection has no primary key.
+        Collections without primary key get their ids from the row position
+        (see ``_run_features_queries``): a ``ROW_NUMBER()`` window would
+        prevent DuckDB from skipping rows (``OFFSET``) cheaply.
         """
         if self.id_column:
             return f"{_quote_ident(self.id_column.name)} AS tipg_id"
-        return "ROW_NUMBER() OVER () AS tipg_id"
+        return None
 
     def _geom_expr(
         self,
@@ -137,7 +231,8 @@ class DuckCollection(Collection):
     ) -> str:
         """Build the SELECT clause for the main features query."""
         cols = self._select_property_columns(properties)
-        cols.append(self._select_id())
+        if select_id := self._select_id():
+            cols.append(select_id)
 
         geom = self._geom_expr(geometry_column, bbox_only, simplify)
         if geom_as_wkt:
@@ -211,44 +306,96 @@ class DuckCollection(Collection):
         return f"FROM {self._qualified_name}"
 
     def _sort_expressions(self, sortby: str | None) -> list[tuple[str, str]]:
-        """Parse ``sortby`` into ``(column name, SQL fragment)`` pairs."""
-        if sortby:
-            sorts = []
-            for s in sortby.strip().split(","):
-                parts = re.match("^(?P<direction>[+-]?)(?P<column>.*)$", s).groupdict()  # type:ignore
+        """Parse ``sortby`` into ``(column name, SQL fragment)`` pairs.
 
-                direction = parts["direction"]
-                column = parts["column"].strip()
-                if not self.get_column(column):
-                    raise InvalidPropertyName(f"Property {column} does not exist.")
-                col_sql = _quote_ident(column)
-                sorts.append(
-                    (column, f"{col_sql} DESC" if direction == "-" else col_sql)
-                )
+        Without ``sortby``, no sort is applied: sorting means a full scan of
+        the sort column, and DuckDB preserves the insertion order
+        (``preserve_insertion_order``), so paging stays stable without it.
+        """
+        sorts: list[tuple[str, str]] = []
+        if not sortby:
             return sorts
 
-        if self.id_column is not None:
-            column = self.id_column.name
-        else:
-            column = self.properties[0].name
+        for s in sortby.strip().split(","):
+            parts = re.match("^(?P<direction>[+-]?)(?P<column>.*)$", s).groupdict()  # type:ignore
 
-        return [(column, _quote_ident(column))]
+            direction = parts["direction"]
+            column = parts["column"].strip()
+            if not self.get_column(column):
+                raise InvalidPropertyName(f"Property {column} does not exist.")
+            col_sql = _quote_ident(column)
+            sorts.append((column, f"{col_sql} DESC" if direction == "-" else col_sql))
+
+        return sorts
 
     def _sortby(self, sortby: str | None) -> str:
-        """Build the ORDER BY clause."""
-        return "ORDER BY " + ", ".join(sql for _, sql in self._sort_expressions(sortby))
+        """Build the ORDER BY clause (empty without ``sortby``)."""
+        if sorts := self._sort_expressions(sortby):
+            return "ORDER BY " + ", ".join(sql for _, sql in sorts)
+        return ""
 
-    @staticmethod
-    def _where_clause(where: Expr | None) -> str:
+    def _bbox_covering_filter(self, where: Expr) -> str | None:
+        """SQL filter on the GeoParquet bbox covering columns.
+
+        For each spatial predicate (e.g the `bbox` or tile filters) between a
+        geometry column with a bbox covering and a geometry literal, which is
+        part of the top-level ``AND`` of ``where``, filter the covering
+        columns with the bounds of the literal. DuckDB uses the row group
+        statistics of those columns to skip reading most of the file.
+        """
+        if not self.bbox_coverings:
+            return None
+
+        filters = []
+        for expr in _conjuncts(where.to_json()):
+            if not isinstance(expr, dict) or expr.get("op") not in _BBOX_PREDICATES:
+                continue
+
+            args = expr.get("args") or []
+            if len(args) != 2:
+                continue
+
+            for prop, literal in (args, args[::-1]):
+                if not isinstance(prop, dict) or "property" not in prop:
+                    continue
+
+                name = prop["property"]
+                covering = self.bbox_coverings.get(name)
+                column = self.get_column(name)
+                if not covering or not column:
+                    continue
+
+                if bounds := _literal_bounds(literal, column.srid or 4326):
+                    xmin, ymin, xmax, ymax = bounds
+                    filters.append(
+                        f"{covering['xmin']} <= {xmax!r} AND {covering['xmax']} >= {xmin!r} "
+                        f"AND {covering['ymin']} <= {ymax!r} AND {covering['ymax']} >= {ymin!r}"
+                    )
+                break
+
+        return " AND ".join(filters) or None
+
+    def _where_clause(self, where: Expr | None) -> str:
         """Render a cql2 ``Expr`` (or ``None``) as a WHERE clause."""
         if where is None:
             return "WHERE TRUE"
-        return f"WHERE {where.to_sql()}"
 
-    def _row_to_feature(self, row: dict[str, Any], geom_as_wkt: bool) -> Feature:
-        """Convert a result row to a Feature."""
+        sql = where.to_sql()
+        if covering := self._bbox_covering_filter(where):
+            sql = f"{covering} AND ({sql})"
+
+        return f"WHERE {sql}"
+
+    def _row_to_feature(
+        self, row: dict[str, Any], geom_as_wkt: bool, position: int
+    ) -> Feature:
+        """Convert a result row to a Feature.
+
+        ``position`` (1-based row position in the matched features) is used as
+        id for collections without primary key.
+        """
         g = row.pop("tipg_geom")
-        id = row.pop("tipg_id")
+        id = row.pop("tipg_id", position)
         if g is not None and not geom_as_wkt:
             g = orjson.loads(g)
 
@@ -261,25 +408,37 @@ class DuckCollection(Collection):
         return Feature(type="Feature", geometry=g, id=id, properties=row)
 
     def _run_features_queries(
-        self, count_sql: str, sql: str, geom_as_wkt: bool
-    ) -> tuple[int, list[Feature]]:
-        """Run the COUNT and Features queries (blocking)."""
+        self,
+        count_sql: str | None,
+        sql: str,
+        geom_as_wkt: bool,
+        offset: int,
+        limit: int,
+    ) -> tuple[int | None, list[Feature], bool]:
+        """Run the COUNT (if any) and Features queries (blocking).
+
+        ``sql`` must select up to ``limit + 1`` rows: the extra row tells if
+        there are more features. Returns ``(matched, features, has_more)``.
+        """
         cursor = self.connection.cursor()
         try:
-            logger.debug(count_sql)
-            matched = cursor.execute(count_sql).fetchone()[0]  # type: ignore [index]
+            matched = None
+            if count_sql:
+                logger.debug(count_sql)
+                matched = cursor.execute(count_sql).fetchone()[0]  # type: ignore [index]
 
             logger.debug(sql)
             cursor.execute(sql)
             names = [d[0] for d in cursor.description]  # type: ignore [union-attr]
+            rows = cursor.fetchall()
             features = [
-                self._row_to_feature(dict(zip(names, r)), geom_as_wkt)
-                for r in cursor.fetchall()
+                self._row_to_feature(dict(zip(names, r)), geom_as_wkt, offset + i)
+                for i, r in enumerate(rows[:limit], start=1)
             ]
         finally:
             cursor.close()
 
-        return matched, features
+        return matched, features, len(rows) > limit
 
     def _run_tile_query(self, sql: str, layer: str) -> bytes:
         """Run the MVT query (blocking)."""
@@ -334,7 +493,13 @@ class DuckCollection(Collection):
         )
         where = self._where_clause(where_filter)
 
-        count_sql = " ".join(["SELECT COUNT(*)", self._from(), where])
+        # Without filter, DuckDB answers COUNT(*) from the table/file metadata.
+        # With a filter it is a full scan (while the features query can stop
+        # after `limit` rows), so `numberMatched` is not returned.
+        count_sql = None
+        if where_filter is None:
+            count_sql = " ".join(["SELECT COUNT(*)", self._from()])
+
         sql = " ".join(
             [
                 self._select(
@@ -347,20 +512,20 @@ class DuckCollection(Collection):
                 self._from(),
                 where,
                 self._sortby(sortby),
-                f"LIMIT {int(limit)}",
+                f"LIMIT {int(limit) + 1}",
                 f"OFFSET {int(offset)}",
             ]
         )
 
-        matched, features = await run_in_threadpool(
-            self._run_features_queries, count_sql, sql, geom_as_wkt
+        matched, features, has_more = await run_in_threadpool(
+            self._run_features_queries, count_sql, sql, geom_as_wkt, offset, limit
         )
         returned = len(features)
 
         return ItemList(
             items=features,
             matched=matched,
-            next=offset + returned if matched - returned > offset else None,
+            next=offset + returned if has_more else None,
             prev=max(offset - limit, 0) if offset else None,
         )
 
@@ -407,7 +572,7 @@ class DuckCollection(Collection):
         )
 
         sorts = self._sort_expressions(sortby)
-        order_by = "ORDER BY " + ", ".join(sql for _, sql in sorts)
+        order_by = self._sortby(sortby)
 
         inner_sql = " ".join(
             [
@@ -514,49 +679,97 @@ def _geometry_srid(data_type: str) -> int:
 
 
 _PARQUET_VIEW = re.compile(
-    r"^CREATE VIEW .+? AS SELECT \* FROM read_parquet\('(?P<path>(?:[^']|'')*)'\);?$",
+    r"^CREATE VIEW .+? AS SELECT \* FROM read_parquet\('(?P<path>(?:[^']|'')*)'"
+    r"(?P<row_number>, \(file_row_number = true\))?\);?$",
     re.DOTALL | re.IGNORECASE,
 )
 
+# Column added by `read_parquet(..., file_row_number = true)`
+FILE_ROW_NUMBER = "file_row_number"
 
-def _parquet_view_source(view_sql: str | None) -> str | None:
-    """Path (or glob) of a view defined as ``SELECT * FROM read_parquet('<path>')``."""
+
+def _parquet_view_source(view_sql: str | None) -> tuple[str, bool] | None:
+    """Path (or glob) of a view defined as ``SELECT * FROM read_parquet('<path>')``
+    and whether the ``file_row_number`` option is set (as done for file sources,
+    see ``tipg.duck.database``).
+    """
     if view_sql and (m := _PARQUET_VIEW.match(view_sql.strip())):
-        return m.group("path").replace("''", "'")
+        return m.group("path").replace("''", "'"), bool(m.group("row_number"))
 
     return None
 
 
+_COVERING_KEYS = ("xmin", "ymin", "xmax", "ymax")
+
+
+def _parse_covering(meta: dict[str, Any]) -> dict[str, str] | None:
+    """SQL expressions of a GeoParquet bbox covering (e.g ``"bbox"."xmin"``)."""
+    covering = (meta.get("covering") or {}).get("bbox") or {}
+    exprs = {}
+    for key in _COVERING_KEYS:
+        path = covering.get(key)
+        if not path or not all(isinstance(p, str) for p in path):
+            return None
+        exprs[key] = ".".join(_quote_ident(p) for p in path)
+
+    return exprs
+
+
 def _parse_geo_metadata(geo: str) -> dict[str, dict[str, Any]]:
-    """Bbox and geometry types per column, from a GeoParquet ``geo`` metadata value."""
+    """Bbox, geometry types and bbox covering per column, from a GeoParquet
+    ``geo`` metadata value (each one is ``None`` when unknown).
+    """
     columns: dict[str, dict[str, Any]] = {}
     for name, meta in orjson.loads(geo).get("columns", {}).items():
         bbox = meta.get("bbox")
         if not bbox or len(bbox) not in (4, 6):
-            continue
-
+            bbox = None
         # 3D bbox: [xmin, ymin, zmin, xmax, ymax, zmax]
-        if len(bbox) == 6:
+        elif len(bbox) == 6:
             bbox = [bbox[0], bbox[1], bbox[3], bbox[4]]
 
         types = meta.get("geometry_types")
         columns[name] = {
-            "bbox": [float(v) for v in bbox],
-            "geometry_types": set(types) if types else None,
+            "bbox": [float(v) for v in bbox] if bbox else None,
+            "geometry_types": set(types) if types and bbox else None,
+            "covering": _parse_covering(meta),
         }
 
     return columns
+
+
+def _merge_geo_metadata(col: dict[str, Any], other: dict[str, Any]) -> None:
+    """Merge the GeoParquet metadata of a column from another file (in place)."""
+    if col["bbox"] is None or other["bbox"] is None:
+        col["bbox"] = None
+        col["geometry_types"] = None
+    else:
+        col["bbox"] = [
+            min(col["bbox"][0], other["bbox"][0]),
+            min(col["bbox"][1], other["bbox"][1]),
+            max(col["bbox"][2], other["bbox"][2]),
+            max(col["bbox"][3], other["bbox"][3]),
+        ]
+        if col["geometry_types"] is None or other["geometry_types"] is None:
+            col["geometry_types"] = None
+        else:
+            col["geometry_types"] |= other["geometry_types"]
+
+    if col["covering"] != other["covering"]:
+        col["covering"] = None
 
 
 def _geoparquet_metadata(
     cursor: duckdb.DuckDBPyConnection,
     path: str,
 ) -> dict[str, dict[str, Any]]:
-    """Bbox and geometry types of geometry columns, from GeoParquet metadata.
+    """Bbox, geometry types and bbox covering of geometry columns, from
+    GeoParquet metadata.
 
-    Only the file footers are read. For multiple files (glob), bboxes and
-    geometry types are merged, and a column is only returned when every file
-    has a bbox for it. Geometry types are ``None`` when unknown.
+    Only the file footers are read. For multiple files (glob), the metadata
+    is merged: a column is only returned when every file describes it, its
+    bbox (and geometry types) is ``None`` when one file has no bbox and its
+    covering is ``None`` when files have different coverings.
     """
     try:
         nfiles = cursor.execute("SELECT count(*) FROM glob($1)", [path]).fetchone()[0]  # type: ignore [index]
@@ -586,19 +799,8 @@ def _geoparquet_metadata(
         for name in list(merged):
             if (other := file_columns.get(name)) is None:
                 del merged[name]
-                continue
-
-            col = merged[name]
-            col["bbox"] = [
-                min(col["bbox"][0], other["bbox"][0]),
-                min(col["bbox"][1], other["bbox"][1]),
-                max(col["bbox"][2], other["bbox"][2]),
-                max(col["bbox"][3], other["bbox"][3]),
-            ]
-            if col["geometry_types"] is None or other["geometry_types"] is None:
-                col["geometry_types"] = None
             else:
-                col["geometry_types"] |= other["geometry_types"]
+                _merge_geo_metadata(merged[name], other)
 
     return merged or {}
 
@@ -640,7 +842,7 @@ def _geometry_metadata(
     for c in columns:
         if c["type"] == "geometry":
             c["geometry_type"] = "Geometry"
-            if meta := geo_metadata.get(c["name"]):
+            if (meta := geo_metadata.get(c["name"])) and meta["bbox"]:
                 _apply_geo_metadata(cursor, c, meta)
 
 
@@ -726,9 +928,11 @@ def _collection_index(  # noqa: C901
             ):
                 continue
 
+            parquet_source = _parquet_view_source(view_sql)
+
             geo_metadata = {}
-            if settings.spatial_extent and (path := _parquet_view_source(view_sql)):
-                geo_metadata = _geoparquet_metadata(cursor, path)
+            if settings.spatial_extent and parquet_source:
+                geo_metadata = _geoparquet_metadata(cursor, parquet_source[0])
 
             _geometry_metadata(cursor, columns, geo_metadata)
 
@@ -751,6 +955,13 @@ def _collection_index(  # noqa: C901
             if id_column is None and fallback_key_names:
                 for column in cols:
                     if column.name in fallback_key_names:
+                        id_column = column
+                        break
+
+            # Parquet file source: row position in the file
+            if id_column is None and parquet_source and parquet_source[1]:
+                for column in cols:
+                    if column.name == FILE_ROW_NUMBER:
                         id_column = column
                         break
 
@@ -777,6 +988,11 @@ def _collection_index(  # noqa: C901
                 id_column=id_column,
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
+                bbox_coverings={
+                    name: meta["covering"]
+                    for name, meta in geo_metadata.items()
+                    if meta["covering"]
+                },
                 connection=connection,
             )
 

@@ -16,10 +16,25 @@ def _quote_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _source_query(path: str) -> str:
-    """SQL `SELECT` for a file source."""
-    if path.lower().endswith((".parquet", ".parq", ".geoparquet")):
-        return f"SELECT * FROM read_parquet({_quote_literal(path)})"
+def _is_parquet(path: str) -> bool:
+    """Is the source a parquet file (or glob)."""
+    return path.lower().endswith((".parquet", ".parq", ".geoparquet"))
+
+
+def _is_glob(path: str) -> bool:
+    """Is the source a glob pattern (multiple files)."""
+    return any(c in path for c in ("*", "?", "["))
+
+
+def _source_query(path: str, file_row_number: bool = False) -> str:
+    """SQL `SELECT` for a file source.
+
+    With `file_row_number`, parquet sources get a `file_row_number` column
+    (row position in the file), used as stable feature id.
+    """
+    if _is_parquet(path):
+        options = ", file_row_number = true" if file_row_number else ""
+        return f"SELECT * FROM read_parquet({_quote_literal(path)}{options})"
 
     return f"SELECT * FROM ST_Read({_quote_literal(path)})"
 
@@ -51,6 +66,10 @@ def create_connection(settings: DuckDBSettings) -> duckdb.DuckDBPyConnection:
     conn.execute("SET GLOBAL geometry_always_xy = true")
     conn.execute("SET GLOBAL TimeZone = 'UTC'")
 
+    # Cache parquet files metadata (footers) in memory, so each query doesn't
+    # fetch it again (expensive for remote files with many row groups).
+    conn.execute("SET GLOBAL parquet_metadata_cache = true")
+
     # Attach the main database file if specified in settings.
     if settings.database:
         # use the file name (without extension) as alias, also for URLs
@@ -63,9 +82,20 @@ def create_connection(settings: DuckDBSettings) -> duckdb.DuckDBPyConnection:
     # Attach and register file sources as views in the in-memory database.
     for name, path in settings.sources.items():
         logger.debug(f"Registering DuckDB source {name}: {path}")
-        conn.execute(
-            f"CREATE OR REPLACE VIEW memory.main.{_quote_ident(name)} AS {_source_query(path)}"
-        )
+        view = f"CREATE OR REPLACE VIEW memory.main.{_quote_ident(name)} AS"
+
+        # Single parquet file: add the row position in the file as a stable
+        # feature id (looking up a row position only reads one row group).
+        # Not for globs, where row positions are not unique.
+        if _is_parquet(path) and not _is_glob(path):
+            try:
+                conn.execute(f"{view} {_source_query(path, file_row_number=True)}")
+                continue
+            except duckdb.BinderException as e:
+                # e.g the file already has a `file_row_number` column
+                logger.debug(f"Could not add `file_row_number` to {name}: {e}")
+
+        conn.execute(f"{view} {_source_query(path)}")
 
     return conn
 

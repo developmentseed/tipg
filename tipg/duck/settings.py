@@ -43,7 +43,9 @@ class DuckDBCatalogSettings(BaseSettings):
             for sources matching many (remote) files. When disabled, or when
             the metadata is missing, collections have no spatial extent
             (world bbox) and a generic `Geometry` type. Tables and other views
-            never have a spatial extent.
+            never have a spatial extent. The GeoParquet bbox `covering`
+            columns (if any) are also read from this metadata and used to
+            speed up spatial filters (`bbox`, tiles, cql2 spatial predicates).
 
     """
 
