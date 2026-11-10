@@ -14,8 +14,8 @@ from tipg.collections import Catalog  # noqa: E402
 from tipg.duck import (  # noqa: E402
     DuckDBCatalogSettings,
     DuckDBSettings,
-    close_db_connection,
-    connect_to_db,
+    close_duckdb_connection,
+    connect_to_duckdb,
     duck_get_collection_index,
 )
 
@@ -101,7 +101,8 @@ def create_duck_app(
 
     async def register_collection_catalog(app: FastAPI) -> None:
         collections = await duck_get_collection_index(
-            app.state.duckdb_connection, catalog_settings
+            connection=app.state.duckdb_connection,
+            settings=catalog_settings,
         )
         app.state.collection_catalog = Catalog(
             collections={col.id: col for col in collections},
@@ -110,10 +111,10 @@ def create_duck_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        await connect_to_db(app, settings=settings)
+        await connect_to_duckdb(app, settings=settings)
         await register_collection_catalog(app)
         yield
-        await close_db_connection(app)
+        await close_duckdb_connection(app)
 
     app = FastAPI(lifespan=lifespan)
     app.include_router(Endpoints(title="TiPg DuckDB").router)
@@ -143,32 +144,33 @@ def mixed_app(database_url, duckdb_settings):
     from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
     from tipg.factory import Endpoints
     from tipg.pg import (
-        DatabaseSettings,
+        PostgresCatalogSettings,
         PostgresSettings,
+        close_db_connection,
+        connect_to_db,
+        pg_get_collection_index,
     )
-    from tipg.pg import close_db_connection as pg_close
-    from tipg.pg import connect_to_db as pg_connect
-    from tipg.pg import pg_get_collection_index
 
-    db_settings = DatabaseSettings(schemas=["public"])
-    catalog_settings = DuckDBCatalogSettings(tables=["main.points"])
+    postgres_catalog_settings = PostgresCatalogSettings(schemas=["public"])
+    duckdb_catalog_settings = DuckDBCatalogSettings(tables=["main.points"])
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        await pg_connect(
+        await connect_to_db(
             app,
-            schemas=db_settings.schemas,
-            tipg_schema=db_settings.tipg_schema,
+            schemas=postgres_catalog_settings.schemas,
+            tipg_schema=postgres_catalog_settings.tipg_schema,
             settings=PostgresSettings(database_url=database_url),
         )
-        await connect_to_db(app, settings=duckdb_settings)
+        await connect_to_duckdb(app, settings=duckdb_settings)
 
-        async with app.state.pool.acquire() as conn:
-            pg_collections = await pg_get_collection_index(
-                conn, settings=db_settings, connection_pool=app.state.pool
-            )
+        pg_collections = await pg_get_collection_index(
+            connection_pool=app.state.pool,
+            settings=postgres_catalog_settings,
+        )
         duck_collections = await duck_get_collection_index(
-            app.state.duckdb_connection, catalog_settings
+            connection=app.state.duckdb_connection,
+            settings=duckdb_catalog_settings,
         )
         app.state.collection_catalog = Catalog(
             collections={col.id: col for col in [*pg_collections, *duck_collections]},
@@ -177,8 +179,8 @@ def mixed_app(database_url, duckdb_settings):
 
         yield
 
+        await close_duckdb_connection(app)
         await close_db_connection(app)
-        await pg_close(app)
 
     app = FastAPI(lifespan=lifespan)
     app.include_router(Endpoints(title="TiPg mixed").router)

@@ -70,7 +70,7 @@ def create_connection(settings: DuckDBSettings) -> duckdb.DuckDBPyConnection:
     return conn
 
 
-async def connect_to_db(
+async def connect_to_duckdb(
     app: FastAPI,
     *,
     settings: DuckDBSettings | None = None,
@@ -82,6 +82,6 @@ async def connect_to_db(
     app.state.duckdb_connection = create_connection(settings)
 
 
-async def close_db_connection(app: FastAPI) -> None:
+async def close_duckdb_connection(app: FastAPI) -> None:
     """Close the DuckDB connection."""
     app.state.duckdb_connection.close()

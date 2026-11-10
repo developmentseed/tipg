@@ -725,6 +725,7 @@ def _collection_index(  # noqa: C901
 
 
 async def duck_get_collection_index(
+    *,
     connection: duckdb.DuckDBPyConnection,
     settings: DuckDBCatalogSettings | None = None,
 ) -> list[Collection]:

@@ -46,8 +46,8 @@ from tipg.collections import Catalog
 from tipg.duck import (
     DuckDBCatalogSettings,
     DuckDBSettings,
-    close_db_connection,
-    connect_to_db,
+    close_duckdb_connection,
+    connect_to_duckdb,
     duck_get_collection_index,
 )
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -61,8 +61,8 @@ catalog_settings = DuckDBCatalogSettings()
 async def register_collection_catalog(app: FastAPI) -> None:
     """Register Collection catalog."""
     collections = await duck_get_collection_index(
-        app.state.duckdb_connection,
-        catalog_settings,
+        connection=app.state.duckdb_connection,
+        settings=catalog_settings,
     )
     app.state.collection_catalog = Catalog(
         collections={col.id: col for col in collections},
@@ -73,10 +73,10 @@ async def register_collection_catalog(app: FastAPI) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI Lifespan."""
-    await connect_to_db(app, settings=duckdb_settings)
+    await connect_to_duckdb(app, settings=duckdb_settings)
     await register_collection_catalog(app)
     yield
-    await close_db_connection(app)
+    await close_duckdb_connection(app)
 
 
 app = FastAPI(title="TiPg DuckDB", lifespan=lifespan)
@@ -112,19 +112,19 @@ from tipg.collections import Catalog
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 
-db_settings = pg.DatabaseSettings()
+pg_catalog_settings = pg.PostgresCatalogSettings()
 
 
 async def register_collection_catalog(app: FastAPI) -> None:
     """Register Collection catalog."""
-    async with app.state.pool.acquire() as conn:
-        pg_collections = await pg.pg_get_collection_index(
-            conn,
-            settings=db_settings,
-            connection_pool=app.state.pool,
-        )
+    pg_collections = await pg.pg_get_collection_index(
+        connection_pool=app.state.pool,
+        settings=pg_catalog_settings,
+    )
 
-    duck_collections = await duck.duck_get_collection_index(app.state.duckdb_connection)
+    duck_collections = await duck.duck_get_collection_index(
+        connection=app.state.duckdb_connection,
+    )
 
     # NOTE: collections are identified by `{schema}.{table}`, make sure
     # both backends don't expose the same ids.
@@ -139,14 +139,14 @@ async def lifespan(app: FastAPI):
     """FastAPI Lifespan."""
     await pg.connect_to_db(
         app,
-        schemas=db_settings.schemas,
-        tipg_schema=db_settings.tipg_schema,
+        schemas=pg_catalog_settings.schemas,
+        tipg_schema=pg_catalog_settings.tipg_schema,
         settings=pg.PostgresSettings(),
     )
-    await duck.connect_to_db(app, settings=duck.DuckDBSettings())
+    await duck.connect_to_duckdb(app, settings=duck.DuckDBSettings())
     await register_collection_catalog(app)
     yield
-    await duck.close_db_connection(app)
+    await duck.close_duckdb_connection(app)
     await pg.close_db_connection(app)
 
 
