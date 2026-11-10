@@ -31,7 +31,7 @@ def create_connection(
 
     The connection always uses an in-memory primary database, where file
     `sources` are registered as views. When `settings.database` is set, the
-    database file is attached (read-only by default) under its file name
+    database file is attached, read-only, under its file name
     (without extension).
 
     Note: views (and settings) must be visible from `connection.cursor()`,
@@ -58,10 +58,9 @@ def create_connection(
     if settings.database:
         # use the file name (without extension) as alias, also for URLs
         alias = pathlib.PurePosixPath(urlparse(settings.database).path).stem
-        options = " (READ_ONLY)" if settings.read_only else ""
         logger.debug(f"Attaching DuckDB database {settings.database} as {alias}")
         conn.execute(
-            f"ATTACH {_quote_literal(settings.database)} AS {_quote_ident(alias)}{options}"
+            f"ATTACH {_quote_literal(settings.database)} AS {_quote_ident(alias)} (READ_ONLY)"
         )
 
     for name, path in settings.sources.items():

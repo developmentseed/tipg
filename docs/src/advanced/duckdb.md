@@ -17,8 +17,7 @@ python -m pip install "tipg[duckdb]"
 
 | Setting | Env | Default | Description |
 | ------- | --- | ------- | ----------- |
-| `database` | `TIPG_DUCKDB_DATABASE` | | Path or URL to a DuckDB database file, attached under its file name (without extension). If not set, only `sources` are served |
-| `read_only` | `TIPG_DUCKDB_READ_ONLY` | `True` | Attach the database file in read-only mode |
+| `database` | `TIPG_DUCKDB_DATABASE` | | Path or URL to a DuckDB database file, attached (read-only) under its file name (without extension). If not set, only `sources` are served |
 | `threads` | `TIPG_DUCKDB_THREADS` | | Number of threads DuckDB can use |
 | `memory_limit` | `TIPG_DUCKDB_MEMORY_LIMIT` | | Maximum memory DuckDB can use (e.g `4GB`) |
 | `sources` | `TIPG_DUCKDB_SOURCES` | `{}` | Mapping of name to file path/glob/URL (e.g `'{"countries": "data/countries.parquet"}'`). Parquet files are read with `read_parquet`, other formats with `ST_Read` |

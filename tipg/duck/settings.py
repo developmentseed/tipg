@@ -7,9 +7,9 @@ class DuckDBSettings(BaseSettings):
     """DuckDB connection settings.
 
     Attributes:
-        database: path or URL to a DuckDB database file, attached under its
-            file name (without extension). If not set, only `sources` are served.
-        read_only: attach the database file in read-only mode.
+        database: path or URL to a DuckDB database file, attached (read-only)
+            under its file name (without extension). If not set, only `sources`
+            are served.
         threads: number of threads DuckDB can use.
         memory_limit: maximum memory DuckDB can use (e.g `4GB`).
         sources: mapping of collection id to a file path/glob/URL. Parquet files
@@ -20,7 +20,6 @@ class DuckDBSettings(BaseSettings):
     """
 
     database: str | None = None
-    read_only: bool = True
     threads: int | None = None
     memory_limit: str | None = None
     sources: dict[str, str] = {}
