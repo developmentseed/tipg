@@ -9,7 +9,7 @@ from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import ConfigDict, Field
 
-from ..collections import Collection, Column, Feature, ItemList
+from ..collections import Collection, Column, Feature, ItemList, _quote_ident
 from ..errors import (
     InvalidGeometryColumnName,
     InvalidLimit,
@@ -45,11 +45,6 @@ def debug_query(q, *p):
 
     p = [quote_str(s) for s in p]
     logger.debug(qsub.format(None, *p))
-
-
-def _quote_ident(name: str) -> str:
-    """Quote a PostgreSQL identifier (column/table/schema) safely."""
-    return '"' + name.replace('"', '""') + '"'
 
 
 class PgCollection(Collection):
