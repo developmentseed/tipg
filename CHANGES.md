@@ -8,6 +8,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+## [2.0.0] - 2026-11-10
+
 * change: move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
     * `tipg.collections.PgCollection` and `tipg.collections.pg_get_collection_index` → `tipg.pg.collections`
     * `tipg.database` → `tipg.pg.database` (`connect_to_db`, `close_db_connection`)
@@ -467,7 +469,8 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 - Initial release
 
-[unreleased]: https://github.com/developmentseed/tipg/compare/1.6.1...HEAD
+[unreleased]: https://github.com/developmentseed/tipg/compare/2.0.0...HEAD
+[2.0.0]: https://github.com/developmentseed/tipg/compare/1.6.1...2.0.0
 [1.6.1]: https://github.com/developmentseed/tipg/compare/1.6.0...1.6.1
 [1.6.0]: https://github.com/developmentseed/tipg/compare/1.5.0...1.6.0
 [1.5.0]: https://github.com/developmentseed/tipg/compare/1.4.0...1.5.0
