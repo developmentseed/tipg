@@ -310,7 +310,7 @@ class DuckCollection(Collection):
         bbox_only: bool | None = None,
         simplify: float | None = None,
         geom_as_wkt: bool = False,
-        function_parameters: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> ItemList:
         """Build and run DuckDB query."""
         limit = limit or features_settings.default_features_limit
@@ -374,7 +374,6 @@ class DuckCollection(Collection):
         bbox_filter: list[float] | None = None,
         datetime_filter: list[str] | None = None,
         properties_filter: list[tuple[str, str]] | None = None,
-        function_parameters: dict[str, str] | None = None,
         cql_filter: Expr | None = None,
         sortby: str | None = None,
         properties: list[str] | None = None,
@@ -382,6 +381,7 @@ class DuckCollection(Collection):
         dt: str | None = None,
         limit: int | None = None,
         simplify: float | None = None,
+        **kwargs: Any,
     ) -> bytes:
         """Build query to get Vector Tile."""
         limit = limit or mvt_settings.max_features_per_tile

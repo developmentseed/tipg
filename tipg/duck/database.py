@@ -24,9 +24,7 @@ def _source_query(path: str) -> str:
     return f"SELECT * FROM ST_Read({_quote_literal(path)})"
 
 
-def create_connection(
-    settings: DuckDBSettings | None = None,
-) -> duckdb.DuckDBPyConnection:
+def create_connection(settings: DuckDBSettings) -> duckdb.DuckDBPyConnection:
     """Create and configure a DuckDB connection.
 
     The connection always uses an in-memory primary database, where file
@@ -38,8 +36,6 @@ def create_connection(
     which creates a new connection to the same database instance, so we
     can't use TEMP views (connection-local) nor session-level `SET`.
     """
-    settings = settings or DuckDBSettings()
-
     config: dict[str, str | int] = {}
     if settings.threads:
         config["threads"] = settings.threads
@@ -55,6 +51,7 @@ def create_connection(
     conn.execute("SET GLOBAL geometry_always_xy = true")
     conn.execute("SET GLOBAL TimeZone = 'UTC'")
 
+    # Attach the main database file if specified in settings.
     if settings.database:
         # use the file name (without extension) as alias, also for URLs
         alias = pathlib.PurePosixPath(urlparse(settings.database).path).stem
@@ -63,6 +60,7 @@ def create_connection(
             f"ATTACH {_quote_literal(settings.database)} AS {_quote_ident(alias)} (READ_ONLY)"
         )
 
+    # Attach and register file sources as views in the in-memory database.
     for name, path in settings.sources.items():
         logger.debug(f"Registering DuckDB source {name}: {path}")
         conn.execute(
@@ -78,6 +76,9 @@ async def connect_to_db(
     settings: DuckDBSettings | None = None,
 ) -> None:
     """Connect to DuckDB and store the connection in `app.state.duckdb_connection`."""
+    if not settings:
+        settings = DuckDBSettings()
+
     app.state.duckdb_connection = create_connection(settings)
 
 
