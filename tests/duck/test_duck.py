@@ -35,19 +35,21 @@ def test_collections(duck_app):
 
 def test_collection_metadata(duck_app):
     """Check extents, CRS and queryables."""
+    # tables are not scanned: no extents, generic geometry type
     body = duck_app.get("/collections/main.points").json()
-    assert body["extent"]["spatial"]["bbox"] == [[1.0, 1.0, 20.0, 20.0]]
-    intervals = body["extent"]["temporal"]["interval"]
-    # `day` (DATE) is the default datetime column (columns are sorted by name)
-    assert intervals[0] == ["2020-01-01T01:00:00+00:00", "2020-01-21T00:00:00+00:00"]
-    assert ["2020-01-01T01:00:00+00:00", "2020-01-01T20:00:00+00:00"] in intervals
+    assert body["extent"]["spatial"]["bbox"] == [[-180.0, -90.0, 180.0, 90.0]]
+    assert "temporal" not in body["extent"]
+    catalog = duck_app.app.state.collection_catalog["collections"]
+    assert catalog["main.points"].geometry_column.bounds == [-180, -90, 180, 90]
+    assert catalog["main.points"].geometry_column.geometry_type == "Geometry"
+    assert catalog["main.points"].datetime_column.mindt is None
 
-    # projected table: extent is reprojected to WGS84
-    body = duck_app.get("/collections/main.utm").json()
-    minx, miny, maxx, maxy = body["extent"]["spatial"]["bbox"][0]
-    assert -94 < minx < maxx < -92
-    assert 44 < miny < maxy < 47
-    utm = duck_app.app.state.collection_catalog["collections"]["main.utm"]
+    # parquet source: extent and geometry type from the GeoParquet metadata
+    body = duck_app.get("/collections/main.landmarks").json()
+    assert body["extent"]["spatial"]["bbox"] == [[1.0, 1.0, 5.0, 5.0]]
+    assert catalog["main.landmarks"].geometry_column.geometry_type == "Point"
+
+    utm = catalog["main.utm"]
     assert utm.geometry_column.srid == 26915
     assert utm.crs == "http://www.opengis.net/def/crs/EPSG/0/26915"
 
@@ -56,7 +58,7 @@ def test_collection_metadata(duck_app):
 
     body = duck_app.get("/collections/main.points/queryables").json()
     props = body["properties"]
-    assert props["geom"] == {"$ref": "https://geojson.org/schema/Point.json"}
+    assert props["geom"] == {"$ref": "https://geojson.org/schema/Geometry.json"}
     assert props["id"]["type"] == "number"
     assert props["price"]["type"] == "number"
     assert props["name"]["type"] == "string"
@@ -68,8 +70,14 @@ def test_collections_filters(duck_app):
     """Filter collections by bbox / datetime (uses collection extents)."""
     body = duck_app.get("/collections", params={"bbox": "0,0,5,5"}).json()
     ids = {c["id"] for c in body["collections"]}
-    assert {"main.points", "main.landmarks"} <= ids
-    assert "main.utm" not in ids
+    # tables have no extent (world bbox), so they always match
+    assert {"main.points", "main.landmarks", "main.utm"} <= ids
+
+    # landmarks extent (GeoParquet metadata) is [1, 1, 5, 5]
+    body = duck_app.get("/collections", params={"bbox": "10,10,20,20"}).json()
+    ids = {c["id"] for c in body["collections"]}
+    assert "main.landmarks" not in ids
+    assert "main.points" in ids
 
     body = duck_app.get(
         "/collections", params={"datetime": "2019-01-01T00:00:00Z/2019-12-31T00:00:00Z"}

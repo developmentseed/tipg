@@ -25,8 +25,7 @@ python -m pip install "tipg[duckdb]"
 | `tables` | `TIPG_DUCKDB_TABLES` | | Only expose those tables (`schema.table`) |
 | `exclude_tables` | `TIPG_DUCKDB_EXCLUDE_TABLES` | | Tables (`schema.table`) to exclude |
 | `only_spatial_tables` | `TIPG_DUCKDB_ONLY_SPATIAL_TABLES` | `True` | Only expose tables/views with a geometry column |
-| `spatial_extent` | `TIPG_DUCKDB_SPATIAL_EXTENT` | `True` | Compute the spatial extent of each collection |
-| `datetime_extent` | `TIPG_DUCKDB_DATETIME_EXTENT` | `True` | Compute the temporal extent of each collection |
+| `spatial_extent` | `TIPG_DUCKDB_SPATIAL_EXTENT` | `True` | Read the spatial extent and geometry type of parquet sources from their GeoParquet metadata (file footers only). For a glob, every matched file's footer is read on each catalog refresh: disable it for sources matching many remote files |
 
 Table level configuration (`TIPG_TABLE_CONFIG__...`, fallback key names, column sorting) is shared with the PostgreSQL backend (see [Configuration](../user_guide/configuration.md)).
 
@@ -158,7 +157,7 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 ### Differences with the PostgreSQL backend
 
 - **CRS**: the SRID of a geometry column is read from its type (e.g `GEOMETRY('EPSG:26915')`). Columns without CRS (plain `GEOMETRY`) or in `OGC:CRS84` are assumed to be in `EPSG:4326`.
-- **Spatial extent**: computed with a full scan of the geometry column (DuckDB has no equivalent of PostGIS' `ST_EstimatedExtent`). Set `TIPG_DUCKDB_SPATIAL_EXTENT=FALSE` for large datasets.
+- **Extents and geometry type**: tables and views are never scanned to build the catalog. The spatial extent and geometry type of parquet `sources` are read from their [GeoParquet](https://geoparquet.org) metadata (`bbox` and `geometry_types`, in the file footers). Other collections have no spatial extent and a generic `Geometry` type, and no collection has a temporal extent.
 - **Vector tiles**: `ST_AsMVT` only supports boolean, integer, float and string properties; `DECIMAL` values are cast to `DOUBLE` and other types (dates, timestamps, lists, ...) to `VARCHAR`.
 - **Functions**: SQL function layers are not supported.
 - **WKT output** (CSV, (nd)json): DuckDB's `ST_AsText` formatting (e.g `SRID=4326;POINT (1 2)`).

@@ -1,6 +1,5 @@
 """tipg DuckDB collection models."""
 
-import datetime
 import re
 from typing import Any
 
@@ -514,75 +513,135 @@ def _geometry_srid(data_type: str) -> int:
     return 4326
 
 
-def _iso_datetime(value: Any) -> str | None:
-    """ISO format a date/datetime extent (naive values are assumed to be UTC)."""
-    if value is None:
-        return None
-
-    if not isinstance(value, datetime.datetime):
-        value = datetime.datetime.combine(value, datetime.time())
-
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=datetime.timezone.utc)
-
-    return value.isoformat()
+_PARQUET_VIEW = re.compile(
+    r"^CREATE VIEW .+? AS SELECT \* FROM read_parquet\('(?P<path>(?:[^']|'')*)'\);?$",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
-def _table_metadata(  # noqa: C901
+def _parquet_view_source(view_sql: str | None) -> str | None:
+    """Path (or glob) of a view defined as ``SELECT * FROM read_parquet('<path>')``."""
+    if view_sql and (m := _PARQUET_VIEW.match(view_sql.strip())):
+        return m.group("path").replace("''", "'")
+
+    return None
+
+
+def _parse_geo_metadata(geo: str) -> dict[str, dict[str, Any]]:
+    """Bbox and geometry types per column, from a GeoParquet ``geo`` metadata value."""
+    columns: dict[str, dict[str, Any]] = {}
+    for name, meta in orjson.loads(geo).get("columns", {}).items():
+        bbox = meta.get("bbox")
+        if not bbox or len(bbox) not in (4, 6):
+            continue
+
+        # 3D bbox: [xmin, ymin, zmin, xmax, ymax, zmax]
+        if len(bbox) == 6:
+            bbox = [bbox[0], bbox[1], bbox[3], bbox[4]]
+
+        types = meta.get("geometry_types")
+        columns[name] = {
+            "bbox": [float(v) for v in bbox],
+            "geometry_types": set(types) if types else None,
+        }
+
+    return columns
+
+
+def _geoparquet_metadata(
     cursor: duckdb.DuckDBPyConnection,
-    qualified_name: str,
-    columns: list[dict[str, Any]],
-    settings: DuckDBCatalogSettings,
+    path: str,
+) -> dict[str, dict[str, Any]]:
+    """Bbox and geometry types of geometry columns, from GeoParquet metadata.
+
+    Only the file footers are read. For multiple files (glob), bboxes and
+    geometry types are merged, and a column is only returned when every file
+    has a bbox for it. Geometry types are ``None`` when unknown.
+    """
+    try:
+        nfiles = cursor.execute("SELECT count(*) FROM glob($1)", [path]).fetchone()[0]  # type: ignore [index]
+        rows = cursor.execute(
+            """
+            SELECT max(decode(value)) FILTER (WHERE decode(key) = 'geo')
+            FROM parquet_kv_metadata($1)
+            GROUP BY file_name
+            """,
+            [path],
+        ).fetchall()
+    except duckdb.Error as e:
+        logger.debug(f"Could not read GeoParquet metadata of {path}: {e}")
+        return {}
+
+    # files without any key/value metadata are not listed by `parquet_kv_metadata`
+    if not rows or len(rows) != nfiles or any(geo is None for (geo,) in rows):
+        return {}
+
+    merged: dict[str, dict[str, Any]] | None = None
+    for (geo,) in rows:
+        file_columns = _parse_geo_metadata(geo)
+        if merged is None:
+            merged = file_columns
+            continue
+
+        for name in list(merged):
+            if (other := file_columns.get(name)) is None:
+                del merged[name]
+                continue
+
+            col = merged[name]
+            col["bbox"] = [
+                min(col["bbox"][0], other["bbox"][0]),
+                min(col["bbox"][1], other["bbox"][1]),
+                max(col["bbox"][2], other["bbox"][2]),
+                max(col["bbox"][3], other["bbox"][3]),
+            ]
+            if col["geometry_types"] is None or other["geometry_types"] is None:
+                col["geometry_types"] = None
+            else:
+                col["geometry_types"] |= other["geometry_types"]
+
+    return merged or {}
+
+
+def _apply_geo_metadata(
+    cursor: duckdb.DuckDBPyConnection,
+    column: dict[str, Any],
+    meta: dict[str, Any],
 ) -> None:
-    """Add geometry type, bounds and datetime extents to the columns (in place)."""
-    exprs: list[str] = []
+    """Set a geometry column bounds (in EPSG:4326) and type from GeoParquet metadata."""
+    xmin, ymin, xmax, ymax = meta["bbox"]
+    if column["srid"] != 4326:
+        env = f"ST_Transform(ST_MakeEnvelope($1, $2, $3, $4), '{_crs(column['srid'])}', '{_crs(4326)}')"
+        xmin, ymin, xmax, ymax = cursor.execute(
+            f"SELECT ST_XMin(e), ST_YMin(e), ST_XMax(e), ST_YMax(e) FROM (SELECT {env} AS e)",
+            [xmin, ymin, xmax, ymax],
+        ).fetchone()  # type: ignore [misc]
+
+    column["bounds"] = [xmin, ymin, xmax, ymax]
+
+    # e.g. "Polygon Z" -> "POLYGON"
+    if types := meta["geometry_types"]:
+        base_types = {t.split()[0].upper() for t in types}
+        if len(base_types) == 1:
+            column["geometry_type"] = _GEOMETRY_TYPES.get(base_types.pop(), "Geometry")
+
+
+def _geometry_metadata(
+    cursor: duckdb.DuckDBPyConnection,
+    columns: list[dict[str, Any]],
+    geo_metadata: dict[str, dict[str, Any]],
+) -> None:
+    """Add geometry type and bounds to the geometry columns (in place).
+
+    Rows are never scanned: bounds and type only come from ``geo_metadata``
+    (GeoParquet file metadata). Other geometry columns have no bounds and a
+    generic ``Geometry`` type.
+    """
     for c in columns:
-        q = _quote_ident(c["name"])
         if c["type"] == "geometry":
             c["geometry_type"] = "Geometry"
-            if settings.spatial_extent:
-                extent = f"ST_Extent_Agg({q})"
-                if c["srid"] != 4326:
-                    extent = (
-                        f"ST_Transform({extent}, '{_crs(c['srid'])}', '{_crs(4326)}')"
-                    )
-                exprs.extend(
-                    [
-                        f"ST_XMin({extent})",
-                        f"ST_YMin({extent})",
-                        f"ST_XMax({extent})",
-                        f"ST_YMax({extent})",
-                        f"CAST(min(ST_GeometryType({q})) AS VARCHAR)",
-                        f"CAST(max(ST_GeometryType({q})) AS VARCHAR)",
-                    ]
-                )
-
-        elif (
-            c["type"] in ("timestamp", "timestamptz", "date")
-            and settings.datetime_extent
-        ):
-            exprs.extend([f"min({q})", f"max({q})"])
-
-    if not exprs:
-        return
-
-    values = iter(
-        cursor.execute(f"SELECT {', '.join(exprs)} FROM {qualified_name}").fetchone()  # type: ignore [arg-type]
-    )
-    for c in columns:
-        if c["type"] == "geometry" and settings.spatial_extent:
-            xmin, ymin, xmax, ymax, gmin, gmax = (next(values) for _ in range(6))
-            if xmin is not None:
-                c["bounds"] = [xmin, ymin, xmax, ymax]
-            if gmin is not None and gmin == gmax:
-                c["geometry_type"] = _GEOMETRY_TYPES.get(gmin.upper(), "Geometry")
-
-        elif (
-            c["type"] in ("timestamp", "timestamptz", "date")
-            and settings.datetime_extent
-        ):
-            c["mindt"] = _iso_datetime(next(values))
-            c["maxdt"] = _iso_datetime(next(values))
+            if meta := geo_metadata.get(c["name"]):
+                _apply_geo_metadata(cursor, c, meta)
 
 
 def _collection_index(  # noqa: C901
@@ -594,11 +653,11 @@ def _collection_index(  # noqa: C901
     try:
         relations = cursor.execute(
             """
-            SELECT database_name, schema_name, table_name, 'Table', comment
+            SELECT database_name, schema_name, table_name, 'Table', comment, NULL
             FROM duckdb_tables()
             WHERE NOT internal AND NOT temporary
             UNION ALL
-            SELECT database_name, schema_name, view_name, 'View', comment
+            SELECT database_name, schema_name, view_name, 'View', comment, sql
             FROM duckdb_views()
             WHERE NOT internal AND NOT temporary
             ORDER BY 1, 2, 3
@@ -644,7 +703,7 @@ def _collection_index(  # noqa: C901
         fallback_key_names = table_settings.fallback_key_names
 
         collections: dict[str, Collection] = {}
-        for db, schema, table, entity, comment in relations:
+        for db, schema, table, entity, comment, view_sql in relations:
             if schema not in settings.schemas:
                 continue
 
@@ -667,8 +726,11 @@ def _collection_index(  # noqa: C901
             ):
                 continue
 
-            qualified_name = ".".join(_quote_ident(p) for p in (db, schema, table))
-            _table_metadata(cursor, qualified_name, columns, settings)
+            geo_metadata = {}
+            if settings.spatial_extent and (path := _parquet_view_source(view_sql)):
+                geo_metadata = _geoparquet_metadata(cursor, path)
+
+            _geometry_metadata(cursor, columns, geo_metadata)
 
             table_conf = table_confs.get(f"{schema}_{table}", TableConfig())
 
