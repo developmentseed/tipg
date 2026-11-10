@@ -51,6 +51,7 @@ dev = [
     "folium",
     "bump-my-version",
     "tipg[metrics]",
+    "tipg[duckdb]",
 ]
 server = [
     "uvicorn[standard]>=0.12.0",
@@ -68,6 +69,11 @@ docs = [
 [project.optional-dependencies]
 metrics = [
     "prometheus-fastapi-instrumentator>=8.0.2",
+]
+duckdb = [
+    "duckdb>=1.4",
+    # required by duckdb to return TIMESTAMP WITH TIME ZONE values to Python
+    "pytz",
 ]
 
 [project.urls]
