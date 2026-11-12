@@ -27,6 +27,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
     * `connect_to_duckdb` / `close_duckdb_connection` to manage the connection (`app.state.duckdb_connection`)
     * `duck_get_collection_index(*, connection, settings=None)` to list the collections
     * `DuckDBSettings` / `DuckDBCatalogSettings` (`TIPG_DUCKDB_` env prefix)
+* fix: expand the tile envelope filter by the tile buffer (`TIPG_TILE_BUFFER` pixels, within the TileMatrixSet bounds), so features just outside of a tile but inside its buffer are encoded in the tile (avoids clipped lines/polygons and missing labels at tile edges). Adds `tile_buffer` and `tile_resolution` options to `Collection.cql_where`
 * change: add `Collection._tag_geometry_literal` and `Collection._reproject_geometry_literal` abstract methods, defining how CQL2/bbox geometry literals are tagged with, or reprojected to, the geometry column CRS for each backend **breaking change** (custom `Collection` subclasses must implement them)
 * change: move `_quote_ident` from `tipg.pg.collections` to `tipg.collections`
 * docs: update the `examples/non_app_usage.ipynb` notebook for the new `tipg.pg` API

@@ -580,6 +580,8 @@ class DuckCollection(Collection):
             dt=dt,
             tms=tms,
             tile=tile,
+            tile_buffer=mvt_settings.tile_buffer,
+            tile_resolution=mvt_settings.tile_resolution,
         )
 
         sorts = self._sort_expressions(sortby)
