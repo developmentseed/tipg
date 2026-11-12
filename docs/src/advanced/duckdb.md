@@ -11,6 +11,8 @@
 python -m pip install "tipg[duckdb]"
 ```
 
+The DuckDB backend requires `duckdb>=2.0` (CRS aware `GEOMETRY` type).
+
 ### Settings
 
 `tipg.duck.DuckDBSettings` (connection) and `tipg.duck.DuckDBCatalogSettings` (catalog) can be set with `TIPG_DUCKDB_` prefixed environment variables.
@@ -161,9 +163,99 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 - **Extents and geometry type**: tables and views are never scanned to build the catalog. The spatial extent and geometry type of parquet `sources` are read from their [GeoParquet](https://geoparquet.org) metadata (`bbox` and `geometry_types`, in the file footers). Other collections have no spatial extent and a generic `Geometry` type, and no collection has a temporal extent.
 - **Items order**: without `sortby`, features are returned in their insertion order (no default sort on the primary key).
 - **Feature ids**: single parquet file `sources` are read with `read_parquet(..., file_row_number = true)`, and the added `file_row_number` column (row position in the file, starting at 0) is used as id when the collection has no other id column (`TIPG_TABLE_CONFIG__..._pk` or fallback key names). Looking up a feature by id (`/items/{itemId}`) then only reads one row group. Other collections without primary key use the feature position in the response as `id`, and don't support `/items/{itemId}`.
-- **Spatial filters**: DuckDB has no spatial index on parquet files. When a GeoParquet (1.1+) source declares a [bbox covering](https://geoparquet.org/releases/v1.1.0/#bbox-covering-encoding) column, spatial filters (`bbox`, tile envelope, and cql2 spatial predicates in the top-level `AND` of the filter) also filter the covering columns, so DuckDB can skip the row groups outside of the filter using their statistics. Without covering, spatial filters scan the whole geometry column.
+- **Spatial filters**: DuckDB has no spatial index on parquet files. When a GeoParquet (1.1+) source declares a [bbox covering](https://geoparquet.org/releases/v1.1.0/#bbox-covering-encoding) column, spatial filters (`bbox`, tile envelope, and cql2 spatial predicates in the top-level `AND` of the filter) also filter the covering columns, so DuckDB can skip the row groups outside of the filter using their statistics. Without covering, spatial filters scan the whole geometry column. Parquet sources whose covering doesn't match the file (e.g. pointing to missing struct fields) are not added to the catalog (a warning is logged). See [Data layout and performance](#data-layout-and-performance).
 - **Parquet metadata cache**: parquet files metadata (footers) are cached in memory (`parquet_metadata_cache`), so they are only fetched once per file.
 - **`numberMatched`**: only returned for requests without filter (DuckDB answers `COUNT(*)` from metadata), counting the features matching a filter would need a full scan.
 - **Vector tiles**: `ST_AsMVT` only supports boolean, integer, float and string properties; `DECIMAL` values are cast to `DOUBLE` and other types (dates, timestamps, lists, ...) to `VARCHAR`.
 - **Functions**: SQL function layers are not supported.
 - **WKT output** (CSV, (nd)json): DuckDB's `ST_AsText` formatting (e.g `SRID=4326;POINT (1 2)`).
+
+### Data layout and performance
+
+DuckDB has no spatial index: for a `bbox` filter or a tile, it can only skip the data whose row group statistics show that it's outside of the requested area. How the data is laid out (sorted, grouped, with or without bbox columns) has a much bigger impact on performance than anything in `TiPg`'s configuration, especially for remote files where every row group read is an HTTP request.
+
+For example, a 2.3M polygons GeoParquet file (~870 MB) served from a remote URL:
+
+| Layout | Data read for one tile | Time |
+| ------ | ---------------------- | ---- |
+| Rows not sorted (every row group covers the whole dataset extent) | ~870 MB (whole file, 463 HTTP requests) | ~16s |
+| Bbox filter on row groups which don't overlap the tile | ~0.6 MB (file footer only, 2 HTTP requests) | ~2s |
+
+Row groups can only be skipped when:
+
+1. **the rows are spatially sorted**: features close to each other are stored in the same row groups, so each row group covers a small area. With unsorted rows, every row group covers (almost) the whole dataset extent and overlaps every tile.
+2. **DuckDB has statistics to compare with the filter**: a [bbox covering](https://geoparquet.org/releases/v1.1.0/#bbox-covering-encoding) column for GeoParquet files, or the geometry column statistics for DuckDB tables.
+
+#### Recommended: DuckDB tables
+
+For data served often (or from slow remote storage), copy it into a DuckDB database file, sorted along a [Hilbert curve](https://en.wikipedia.org/wiki/Hilbert_curve). DuckDB keeps bounding box statistics of `GEOMETRY` columns for each row group of a table, so no bbox column is needed:
+
+```sql
+INSTALL spatial;
+LOAD spatial;
+
+CREATE TABLE parcels_raw AS SELECT * FROM read_parquet('https://example.com/parcels.parquet');
+
+CREATE TABLE parcels AS
+SELECT * FROM parcels_raw
+ORDER BY ST_Hilbert(geometry, (SELECT ST_Extent(ST_Extent_Agg(geometry)) FROM parcels_raw));
+
+DROP TABLE parcels_raw;
+```
+
+```bash
+TIPG_DUCKDB_DATABASE=parcels.duckdb uvicorn app:app --port 8000
+```
+
+!!! note
+
+    Tables are not scanned to build the catalog: collections from DuckDB tables have no spatial extent (see [Differences with the PostgreSQL backend](#differences-with-the-postgresql-backend)).
+
+#### GeoParquet files
+
+For parquet `sources`, write [GeoParquet 1.1](https://geoparquet.org/releases/v1.1.0/) files with:
+
+- **spatially sorted rows** (Hilbert curve, or sorted by bounding box)
+- **a bbox covering column**, which follows the specification (a struct column with `xmin`, `ymin`, `xmax` and `ymax` fields, declared in the `covering` of the `geo` metadata). Sources with a covering which doesn't match the file are not served.
+- **row groups of 50 000 to 100 000 rows**: smaller row groups mean more HTTP requests, bigger ones more data read outside of the requested area.
+
+With DuckDB (Hilbert sort) and [GDAL](https://gdal.org/en/stable/drivers/vector/parquet.html) (>= 3.9, bbox covering):
+
+```sql
+-- DuckDB
+COPY (
+    SELECT * FROM 'parcels.parquet'
+    ORDER BY ST_Hilbert(geometry, (SELECT ST_Extent(ST_Extent_Agg(geometry)) FROM 'parcels.parquet'))
+) TO 'parcels_hilbert.parquet' (FORMAT parquet);
+```
+
+```bash
+# GDAL keeps the rows order
+ogr2ogr -f Parquet parcels_sorted.parquet parcels_hilbert.parquet \
+  -lco WRITE_COVERING_BBOX=YES \
+  -lco ROW_GROUP_SIZE=65536
+```
+
+!!! note
+
+    GDAL can also sort the features with `-lco SORT_BY_BBOX=YES`, but in our tests the Hilbert curve sort gave a better spatial grouping: for a tile covering ~1% of a dataset of 1M random points (16 row groups), 1 row group was read with the Hilbert sort and 5 with `SORT_BY_BBOX`.
+
+With [GeoPandas](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_parquet.html):
+
+```python
+import geopandas
+
+gdf = geopandas.read_parquet("parcels.parquet")
+gdf = gdf.iloc[gdf.hilbert_distance().argsort()]
+gdf.to_parquet("parcels_sorted.parquet", write_covering_bbox=True, row_group_size=65536)
+```
+
+!!! warning
+
+    DuckDB's `COPY ... TO` doesn't write the bbox `covering` metadata, and adding it with `KV_METADATA` results in two `geo` metadata entries in the file. Use DuckDB to sort the data, but GDAL or GeoPandas to write the final GeoParquet file with a bbox covering.
+
+    DuckDB can write the native Parquet `GEOMETRY` type, with bounding box statistics (`GEOPARQUET_VERSION 'V2'`), but those statistics are not used when the file is read through a view, which is how `TiPg` registers parquet `sources`.
+
+#### Low zoom levels
+
+A good layout only helps when a tile covers a small part of the dataset: a tile at zoom level 5 over the whole dataset still reads every row group, and only returns the first `TIPG_MAX_FEATURES_PER_TILE` features. For large datasets, only request tiles at higher zoom levels (e.g with the `minZoom` option of your map library's source).

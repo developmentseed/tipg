@@ -71,7 +71,8 @@ metrics = [
     "prometheus-fastapi-instrumentator>=8.0.2",
 ]
 duckdb = [
-    "duckdb>=1.4",
+    # >=2.0: CRS aware GEOMETRY type, `ST_SetCRS`, `geometry_always_xy`
+    "duckdb>=2.0",
     # required by duckdb to return TIMESTAMP WITH TIME ZONE values to Python
     "pytz",
 ]
