@@ -46,6 +46,8 @@ class DuckDBCatalogSettings(BaseSettings):
             never have a spatial extent. The GeoParquet bbox `covering`
             columns (if any) are also read from this metadata and used to
             speed up spatial filters (`bbox`, tiles, cql2 spatial predicates).
+        metadata_threads: number of parquet sources whose metadata is read
+            concurrently when building the catalog.
 
     """
 
@@ -53,6 +55,7 @@ class DuckDBCatalogSettings(BaseSettings):
     tables: list[str] | None = None
     exclude_tables: list[str] | None = None
     spatial_extent: bool = True
+    metadata_threads: int = 16
     only_spatial_tables: bool = True
 
     model_config = {

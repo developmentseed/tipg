@@ -1,8 +1,10 @@
 """tipg DuckDB collection models."""
 
+import functools
 import math
 import re
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import duckdb
@@ -10,9 +12,11 @@ import orjson
 from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import ConfigDict, Field
+from pyproj import CRS
+from pyproj.exceptions import CRSError
 from starlette.concurrency import run_in_threadpool
 
-from ..collections import Collection, Column, Feature, ItemList, _quote_ident
+from ..collections import Collection, Column, Feature, ItemList, Srid, _quote_ident
 from ..errors import InvalidGeometryColumnName, InvalidLimit, InvalidPropertyName
 from ..logger import logger
 from ..settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
@@ -83,7 +87,7 @@ def _coords_bounds(coords: Any) -> list[float] | None:
     ]
 
 
-def _literal_bounds(literal: Any, srid: int) -> list[float] | None:
+def _literal_bounds(literal: Any, srid: Srid) -> list[float] | None:
     """Bounds of a cql2-json geometry literal, in the column CRS (``srid``).
 
     Literals of columns not in EPSG:4326 are expected to be tagged with their
@@ -125,9 +129,16 @@ def _quote_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _crs(srid: int) -> str:
-    """DuckDB CRS identifier for an EPSG code."""
+def _crs(srid: Srid) -> str:
+    """DuckDB CRS identifier for an EPSG code (or a CRS definition, as is)."""
+    if isinstance(srid, str):
+        return srid
     return f"EPSG:{srid}"
+
+
+def _crs_literal(srid: Srid) -> str:
+    """Quoted DuckDB CRS identifier (SQL string literal)."""
+    return _quote_literal(_crs(srid))
 
 
 class DuckCollection(Collection):
@@ -153,11 +164,11 @@ class DuckCollection(Collection):
             _quote_ident(p) for p in (self.database, self.dbschema, self.table)
         )
 
-    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _tag_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Tag a geometry literal with its CRS (DuckDB ``ST_SetCRS``)."""
         return {"op": "st_setcrs", "args": [geom, _crs(srid)]}
 
-    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _reproject_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Reproject a EPSG:4326 geometry literal to ``srid`` (DuckDB ``ST_Transform``)."""
         return {"op": "st_transform", "args": [geom, _crs(4326), _crs(srid)]}
 
@@ -211,7 +222,7 @@ class DuckCollection(Collection):
         g = _quote_ident(geometry_column.name)
 
         if geometry_column.srid != 4326:
-            g = f"ST_Transform({g}, '{_crs(geometry_column.srid)}', '{_crs(4326)}')"  # type: ignore [arg-type]
+            g = f"ST_Transform({g}, {_crs_literal(geometry_column.srid)}, {_crs_literal(4326)})"  # type: ignore [arg-type]
 
         if bbox_only:
             g = f"ST_Envelope({g})"
@@ -275,7 +286,7 @@ class DuckCollection(Collection):
             geom = (
                 f"ST_Intersection("
                 f"ST_MakeEnvelope({west}, {south}, {east}, {north}), "
-                f"ST_Transform({geom}, '{src_crs}', '{geo_crs}')"
+                f"ST_Transform({geom}, {_quote_literal(src_crs)}, {_quote_literal(geo_crs)})"
                 f")"
             )
             src_crs = geo_crs
@@ -660,20 +671,46 @@ def _normalize_type(data_type: str) -> str:
     return _DUCK_TYPES.get(t, "text")
 
 
-def _geometry_srid(data_type: str) -> int:
-    """SRID of a geometry column, from its type (e.g `GEOMETRY('EPSG:26915')`).
+@functools.lru_cache(maxsize=256)
+def _parse_crs(crs: str) -> Srid | None:
+    """EPSG code of a CRS definition when it is exactly an EPSG CRS, else the
+    definition itself (``None`` if it can't be parsed by pyproj).
+    """
+    try:
+        authority = CRS.from_user_input(crs).to_authority(min_confidence=100)
+    except CRSError:
+        return None
 
-    Geometries without CRS (or in OGC:CRS84) are assumed to be in EPSG:4326.
+    if authority:
+        auth, code = authority
+        if auth == "EPSG" and code.isdigit():
+            return int(code)
+        if (auth, code) == ("OGC", "CRS84"):
+            return 4326
+
+    return crs
+
+
+def _geometry_srid(data_type: str) -> Srid:
+    """CRS of a geometry column, from its type (e.g `GEOMETRY('EPSG:26915')`).
+
+    Returns the EPSG code (geometries without CRS, or in OGC:CRS84, are
+    assumed to be in EPSG:4326), or the CRS definition (e.g PROJJSON from
+    GeoParquet metadata, or `AUTH:CODE`) for CRS without EPSG code.
     """
     if m := _GEOMETRY_CRS.match(data_type):
-        auth, _, code = m.group("crs").partition(":")
+        crs = m.group("crs")
+        auth, _, code = crs.partition(":")
         if auth.upper() == "EPSG" and code.isdigit():
             return int(code)
 
-        if m.group("crs").upper() not in ("OGC:CRS84", "CRS84"):
-            logger.warning(
-                f"Unsupported geometry CRS {m.group('crs')}, assuming EPSG:4326"
-            )
+        if crs.upper() in ("OGC:CRS84", "CRS84"):
+            return 4326
+
+        if (srid := _parse_crs(crs)) is not None:
+            return srid
+
+        logger.warning(f"Unsupported geometry CRS {crs[:100]}, assuming EPSG:4326")
 
     return 4326
 
@@ -703,16 +740,76 @@ _COVERING_KEYS = ("xmin", "ymin", "xmax", "ymax")
 
 
 def _parse_covering(meta: dict[str, Any]) -> dict[str, str] | None:
-    """SQL expressions of a GeoParquet bbox covering (e.g ``"bbox"."xmin"``)."""
-    covering = (meta.get("covering") or {}).get("bbox") or {}
+    """SQL expressions of a GeoParquet bbox covering (e.g ``"bbox"."xmin"``).
+
+    Returns ``None`` without bbox covering, and an empty dict for a malformed
+    one (rejected by ``_valid_covering``).
+    """
+    covering = (meta.get("covering") or {}).get("bbox")
+    if covering is None:
+        return None
+
+    if not isinstance(covering, dict):
+        return {}
+
     exprs = {}
     for key in _COVERING_KEYS:
         path = covering.get(key)
-        if not path or not all(isinstance(p, str) for p in path):
-            return None
+        if (
+            not path
+            or not isinstance(path, list)
+            or not all(isinstance(p, str) for p in path)
+        ):
+            return {}
         exprs[key] = ".".join(_quote_ident(p) for p in path)
 
     return exprs
+
+
+def _valid_covering(
+    cursor: duckdb.DuckDBPyConnection,
+    covering: dict[str, str],
+    column_types: dict[str, str],
+) -> bool:
+    """Check that a bbox covering matches the actual column types.
+
+    GeoParquet metadata can be wrong (e.g. a covering pointing to
+    ``bbox.xmin`` while the struct fields are ``min_x``...). The covering
+    expressions are bound against typed NULL values, so no data is read.
+    """
+    if any(key not in covering for key in _COVERING_KEYS):
+        return False
+
+    # only bind the columns the covering refers to (e.g. `"bbox"` for `"bbox"."xmin"`)
+    exprs = [covering[key] for key in _COVERING_KEYS]
+    referenced = {
+        name: column_types[name] for name in _covering_columns(covering, column_types)
+    }
+    if not referenced:
+        return False
+
+    columns = ", ".join(
+        f"NULL::{dtype} AS {_quote_ident(name)}" for name, dtype in referenced.items()
+    )
+    try:
+        cursor.execute(f"SELECT {', '.join(exprs)} FROM (SELECT {columns}) LIMIT 0")
+    except duckdb.Error:
+        return False
+
+    return True
+
+
+def _covering_columns(
+    covering: dict[str, str],
+    column_types: dict[str, str],
+) -> list[str]:
+    """Names of the columns a bbox covering refers to."""
+    exprs = [covering[key] for key in _COVERING_KEYS]
+    return [
+        name
+        for name in column_types
+        if any(e == (q := _quote_ident(name)) or e.startswith(f"{q}.") for e in exprs)
+    ]
 
 
 def _parse_geo_metadata(geo: str) -> dict[str, dict[str, Any]]:
@@ -755,7 +852,10 @@ def _merge_geo_metadata(col: dict[str, Any], other: dict[str, Any]) -> None:
         else:
             col["geometry_types"] |= other["geometry_types"]
 
-    if col["covering"] != other["covering"]:
+    # a malformed covering (empty dict) in any file invalidates the source
+    if col["covering"] == {} or other["covering"] == {}:
+        col["covering"] = {}
+    elif col["covering"] != other["covering"]:
         col["covering"] = None
 
 
@@ -805,6 +905,34 @@ def _geoparquet_metadata(
     return merged or {}
 
 
+def _geoparquet_metadatas(
+    connection: duckdb.DuckDBPyConnection,
+    paths: set[str],
+    max_workers: int,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """GeoParquet metadata of multiple parquet sources, read in parallel.
+
+    Each worker uses its own cursor (DuckDB cursors can run queries
+    concurrently on the same database instance).
+    """
+
+    def _read(path: str) -> dict[str, dict[str, Any]]:
+        cursor = connection.cursor()
+        try:
+            return _geoparquet_metadata(cursor, path)
+        finally:
+            cursor.close()
+
+    if not paths:
+        return {}
+
+    paths_list = sorted(paths)
+    with ThreadPoolExecutor(
+        max_workers=max(1, min(max_workers, len(paths_list)))
+    ) as pool:
+        return dict(zip(paths_list, pool.map(_read, paths_list)))
+
+
 def _apply_geo_metadata(
     cursor: duckdb.DuckDBPyConnection,
     column: dict[str, Any],
@@ -813,7 +941,7 @@ def _apply_geo_metadata(
     """Set a geometry column bounds (in EPSG:4326) and type from GeoParquet metadata."""
     xmin, ymin, xmax, ymax = meta["bbox"]
     if column["srid"] != 4326:
-        env = f"ST_Transform(ST_MakeEnvelope($1, $2, $3, $4), '{_crs(column['srid'])}', '{_crs(4326)}')"
+        env = f"ST_Transform(ST_MakeEnvelope($1, $2, $3, $4), {_crs_literal(column['srid'])}, {_crs_literal(4326)})"
         xmin, ymin, xmax, ymax = cursor.execute(
             f"SELECT ST_XMin(e), ST_YMin(e), ST_XMax(e), ST_YMax(e) FROM (SELECT {env} AS e)",
             [xmin, ymin, xmax, ymax],
@@ -884,7 +1012,10 @@ def _collection_index(  # noqa: C901
         ).fetchall()
 
         table_columns: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        # raw DuckDB column types, used to validate GeoParquet bbox coverings
+        table_types: dict[tuple[str, str, str], dict[str, str]] = {}
         for db, schema, table, name, data_type, comment in columns_rows:
+            table_types.setdefault((db, schema, table), {})[name] = data_type
             col: dict[str, Any] = {
                 "name": name,
                 "type": _normalize_type(data_type),
@@ -904,7 +1035,8 @@ def _collection_index(  # noqa: C901
         table_confs = table_settings.table_config
         fallback_key_names = table_settings.fallback_key_names
 
-        collections: dict[str, Collection] = {}
+        # Select the relations to expose
+        selected: dict[str, tuple[Any, ...]] = {}
         for db, schema, table, entity, comment, view_sql in relations:
             if schema not in settings.schemas:
                 continue
@@ -916,7 +1048,7 @@ def _collection_index(  # noqa: C901
             if settings.exclude_tables and table_id in settings.exclude_tables:
                 continue
 
-            if table_id in collections:
+            if table_id in selected:
                 logger.warning(
                     f"Collection {table_id} already registered, skipping `{db}`.{table_id}"
                 )
@@ -928,11 +1060,58 @@ def _collection_index(  # noqa: C901
             ):
                 continue
 
-            parquet_source = _parquet_view_source(view_sql)
+            selected[table_id] = (
+                db,
+                schema,
+                table,
+                entity,
+                comment,
+                columns,
+                _parquet_view_source(view_sql),
+            )
 
-            geo_metadata = {}
-            if settings.spatial_extent and parquet_source:
-                geo_metadata = _geoparquet_metadata(cursor, parquet_source[0])
+        # Read the GeoParquet metadata of parquet views, in parallel (one
+        # footer request per file, which adds up for many remote files)
+        geo_metadatas: dict[str, dict[str, dict[str, Any]]] = {}
+        if settings.spatial_extent:
+            geo_metadatas = _geoparquet_metadatas(
+                connection,
+                {src[0] for *_, src in selected.values() if src},
+                settings.metadata_threads,
+            )
+
+        collections: dict[str, Collection] = {}
+        for table_id, (
+            db,
+            schema,
+            table,
+            entity,
+            comment,
+            columns,
+            parquet_source,
+        ) in selected.items():
+            geo_metadata = (
+                geo_metadatas.get(parquet_source[0], {}) if parquet_source else {}
+            )
+            # GeoParquet bbox coverings: sources with a covering which doesn't
+            # follow the spec (e.g. pointing to missing struct fields) are excluded
+            bbox_coverings = {
+                name: meta["covering"]
+                for name, meta in geo_metadata.items()
+                if meta["covering"] is not None
+            }
+            types = table_types.get((db, schema, table), {})
+            if invalid := [
+                name
+                for name, covering in bbox_coverings.items()
+                if not _valid_covering(cursor, covering, types)
+            ]:
+                logger.warning(
+                    f"Collection {table_id} excluded: invalid GeoParquet bbox "
+                    f"covering for column(s) {invalid} "
+                    f"({ {n: bbox_coverings[n] for n in invalid} })"
+                )
+                continue
 
             _geometry_metadata(cursor, columns, geo_metadata)
 
@@ -988,11 +1167,7 @@ def _collection_index(  # noqa: C901
                 id_column=id_column,
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
-                bbox_coverings={
-                    name: meta["covering"]
-                    for name, meta in geo_metadata.items()
-                    if meta["covering"]
-                },
+                bbox_coverings=bbox_coverings,
                 connection=connection,
             )
 

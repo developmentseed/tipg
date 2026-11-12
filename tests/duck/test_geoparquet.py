@@ -3,16 +3,21 @@
 import asyncio
 import json
 
+import mapbox_vector_tile
 import morecantile
 import pytest
 from cql2 import Expr
+from pyproj import CRS, Transformer
 
+from tipg.collections import crs_uri
 from tipg.duck import DuckDBCatalogSettings, DuckDBSettings
 from tipg.duck.collections import (
     _collection_index,
+    _geometry_srid,
     _geoparquet_metadata,
     _literal_bounds,
     _parquet_view_source,
+    _parse_covering,
 )
 from tipg.duck.database import create_connection
 
@@ -79,8 +84,79 @@ def parquet_dir(tmp_path_factory):
         """
     )
 
+    # Same covering metadata, but the struct fields don't match it (`min_x`
+    # instead of `xmin`, like some source.coop datasets)
+    (tmp / "badcovering").mkdir()
+    conn.execute(
+        f"""
+        COPY (
+            SELECT
+                x AS fid,
+                ST_AsWKB(ST_Point(x, x)) AS geom,
+                {{'min_x': x, 'min_y': x, 'max_x': x, 'max_y': x}} AS bbox
+            FROM range(0, 10) r(x)
+        ) TO '{tmp}/badcovering/points.parquet'
+        (FORMAT parquet, KV_METADATA {{geo: '{geo}'}})
+        """
+    )
+    # covering metadata pointing to a struct with unknown field names
+    (tmp / "invalidcovering").mkdir()
+    conn.execute(
+        f"""
+        COPY (
+            SELECT
+                x AS fid,
+                ST_AsWKB(ST_Point(x, x)) AS geom,
+                {{'a': x, 'b': x, 'c': x, 'd': x}} AS bbox
+            FROM range(0, 10) r(x)
+        ) TO '{tmp}/invalidcovering/points.parquet'
+        (FORMAT parquet, KV_METADATA {{geo: '{geo}'}})
+        """
+    )
+
+    # GeoParquet with a PROJJSON CRS without authority code (custom Lambert
+    # projection, like the Austria Lambert of some fiboa datasets)
+    (tmp / "projjson").mkdir()
+    crs = CRS.from_proj4(CUSTOM_LCC)
+    to_crs = Transformer.from_crs(4326, crs, always_xy=True)
+    points = [to_crs.transform(lon, lat) for lon, lat in LONLAT_POINTS]
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    geo = json.dumps(
+        {
+            "version": "1.1.0",
+            "primary_column": "geom",
+            "columns": {
+                "geom": {
+                    "encoding": "WKB",
+                    "geometry_types": ["Point"],
+                    "crs": crs.to_json_dict(),
+                    "bbox": [min(xs), min(ys), max(xs), max(ys)],
+                }
+            },
+        }
+    )
+    values = ", ".join(
+        f"({i}, ST_AsWKB(ST_Point({x}, {y})))" for i, (x, y) in enumerate(points)
+    )
+    conn.execute(
+        f"""
+        COPY (SELECT * FROM (VALUES {values}) t(fid, geom))
+        TO '{tmp}/projjson/points.parquet'
+        (FORMAT parquet, KV_METADATA {{geo: '{geo}'}})
+        """
+    )
+
     conn.close()
     return tmp
+
+
+# Custom Lambert Conformal Conic projection (no EPSG code)
+CUSTOM_LCC = (
+    "+proj=lcc +lat_0=47.5 +lon_0=13.3333333333333 +lat_1=49 +lat_2=46 "
+    "+x_0=400000 +y_0=400000 +ellps=GRS80 +units=m +no_defs"
+)
+# (lon, lat) of the points of the PROJJSON CRS file
+LONLAT_POINTS = [(13.0, 47.0), (13.5, 47.5), (14.0, 48.0), (16.0, 48.2)]
 
 
 def test_parquet_view_source():
@@ -350,3 +426,118 @@ def test_bbox_covering_tile(covering_collection):
 
     content = asyncio.run(col.get_tile(tms=tms, tile=tile))
     assert content
+
+
+@pytest.mark.parametrize("source", ["badcovering", "invalidcovering"])
+def test_invalid_bbox_covering(parquet_dir, source):
+    """Sources with a covering not matching the struct fields are excluded."""
+    conn = create_connection(
+        DuckDBSettings(
+            sources={
+                "bad": f"{parquet_dir}/{source}/points.parquet",
+                "good": f"{parquet_dir}/covering/points.parquet",
+            }
+        )
+    )
+    try:
+        collections = _collection_index(conn, DuckDBCatalogSettings())
+        assert [c.id for c in collections] == ["main.good"]
+    finally:
+        conn.close()
+
+
+def test_parse_covering():
+    """Missing covering → None, malformed covering → empty dict."""
+    assert _parse_covering({}) is None
+    assert _parse_covering({"covering": {"bbox": "bbox"}}) == {}
+    assert _parse_covering({"covering": {"bbox": {"xmin": ["bbox", "xmin"]}}}) == {}
+    assert _parse_covering(
+        {
+            "covering": {
+                "bbox": {k: ["bbox", k] for k in ("xmin", "ymin", "xmax", "ymax")}
+            }
+        }
+    ) == {k: f'"bbox"."{k}"' for k in ("xmin", "ymin", "xmax", "ymax")}
+
+
+def test_geometry_srid():
+    """Geometry column CRS: EPSG code, or CRS definition."""
+    assert _geometry_srid("GEOMETRY") == 4326
+    assert _geometry_srid("GEOMETRY('EPSG:26915')") == 26915
+    assert _geometry_srid("GEOMETRY('OGC:CRS84')") == 4326
+
+    # PROJJSON of an EPSG CRS
+    assert _geometry_srid(f"GEOMETRY('{CRS.from_epsg(2154).to_json()}')") == 2154
+    assert (
+        _geometry_srid(f"GEOMETRY('{CRS.from_user_input('OGC:CRS84').to_json()}')")
+        == 4326
+    )
+
+    # CRS without EPSG code: kept as is
+    ignf = CRS.from_user_input("IGNF:LAMB93").to_json()
+    assert _geometry_srid(f"GEOMETRY('{ignf}')") == ignf
+    assert crs_uri(ignf) == "http://www.opengis.net/def/crs/IGNF/0/LAMB93"
+
+    custom = CRS.from_proj4(CUSTOM_LCC).to_json()
+    assert _geometry_srid(f"GEOMETRY('{custom}')") == custom
+    assert crs_uri(custom) is None
+
+    # unknown CRS: assumed EPSG:4326
+    assert _geometry_srid("GEOMETRY('FOO:BAR')") == 4326
+
+    assert crs_uri(4326) == "http://www.opengis.net/def/crs/EPSG/0/4326"
+
+
+@pytest.fixture
+def projjson_collection(parquet_dir):
+    """Collection of a GeoParquet file with a PROJJSON CRS (no EPSG code)."""
+    conn = create_connection(
+        DuckDBSettings(sources={"lcc": f"{parquet_dir}/projjson/points.parquet"})
+    )
+    (collection,) = _collection_index(conn, DuckDBCatalogSettings())
+    yield collection
+    conn.close()
+
+
+def test_projjson_crs(projjson_collection):
+    """Serve geometries stored in a CRS without EPSG code."""
+    col = projjson_collection
+    geom = col.geometry_column
+    assert isinstance(geom.srid, str)
+    assert CRS.from_user_input(geom.srid) == CRS.from_proj4(CUSTOM_LCC)
+    assert col.crs is None
+
+    # extent reprojected to WGS84
+    minx, miny, maxx, maxy = geom.bounds
+    assert minx == pytest.approx(13.0, abs=0.1)
+    assert maxx == pytest.approx(16.0, abs=0.1)
+    assert miny == pytest.approx(47.0, abs=0.1)
+    assert maxy == pytest.approx(48.2, abs=0.1)
+
+    # geometries reprojected to WGS84
+    items = asyncio.run(col.features())
+    coords = [f["geometry"]["coordinates"] for f in items["items"]]
+    assert coords == [
+        [pytest.approx(lon, abs=1e-6), pytest.approx(lat, abs=1e-6)]
+        for lon, lat in LONLAT_POINTS
+    ]
+
+    # bbox filter (WGS84)
+    items = asyncio.run(col.features(bbox_filter=[12.9, 46.9, 13.6, 47.6]))
+    assert [f["id"] for f in items["items"]] == [0, 1]
+
+    # cql2 spatial filter (WGS84 literal)
+    items = asyncio.run(
+        col.features(
+            cql_filter=Expr(
+                "S_INTERSECTS(geom, POLYGON((13.9 47.9, 16.1 47.9, 16.1 48.3, 13.9 48.3, 13.9 47.9)))"
+            )
+        )
+    )
+    assert [f["id"] for f in items["items"]] == [2, 3]
+
+    # tile
+    tms = morecantile.tms.get("WebMercatorQuad")
+    content = asyncio.run(col.get_tile(tms=tms, tile=tms.tile(13.5, 47.5, 8)))
+    decoded = mapbox_vector_tile.decode(content)
+    assert len(decoded["default"]["features"]) == 1

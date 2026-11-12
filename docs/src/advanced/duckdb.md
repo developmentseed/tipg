@@ -26,6 +26,7 @@ python -m pip install "tipg[duckdb]"
 | `exclude_tables` | `TIPG_DUCKDB_EXCLUDE_TABLES` | | Tables (`schema.table`) to exclude |
 | `only_spatial_tables` | `TIPG_DUCKDB_ONLY_SPATIAL_TABLES` | `True` | Only expose tables/views with a geometry column |
 | `spatial_extent` | `TIPG_DUCKDB_SPATIAL_EXTENT` | `True` | Read the spatial extent and geometry type of parquet sources from their GeoParquet metadata (file footers only). For a glob, every matched file's footer is read on each catalog refresh: disable it for sources matching many remote files |
+| `metadata_threads` | `TIPG_DUCKDB_METADATA_THREADS` | `16` | Number of parquet sources whose metadata is read concurrently when building the catalog |
 
 Table level configuration (`TIPG_TABLE_CONFIG__...`, fallback key names, column sorting) is shared with the PostgreSQL backend (see [Configuration](../user_guide/configuration.md)).
 
@@ -156,7 +157,7 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 ### Differences with the PostgreSQL backend
 
-- **CRS**: the SRID of a geometry column is read from its type (e.g `GEOMETRY('EPSG:26915')`). Columns without CRS (plain `GEOMETRY`) or in `OGC:CRS84` are assumed to be in `EPSG:4326`.
+- **CRS**: the CRS of a geometry column is read from its type (e.g `GEOMETRY('EPSG:26915')`). Columns without CRS (plain `GEOMETRY`) or in `OGC:CRS84` are assumed to be in `EPSG:4326`. CRS without EPSG code (e.g PROJJSON from GeoParquet metadata, or `IGNF:LAMB93`) are supported: the CRS definition is used as is for reprojection (`Column.srid` is then a string), and the collection `crs` is the OGC URI of the CRS authority code (e.g `http://www.opengis.net/def/crs/IGNF/0/LAMB93`), or `None` when the CRS has no authority code. PROJJSON definitions of EPSG CRS are matched to their EPSG code.
 - **Extents and geometry type**: tables and views are never scanned to build the catalog. The spatial extent and geometry type of parquet `sources` are read from their [GeoParquet](https://geoparquet.org) metadata (`bbox` and `geometry_types`, in the file footers). Other collections have no spatial extent and a generic `Geometry` type, and no collection has a temporal extent.
 - **Items order**: without `sortby`, features are returned in their insertion order (no default sort on the primary key).
 - **Feature ids**: single parquet file `sources` are read with `read_parquet(..., file_row_number = true)`, and the added `file_row_number` column (row position in the file, starting at 0) is used as id when the collection has no other id column (`TIPG_TABLE_CONFIG__..._pk` or fallback key names). Looking up a feature by id (`/items/{itemId}`) then only reads one row group. Other collections without primary key use the feature position in the response as `id`, and don't support `/items/{itemId}`.
