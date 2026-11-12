@@ -3,8 +3,10 @@
 import functools
 import math
 import re
-from collections.abc import Iterator
+import threading
+from collections.abc import Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from typing import Any
 
 import duckdb
@@ -17,7 +19,12 @@ from pyproj.exceptions import CRSError
 from starlette.concurrency import run_in_threadpool
 
 from ..collections import Collection, Column, Feature, ItemList, Srid, _quote_ident
-from ..errors import InvalidGeometryColumnName, InvalidLimit, InvalidPropertyName
+from ..errors import (
+    InvalidGeometryColumnName,
+    InvalidLimit,
+    InvalidPropertyName,
+    QueryTimeout,
+)
 from ..logger import logger
 from ..settings import FeaturesSettings, MVTSettings, TableConfig, TableSettings
 from .settings import DuckDBCatalogSettings
@@ -141,6 +148,31 @@ def _crs_literal(srid: Srid) -> str:
     return _quote_literal(_crs(srid))
 
 
+@contextmanager
+def _interrupt_after(
+    cursor: duckdb.DuckDBPyConnection,
+    timeout: float | None,
+) -> Generator[None]:
+    """Interrupt the queries of ``cursor`` still running after ``timeout`` seconds.
+
+    Raises ``QueryTimeout`` for interrupted queries. Interrupting a cursor
+    after its query finished has no effect on its next queries.
+    """
+    if not timeout:
+        yield
+        return
+
+    timer = threading.Timer(timeout, cursor.interrupt)
+    timer.daemon = True
+    timer.start()
+    try:
+        yield
+    except duckdb.InterruptException as e:
+        raise QueryTimeout(f"Query timeout: interrupted after {timeout}s") from e
+    finally:
+        timer.cancel()
+
+
 class DuckCollection(Collection):
     """Model for DuckDB Table and View."""
 
@@ -154,6 +186,9 @@ class DuckCollection(Collection):
     # GeoParquet bbox covering of geometry columns: column name → SQL
     # expression of its ``xmin``, ``ymin``, ``xmax`` and ``ymax`` columns.
     bbox_coverings: dict[str, dict[str, str]] = {}
+
+    # Maximum duration (seconds) of items and tiles queries (no limit if None)
+    query_timeout: float | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -433,21 +468,23 @@ class DuckCollection(Collection):
         """
         cursor = self.connection.cursor()
         try:
-            matched = None
-            if count_sql:
-                logger.debug(count_sql)
-                matched = cursor.execute(count_sql).fetchone()[0]  # type: ignore [index]
+            with _interrupt_after(cursor, self.query_timeout):
+                matched = None
+                if count_sql:
+                    logger.debug(count_sql)
+                    matched = cursor.execute(count_sql).fetchone()[0]  # type: ignore [index]
 
-            logger.debug(sql)
-            cursor.execute(sql)
-            names = [d[0] for d in cursor.description]  # type: ignore [union-attr]
-            rows = cursor.fetchall()
-            features = [
-                self._row_to_feature(dict(zip(names, r)), geom_as_wkt, offset + i)
-                for i, r in enumerate(rows[:limit], start=1)
-            ]
+                logger.debug(sql)
+                cursor.execute(sql)
+                names = [d[0] for d in cursor.description]  # type: ignore [union-attr]
+                rows = cursor.fetchall()
         finally:
             cursor.close()
+
+        features = [
+            self._row_to_feature(dict(zip(names, r)), geom_as_wkt, offset + i)
+            for i, r in enumerate(rows[:limit], start=1)
+        ]
 
         return matched, features, len(rows) > limit
 
@@ -455,8 +492,9 @@ class DuckCollection(Collection):
         """Run the MVT query (blocking)."""
         cursor = self.connection.cursor()
         try:
-            logger.debug(sql)
-            tile = cursor.execute(sql, [layer]).fetchone()[0]  # type: ignore [index]
+            with _interrupt_after(cursor, self.query_timeout):
+                logger.debug(sql)
+                tile = cursor.execute(sql, [layer]).fetchone()[0]  # type: ignore [index]
         finally:
             cursor.close()
 
@@ -1168,6 +1206,7 @@ def _collection_index(  # noqa: C901
                 datetime_column=datetime_column,
                 geometry_column=geometry_column,
                 bbox_coverings=bbox_coverings,
+                query_timeout=settings.query_timeout,
                 connection=connection,
             )
 

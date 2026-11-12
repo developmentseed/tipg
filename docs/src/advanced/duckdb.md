@@ -29,6 +29,7 @@ The DuckDB backend requires `duckdb>=2.0` (CRS aware `GEOMETRY` type).
 | `only_spatial_tables` | `TIPG_DUCKDB_ONLY_SPATIAL_TABLES` | `True` | Only expose tables/views with a geometry column |
 | `spatial_extent` | `TIPG_DUCKDB_SPATIAL_EXTENT` | `True` | Read the spatial extent and geometry type of parquet sources from their GeoParquet metadata (file footers only). For a glob, every matched file's footer is read on each catalog refresh: disable it for sources matching many remote files |
 | `metadata_threads` | `TIPG_DUCKDB_METADATA_THREADS` | `16` | Number of parquet sources whose metadata is read concurrently when building the catalog |
+| `query_timeout` | `TIPG_DUCKDB_QUERY_TIMEOUT` | | Maximum duration (in seconds) of items and tiles queries. Longer queries are interrupted and return a `504 Gateway Timeout` error. No timeout when not set |
 
 Table level configuration (`TIPG_TABLE_CONFIG__...`, fallback key names, column sorting) is shared with the PostgreSQL backend (see [Configuration](../user_guide/configuration.md)).
 
@@ -259,3 +260,5 @@ gdf.to_parquet("parcels_sorted.parquet", write_covering_bbox=True, row_group_siz
 #### Low zoom levels
 
 A good layout only helps when a tile covers a small part of the dataset: a tile at zoom level 5 over the whole dataset still reads every row group, and only returns the first `TIPG_MAX_FEATURES_PER_TILE` features. For large datasets, only request tiles at higher zoom levels (e.g with the `minZoom` option of your map library's source).
+
+Set `TIPG_DUCKDB_QUERY_TIMEOUT` (e.g `10`) so a single expensive request (a low zoom tile, an items request with a filter on a large dataset) can't keep a worker busy for minutes: the query is interrupted and the request returns a `504 Gateway Timeout` error.

@@ -68,6 +68,10 @@ class MissingCollectionCatalog(TiPgError):
     """`collection_catalog` not registered in the application state."""
 
 
+class QueryTimeout(TiPgError):
+    """Query interrupted after the configured timeout."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -84,6 +88,7 @@ DEFAULT_STATUS_CODES = {
     MissingFunctionParameter: status.HTTP_422_UNPROCESSABLE_CONTENT,
     FunctionDirectoryDoesNotExist: status.HTTP_500_INTERNAL_SERVER_ERROR,
     MissingCollectionCatalog: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    QueryTimeout: status.HTTP_504_GATEWAY_TIMEOUT,
 }
 
 
