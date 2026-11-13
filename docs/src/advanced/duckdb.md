@@ -1,9 +1,13 @@
 
 `TiPg` can serve tables, views and files (GeoParquet, or any format supported by DuckDB's `ST_Read`) through [DuckDB](https://duckdb.org) and its [spatial extension](https://duckdb.org/docs/extensions/spatial/overview), alongside or instead of PostgreSQL/PostGIS.
 
+!!! warning "Experimental"
+
+    The DuckDB backend is **experimental**: its API, settings and behavior may change in future releases, without following the deprecation policy of the rest of `TiPg`. Please report any issue or feedback on [GitHub](https://github.com/developmentseed/tipg/issues).
+
 !!! note
 
-    The DuckDB backend is not used by the default `tipg.main:app` application: you need to create your own application (see examples below).
+    The DuckDB backend is not used by the default `tipg.main:app` application: you need to create your own application (see examples below, and the [example application](#example-application)).
 
 ### Install
 
@@ -95,6 +99,25 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 TIPG_DUCKDB_DATABASE=data.duckdb \
 TIPG_DUCKDB_SOURCES='{"countries": "countries.parquet"}' \
 uvicorn app:app --port 8000
+```
+
+### Example application
+
+A complete DuckDB application can be found in [`examples/duckdb`](https://github.com/developmentseed/tipg/tree/main/examples/duckdb):
+
+- [`main.py`](https://github.com/developmentseed/tipg/blob/main/examples/duckdb/main.py): a DuckDB version of `tipg.main:app` (CORS, cache-control and compression middlewares, viewer extension, `/healthz` endpoint), configured with the `TIPG_` and `TIPG_DUCKDB_` environment variables.
+- [`build_source_coop_db.py`](https://github.com/developmentseed/tipg/blob/main/examples/duckdb/build_source_coop_db.py): a script creating a DuckDB database with one view per [Source Cooperative](https://source.coop) GeoParquet file listed in [`source_coop_geoparquet.md`](https://github.com/developmentseed/tipg/blob/main/examples/duckdb/source_coop_geoparquet.md). Views read the remote files directly (no data is copied).
+- `source_coop.duckdb`: the database created by the script.
+
+```bash
+cd examples/duckdb
+
+# Serve a remote GeoParquet file
+TIPG_DUCKDB_SOURCES='{"buildings": "https://data.source.coop/vida/google-microsoft-osm-open-buildings/geoparquet/by_country/country_iso=FRA/FRA.parquet"}' \
+uv run --extra duckdb --group server uvicorn main:app
+
+# Serve the Source Cooperative GeoParquet files
+TIPG_DUCKDB_DATABASE=source_coop.duckdb uv run --extra duckdb --group server uvicorn main:app
 ```
 
 ### PostgreSQL and DuckDB in a single application
