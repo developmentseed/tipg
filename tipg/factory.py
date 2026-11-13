@@ -1379,7 +1379,7 @@ class OGCTilesFactory(EndpointsFactory):
 
             return tms
 
-    def _tilesets_routes(self):
+    def _tilesets_routes(self):  # noqa: C901
         @self.router.get(
             "/collections/{collectionId}/tiles",
             response_model=model.TileSetList,
@@ -1494,6 +1494,13 @@ class OGCTilesFactory(EndpointsFactory):
             """Retrieve the vector tileset metadata for the specified collection and tiling scheme (tile matrix set)."""
             tms = self.supported_tms.get(tileMatrixSetId)
 
+            minzoom = tms.minzoom
+            maxzoom = tms.maxzoom
+            if tileMatrixSetId == tms_settings.default_tms:
+                minzoom = tms_settings.default_minzoom
+                maxzoom = tms_settings.default_maxzoom
+
+            collection_bbox = None
             if bounds := collection.bounds:
                 collection_bbox = {
                     "lowerLeft": [bounds[0], bounds[1]],
@@ -1502,7 +1509,8 @@ class OGCTilesFactory(EndpointsFactory):
                 }
 
                 tilematrix_limit = []
-                for matrix in tms:
+                for zoom in range(minzoom, maxzoom + 1):
+                    matrix = tms.matrix(zoom)
                     ulTile = tms.tile(bounds[0], bounds[3], int(matrix.id))
                     lrTile = tms.tile(bounds[2], bounds[1], int(matrix.id))
                     minx, maxx = (min(ulTile.x, lrTile.x), max(ulTile.x, lrTile.x))
@@ -1518,17 +1526,18 @@ class OGCTilesFactory(EndpointsFactory):
                     )
 
             else:
-                collection_bbox = None
-                tilematrix_limit = [
-                    {
-                        "tileMatrix": matrix.id,
-                        "minTileRow": 0,
-                        "maxTileRow": matrix.matrixHeight,
-                        "minTileCol": 0,
-                        "maxTileCol": matrix.matrixWidth,
-                    }
-                    for matrix in tms
-                ]
+                tilematrix_limit = []
+                for zoom in range(minzoom, maxzoom + 1):
+                    matrix = tms.matrix(zoom)
+                    tilematrix_limit.append(
+                        {
+                            "tileMatrix": matrix.id,
+                            "minTileRow": 0,
+                            "maxTileRow": matrix.matrixHeight,
+                            "minTileCol": 0,
+                            "maxTileCol": matrix.matrixWidth,
+                        }
+                    )
 
             links = [
                 {
@@ -1874,7 +1883,11 @@ class OGCTilesFactory(EndpointsFactory):
                     "source": collection.id,
                     "source-layer": layername,
                     "type": "fill",
-                    "filter": ["==", ["geometry-type"], "Polygon"],
+                    "filter": [
+                        "in",
+                        ["geometry-type"],
+                        ["literal", ["Polygon", "MultiPolygon"]],
+                    ],
                     "paint": {
                         "fill-color": "rgba(200, 100, 240, 0.4)",
                         "fill-outline-color": "#000",
@@ -1885,7 +1898,11 @@ class OGCTilesFactory(EndpointsFactory):
                     "source": collection.id,
                     "source-layer": layername,
                     "type": "line",
-                    "filter": ["==", ["geometry-type"], "LineString"],
+                    "filter": [
+                        "in",
+                        ["geometry-type"],
+                        ["literal", ["LineString", "MultiLineString"]],
+                    ],
                     "paint": {
                         "line-color": "#000",
                         "line-width": 1,
@@ -1897,7 +1914,11 @@ class OGCTilesFactory(EndpointsFactory):
                     "source": collection.id,
                     "source-layer": layername,
                     "type": "circle",
-                    "filter": ["==", ["geometry-type"], "Point"],
+                    "filter": [
+                        "in",
+                        ["geometry-type"],
+                        ["literal", ["Point", "MultiPoint"]],
+                    ],
                     "paint": {
                         "circle-color": "#000",
                         "circle-radius": 2.5,
