@@ -10,7 +10,8 @@ from ciso8601 import parse_rfc3339
 from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, model_validator
-from pyproj import Transformer
+from pyproj import CRS, Transformer
+from pyproj.exceptions import CRSError
 
 from .errors import (
     InvalidDatetime,
@@ -23,8 +24,31 @@ from .model import Extent
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
 
+# CRS of a geometry column: an EPSG code, or a CRS definition understood by
+# pyproj and the database (e.g PROJJSON or `AUTH:CODE`) for CRS without EPSG
+# code (only produced by the DuckDB backend).
+Srid = int | str
+
 # Wraps a cql2-json geometry node into a backend-specific function call
-GeometryLiteralWrapper = Callable[[Any, int], Any]
+GeometryLiteralWrapper = Callable[[Any, Srid], Any]
+
+
+@lru_cache(maxsize=256)
+def crs_uri(srid: Srid) -> str | None:
+    """OGC URI of a CRS (``None`` for CRS definitions without authority code)."""
+    if isinstance(srid, int):
+        return f"http://www.opengis.net/def/crs/EPSG/0/{srid}"
+
+    try:
+        authority = CRS.from_user_input(srid).to_authority(min_confidence=100)
+    except CRSError:
+        return None
+
+    if authority is None:
+        return None
+
+    auth, code = authority
+    return f"http://www.opengis.net/def/crs/{auth}/0/{code}"
 
 
 def _quote_ident(name: str) -> str:
@@ -70,7 +94,7 @@ def _s_intersects_bbox(
     south: float,
     east: float,
     north: float,
-    srid: int | None = None,
+    srid: Srid | None = None,
     *,
     tag: GeometryLiteralWrapper,
 ) -> Expr:
@@ -113,7 +137,7 @@ _GEOJSON_GEOMETRY_TYPES = frozenset(
 
 def _transform_cql_geom_literals(
     node: Any,
-    target_srid: int,
+    target_srid: Srid,
     reproject: GeometryLiteralWrapper,
 ) -> Any:
     """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
@@ -180,7 +204,8 @@ class Column(BaseModel):
     type: str
     description: str | None = None
     geometry_type: str | None = None
-    srid: int | None = None
+    # EPSG code, or CRS definition (see `Srid`)
+    srid: Srid | None = None
     bounds: list[float] | None = None
     mindt: str | None = None
     maxdt: str | None = None
@@ -319,8 +344,8 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
     @property
     def crs(self):
         """Return crs of set geometry column."""
-        if self.geometry_column:
-            return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
+        if self.geometry_column and self.geometry_column.srid is not None:
+            return crs_uri(self.geometry_column.srid)
 
     @cached_property
     def geometry_columns(self) -> list[Column]:
@@ -401,14 +426,14 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         return {**geoms, **props}
 
     @abc.abstractmethod
-    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _tag_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Tag a cql2-json geometry literal, whose coordinates are already in
         ``srid``, with that CRS (returns a cql2-json function call node).
         """
         ...
 
     @abc.abstractmethod
-    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _reproject_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Reproject a EPSG:4326 cql2-json geometry literal to ``srid``
         (returns a cql2-json function call node).
         """

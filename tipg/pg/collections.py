@@ -9,7 +9,7 @@ from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import ConfigDict, Field
 
-from ..collections import Collection, Column, Feature, ItemList, _quote_ident
+from ..collections import Collection, Column, Feature, ItemList, Srid, _quote_ident
 from ..errors import (
     InvalidGeometryColumnName,
     InvalidLimit,
@@ -63,11 +63,11 @@ class PgCollection(Collection):
         """SQL-quoted ``"schema"."table"`` identifier for this collection."""
         return f"{_quote_ident(self.dbschema)}.{_quote_ident(self.table)}"
 
-    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _tag_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Tag a geometry literal with its SRID (PostGIS ``ST_SetSRID``)."""
         return {"op": "st_setsrid", "args": [geom, srid]}
 
-    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _reproject_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Reproject a EPSG:4326 geometry literal to ``srid`` (PostGIS ``ST_Transform``)."""
         return {"op": "st_transform", "args": [geom, srid]}
 
