@@ -8,6 +8,9 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 
 ## [unreleased]
 
+* fix: vector tile viewer (extension) now enables URL hash, keeps the hash position on load and zooms to the source `minzoom` when the collection bounds are too large
+* fix: `style.json` layer filters now also match `MultiPolygon`, `MultiLineString` and `MultiPoint` geometries
+* fix: `tileset` endpoint now respect minzoom and maxzoom constraints from settings
 * change: move PostgreSQL-specific code into a new `tipg.pg` submodule **breaking change**
     * `tipg.collections.PgCollection` and `tipg.collections.pg_get_collection_index` → `tipg.pg.collections`
     * `tipg.database` → `tipg.pg.database` (`connect_to_db`, `close_db_connection`)

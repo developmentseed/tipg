@@ -39,8 +39,17 @@ jobs:
           enable-cache: false
           python-version: ${{ matrix.python-version }}
 
-      - name: install lib postgres
-        uses: nyurik/action-setup-postgis@228cfe4dd41aad01801a0bdc767040e5024fff1d # v2
+      # Install PostgreSQL and PostGIS together from PGDG so their versions always match.
+      # pytest-postgresql finds `pg_ctl` through `pg_config` on PATH.
+      - name: Install PostgreSQL and PostGIS
+        env:
+          PG_MAJOR: '16'
+        run: |
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y "postgresql-${PG_MAJOR}" "postgresql-${PG_MAJOR}-postgis-3"
+          echo "/usr/lib/postgresql/${PG_MAJOR}/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies
         run: |
