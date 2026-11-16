@@ -80,7 +80,7 @@ _update_openapi(app)
 
 ogc_api = Endpoints(
     title=settings.name,
-    with_tiles_viewer=settings.add_tiles_viewer,
+    with_tiles_viewer=False,
     extensions=[viewerExtension()],
 )
 app.include_router(ogc_api.router)

@@ -66,8 +66,12 @@
     polygons: []
   }
 
+  // Capture the hash before MapLibre starts writing its own position into it
+  const hasInitialHash = Boolean(window.location.hash);
+
   const map = new maplibregl.Map({
       container: 'map',
+      hash: true,
       zoom: 2,
       center: [0, 0],
       style: {
@@ -105,7 +109,19 @@
         const source = Object.values(data.sources)[0];
         const id = Object.keys(data.sources)[0];
 
-        map.fitBounds([[source.bounds[0], source.bounds[1]], [source.bounds[2], source.bounds[3]]]);
+        // Only move the map if the URL hash doesn't already define a position
+        if (!hasInitialHash) {
+          if (source.bounds) {
+            map.fitBounds(
+              [[source.bounds[0], source.bounds[1]], [source.bounds[2], source.bounds[3]]],
+              {animate: false}
+            );
+          }
+          // Make sure we are at a zoom level where tiles are available
+          if (source.minzoom !== undefined && map.getZoom() < source.minzoom) {
+            map.jumpTo({zoom: source.minzoom});
+          }
+        }
         
         // Add Source
         map.addSource(id, source);

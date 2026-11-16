@@ -72,6 +72,10 @@ class QueryTimeout(TiPgError):
     """Query interrupted after the configured timeout."""
 
 
+class TipgExperimentalWarning(UserWarning):
+    """Warning for experimental features in TiPg."""
+
+
 DEFAULT_STATUS_CODES = {
     NotFound: status.HTTP_404_NOT_FOUND,
     InvalidBBox: status.HTTP_422_UNPROCESSABLE_CONTENT,
