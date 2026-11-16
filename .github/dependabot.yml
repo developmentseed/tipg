@@ -10,6 +10,10 @@ updates:
       all:
         patterns:
         - "*"
+    # Explicit, so Actions bumps don't copy the fix prefix of the last runtime bump.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 
   - package-ecosystem: "uv"
     cooldown:
@@ -29,8 +33,11 @@ updates:
         applies-to: security-updates
         patterns:
         - "*"
+    # fix(deps) for runtime deps so release-please cuts a patch release; dev-only bumps stay chore(deps-dev).
     commit-message:
-      prefix: "chore(deps):"
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
 
   # Weekly, as the wolfi-base digest carries the OS CVE fixes.
   - package-ecosystem: "docker"
@@ -46,3 +53,6 @@ updates:
         # Dockerfile.db is the local dev database: its Postgres bumps get their own PR.
         exclude-patterns:
         - "vincentsarago/postgis"
+    commit-message:
+      prefix: "fix"
+      include: "scope"
