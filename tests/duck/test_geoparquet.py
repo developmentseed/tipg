@@ -540,4 +540,5 @@ def test_projjson_crs(projjson_collection):
     tms = morecantile.tms.get("WebMercatorQuad")
     content = asyncio.run(col.get_tile(tms=tms, tile=tms.tile(13.5, 47.5, 8)))
     decoded = mapbox_vector_tile.decode(content)
-    assert len(decoded["default"]["features"]) == 1
+    # (13.5, 47.5) in the tile, (13.0, 47.0) and (14.0, 48.0) in its buffer
+    assert len(decoded["default"]["features"]) == 3

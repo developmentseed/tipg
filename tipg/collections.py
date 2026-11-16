@@ -450,8 +450,15 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         dt: str | None = None,
         tile: Tile | None = None,
         tms: TileMatrixSet | None = None,
+        tile_buffer: int = 0,
+        tile_resolution: int = 4096,
     ) -> Expr | None:
-        """Construct WHERE query as a cql2 Expr."""
+        """Construct WHERE query as a cql2 Expr.
+
+        The `tile` envelope filter is expanded by `tile_buffer` pixels (of a
+        `tile_resolution` pixels tile), so features in the tile buffer are
+        encoded in the tile.
+        """
         exprs: list[Expr] = []
         geometry_column = self.get_geometry_column(geom)
 
@@ -593,6 +600,19 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                 bounds.right,
                 bounds.top,
             )
+            # Expand the envelope by the tile buffer (`ST_AsMVTGeom` keeps
+            # geometries up to `tile_buffer` pixels outside of the tile).
+            # The buffer doesn't extend past the TMS bounds (but tiles
+            # outside of the TMS bounds are not shrunk).
+            if tile_buffer:
+                margin_x = (east - west) * tile_buffer / tile_resolution
+                margin_y = (north - south) * tile_buffer / tile_resolution
+                tms_bbox = tms.xy_bbox
+                west = max(west - margin_x, min(west, tms_bbox.left))
+                south = max(south - margin_y, min(south, tms_bbox.bottom))
+                east = min(east + margin_x, max(east, tms_bbox.right))
+                north = min(north + margin_y, max(north, tms_bbox.top))
+
             # Bounds are now in TMS CRS
             tms_srid = tms.crs.to_epsg() or 4326
             tile_target_srid = col_srid if col_srid is not None else 4326
