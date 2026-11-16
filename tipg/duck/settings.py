@@ -1,5 +1,6 @@
 """tipg DuckDB settings."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -48,6 +49,9 @@ class DuckDBCatalogSettings(BaseSettings):
             speed up spatial filters (`bbox`, tiles, cql2 spatial predicates).
         metadata_threads: number of parquet sources whose metadata is read
             concurrently when building the catalog.
+        query_timeout: maximum duration (in seconds) of the items and tiles
+            queries of the collections. Longer queries are interrupted and
+            return a `504 Gateway Timeout` error. No timeout when not set.
 
     """
 
@@ -57,6 +61,7 @@ class DuckDBCatalogSettings(BaseSettings):
     spatial_extent: bool = True
     metadata_threads: int = 16
     only_spatial_tables: bool = True
+    query_timeout: float | None = Field(default=None, gt=0)
 
     model_config = {
         "env_prefix": "TIPG_DUCKDB_",
