@@ -13,6 +13,23 @@
       .navbar { border-bottom: 8px solid #3333A4; }
       .navbar-brand { font-size: 2rem; color: #3333A4 !important; text-shadow: 2px 2px 4px #ccc; }
       .json-link { font-weight: normal; }
+      #map-wrapper { position: relative; }
+      #layer-control {
+        position: absolute; top: 10px; left: 10px; z-index: 2;
+        background: rgba(255, 255, 255, 0.95); border-radius: 4px;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+        padding: 8px 10px; font-size: 0.85rem;
+        max-height: calc(75vh - 20px); max-width: 260px; overflow-y: auto;
+      }
+      #layer-control[hidden] { display: none; }
+      #layer-control .lc-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 4px; }
+      #layer-control .lc-header button { font-size: 0.75rem; padding: 0 4px; }
+      #layer-control label { display: flex; align-items: center; margin: 2px 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #layer-control input { margin-right: 6px; }
+      .popup-content { max-height: 50vh; overflow-y: auto; }
+      .popup-layer + .popup-layer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; }
+      .popup-layer-title { display: flex; align-items: center; margin-bottom: 2px; }
+      .popup-layer-title .swatch, #layer-control .swatch { display: inline-block; flex: none; width: 12px; height: 12px; margin-right: 6px; border-radius: 2px; border: 1px solid rgba(0, 0, 0, 0.3); }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://files.dnr.state.mn.us/lib/bootstrap4/javascripts/bootstrap.min.js"></script>
@@ -57,13 +74,88 @@
 
 <h1>Collection  {{ response.title }}</h1>
 
-<div id="map" class="rounded" style="width:100%; min-height: 75vh;"></div>
+<div id="map-wrapper">
+  <div id="map" class="rounded" style="width:100%; min-height: 75vh;"></div>
+  <div id="layer-control" hidden>
+    <div class="lc-header">
+      <span>Layers</span>
+      <button type="button" class="btn btn-link" id="lc-toggle-all">hide all</button>
+    </div>
+    <div id="lc-list"></div>
+  </div>
+</div>
 
 <script type="text/javascript">
   var layers = {
     pts: [],
     lines: [],
     polygons: []
+  }
+
+  // style layer ids grouped by vector source-layer, in style order
+  const sourceLayers = new Map();
+
+  function layerColor(layer) {
+    const paint = layer.paint || {};
+    return paint['line-color'] || paint['circle-color'] || paint['fill-outline-color'] || paint['fill-color'] || '#000';
+  }
+
+  function setSourceLayerVisibility(name, visible) {
+    (sourceLayers.get(name)?.styleLayers || []).forEach(id => {
+      map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+    });
+  }
+
+  function visibleLayerIds() {
+    return layers.polygons.concat(layers.lines, layers.pts).filter(
+      id => map.getLayoutProperty(id, 'visibility') !== 'none'
+    );
+  }
+
+  function buildLayerControl() {
+    const control = document.getElementById('layer-control');
+    const list = document.getElementById('lc-list');
+    const toggleAll = document.getElementById('lc-toggle-all');
+    list.innerHTML = '';
+    if (!sourceLayers.size) return;
+
+    const checkboxes = [];
+    const refreshToggleAll = () => {
+      toggleAll.textContent = checkboxes.some(cb => cb.checked) ? 'hide all' : 'show all';
+    };
+
+    sourceLayers.forEach((info, name) => {
+      const label = document.createElement('label');
+      label.title = name;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;
+      checkbox.addEventListener('change', () => {
+        setSourceLayerVisibility(name, checkbox.checked);
+        refreshToggleAll();
+      });
+      checkboxes.push(checkbox);
+
+      const swatch = document.createElement('span');
+      swatch.className = 'swatch';
+      swatch.style.background = info.color;
+
+      const text = document.createElement('span');
+      text.textContent = name;
+
+      label.append(checkbox, swatch, text);
+      list.appendChild(label);
+    });
+
+    toggleAll.onclick = () => {
+      const show = !checkboxes.some(cb => cb.checked);
+      checkboxes.forEach(cb => { cb.checked = show; });
+      sourceLayers.forEach((_, name) => setSourceLayerVisibility(name, show));
+      refreshToggleAll();
+    };
+
+    control.hidden = false;
   }
 
   // Capture the hash before MapLibre starts writing its own position into it
@@ -139,8 +231,15 @@
             case "circle":
               layers.pts.push(layer.id)
           }
+          const name = layer['source-layer'] || layer.id;
+          if (!sourceLayers.has(name)) {
+            sourceLayers.set(name, {color: layerColor(layer), styleLayers: []});
+          }
+          sourceLayers.get(name).styleLayers.push(layer.id);
           map.addLayer(layer)
         });
+
+        buildLayerControl();
 
         var popup = new maplibregl.Popup({
           closeButton: false,
@@ -161,21 +260,61 @@
             ] // top right (NE)
           ];
 
-          var features = map.queryRenderedFeatures(queryBox, {
-            layers: layers.polygons.concat(layers.lines.concat(layers.pts))
-          }) || [];
+          const queryLayers = visibleLayerIds();
+          var features = queryLayers.length ? map.queryRenderedFeatures(queryBox, {
+            layers: queryLayers
+          }) || [] : [];
           map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
           
           if (!features.length) {
             popup.remove();
           } else {
-            let html = '<table><tr><th class="align-l">property</th><th class="px3 align-r">value</th></tr>'
-            let properties = Object.values(features[0].properties)
-            for (let key in features[0].properties) {
-               html += `<tr><td class="align-l">${key}</td><td class="px3 align-r">${features[0].properties[key]}</td></tr>`
-            }
-            html += '</table>'  
-            popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+            // Keep the top-most feature of each source-layer under the pointer
+            const byLayer = new Map();
+            features.forEach(f => {
+              const name = f.sourceLayer || f.layer.id;
+              if (!byLayer.has(name)) byLayer.set(name, f);
+            });
+
+            const content = document.createElement('div');
+            content.className = 'popup-content';
+            byLayer.forEach((feature, name) => {
+              const section = document.createElement('div');
+              section.className = 'popup-layer';
+
+              if (sourceLayers.size > 1) {
+                const title = document.createElement('div');
+                title.className = 'popup-layer-title';
+                const swatch = document.createElement('span');
+                swatch.className = 'swatch';
+                swatch.style.background = sourceLayers.get(name)?.color || '#000';
+                const text = document.createElement('strong');
+                text.textContent = name;
+                title.append(swatch, text);
+                section.appendChild(title);
+              }
+
+              const table = document.createElement('table');
+              const header = table.insertRow();
+              ['property', 'value'].forEach((label, i) => {
+                const th = document.createElement('th');
+                th.className = i ? 'px3 align-r' : 'align-l';
+                th.textContent = label;
+                header.appendChild(th);
+              });
+              for (const key in feature.properties) {
+                const row = table.insertRow();
+                const k = row.insertCell();
+                k.className = 'align-l';
+                k.textContent = key;
+                const v = row.insertCell();
+                v.className = 'px3 align-r';
+                v.textContent = feature.properties[key];
+              }
+              section.appendChild(table);
+              content.appendChild(section);
+            });
+            popup.setLngLat(e.lngLat).setDOMContent(content).addTo(map);
           }
         });
 
