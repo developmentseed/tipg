@@ -791,7 +791,7 @@ QueryParams:
       ],
       "paint": {
         "fill-color": "rgba(200, 100, 240, 0.4)",
-        "fill-outline-color": "#000"
+        "fill-outline-color": "rgb(200, 100, 240)"
       }
     },
     {
@@ -807,7 +807,7 @@ QueryParams:
         "LineString"
       ],
       "paint": {
-        "line-color": "#000",
+        "line-color": "rgb(200, 100, 240)",
         "line-width": 1,
         "line-opacity": 0.75
       }
@@ -825,7 +825,7 @@ QueryParams:
         "Point"
       ],
       "paint": {
-        "circle-color": "#000",
+        "circle-color": "rgb(200, 100, 240)",
         "circle-radius": 2.5,
         "circle-opacity": 0.75
       }

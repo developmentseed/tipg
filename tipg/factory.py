@@ -63,6 +63,20 @@ jinja2_env = jinja2.Environment(
 )
 DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
+# Qualitative palette (RGB) used to give each vector layer a distinct color in style.json
+LAYER_COLORS: list[tuple[int, int, int]] = [
+    (200, 100, 240),  # purple
+    (31, 119, 180),  # blue
+    (255, 127, 14),  # orange
+    (44, 160, 44),  # green
+    (214, 39, 40),  # red
+    (140, 86, 75),  # brown
+    (227, 119, 194),  # pink
+    (127, 127, 127),  # gray
+    (188, 189, 34),  # olive
+    (23, 190, 207),  # cyan
+]
+
 
 COMMON_CONFORMS = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
@@ -1871,8 +1885,15 @@ class OGCTilesFactory(EndpointsFactory):
             )
 
             layers: list[dict[str, Any]] = []
-            for layer in vector_layers:
+            for idx, layer in enumerate(vector_layers):
                 layer_id = layer["id"]
+                layer_minzoom = layer.get("minzoom", minzoom)
+                layer_maxzoom = layer.get("maxzoom", maxzoom)
+
+                r, g, b = LAYER_COLORS[idx % len(LAYER_COLORS)]
+                color = f"rgb({r}, {g}, {b})"
+                fill_color = f"rgba({r}, {g}, {b}, 0.4)"
+
                 layers.extend(
                     [
                         {
@@ -1886,9 +1907,11 @@ class OGCTilesFactory(EndpointsFactory):
                                 ["literal", ["Polygon", "MultiPolygon"]],
                             ],
                             "paint": {
-                                "fill-color": "rgba(200, 100, 240, 0.4)",
-                                "fill-outline-color": "#000",
+                                "fill-color": fill_color,
+                                "fill-outline-color": color,
                             },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
                         },
                         {
                             "id": f"{layer_id}_stroke",
@@ -1901,10 +1924,12 @@ class OGCTilesFactory(EndpointsFactory):
                                 ["literal", ["LineString", "MultiLineString"]],
                             ],
                             "paint": {
-                                "line-color": "#000",
+                                "line-color": color,
                                 "line-width": 1,
                                 "line-opacity": 0.75,
                             },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
                         },
                         {
                             "id": f"{layer_id}_point",
@@ -1917,10 +1942,12 @@ class OGCTilesFactory(EndpointsFactory):
                                 ["literal", ["Point", "MultiPoint"]],
                             ],
                             "paint": {
-                                "circle-color": "#000",
+                                "circle-color": color,
                                 "circle-radius": 2.5,
                                 "circle-opacity": 0.75,
                             },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
                         },
                     ]
                 )
