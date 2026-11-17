@@ -381,6 +381,25 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
 
         return None
 
+    async def get_vector_layers(
+        self,
+        set_mvt_layername: bool,
+    ) -> list[dict[str, Any]]:
+        """Return vector layers."""
+        layername = self.id if set_mvt_layername else "default"
+        layer = {
+            "id": layername,
+            "fields": {
+                col.name: col.json_type
+                for col in self.properties
+                if col.type not in ["geometry", "geography"]
+            },
+        }
+        if self.description:
+            layer["description"] = self.description
+
+        return [layer]
+
     @property
     def queryables(self) -> dict:
         """Return the queryables."""

@@ -1770,19 +1770,9 @@ class OGCTilesFactory(EndpointsFactory):
             if collection.bounds:
                 tile_json["bounds"] = collection.bounds
 
-            layername = collection.id if mvt_settings.set_mvt_layername else "default"
-            tile_json["vector_layers"] = [
-                {
-                    "id": layername,
-                    "fields": {
-                        col.name: col.json_type
-                        for col in collection.properties
-                        if col.type not in ["geometry", "geography"]
-                    },
-                    "minzoom": minzoom,
-                    "maxzoom": maxzoom,
-                }
-            ]
+            tile_json["vector_layers"] = await collection.get_vector_layers(
+                set_mvt_layername=mvt_settings.set_mvt_layername,
+            )
 
             return tile_json
 
@@ -1876,56 +1866,66 @@ class OGCTilesFactory(EndpointsFactory):
                 "zoom": minzoom,
             }
 
-            layername = collection.id if mvt_settings.set_mvt_layername else "default"
-            style_json["layers"] = [
-                {
-                    "id": f"{collection.id}_fill",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "fill",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["Polygon", "MultiPolygon"]],
-                    ],
-                    "paint": {
-                        "fill-color": "rgba(200, 100, 240, 0.4)",
-                        "fill-outline-color": "#000",
-                    },
-                },
-                {
-                    "id": f"{collection.id}_stroke",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "line",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["LineString", "MultiLineString"]],
-                    ],
-                    "paint": {
-                        "line-color": "#000",
-                        "line-width": 1,
-                        "line-opacity": 0.75,
-                    },
-                },
-                {
-                    "id": f"{collection.id}_point",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "circle",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["Point", "MultiPoint"]],
-                    ],
-                    "paint": {
-                        "circle-color": "#000",
-                        "circle-radius": 2.5,
-                        "circle-opacity": 0.75,
-                    },
-                },
-            ]
+            vector_layers = await collection.get_vector_layers(
+                set_mvt_layername=mvt_settings.set_mvt_layername,
+            )
+
+            layers: list[dict[str, Any]] = []
+            for layer in vector_layers:
+                layer_id = layer["id"]
+                layers.extend(
+                    [
+                        {
+                            "id": f"{layer_id}_fill",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "fill",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["Polygon", "MultiPolygon"]],
+                            ],
+                            "paint": {
+                                "fill-color": "rgba(200, 100, 240, 0.4)",
+                                "fill-outline-color": "#000",
+                            },
+                        },
+                        {
+                            "id": f"{layer_id}_stroke",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "line",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["LineString", "MultiLineString"]],
+                            ],
+                            "paint": {
+                                "line-color": "#000",
+                                "line-width": 1,
+                                "line-opacity": 0.75,
+                            },
+                        },
+                        {
+                            "id": f"{layer_id}_point",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "circle",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["Point", "MultiPoint"]],
+                            ],
+                            "paint": {
+                                "circle-color": "#000",
+                                "circle-radius": 2.5,
+                                "circle-opacity": 0.75,
+                            },
+                        },
+                    ]
+                )
+
+            style_json["layers"] = layers
 
             return style_json
 
