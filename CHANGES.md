@@ -22,6 +22,7 @@ Note: Minor version `0.X.0` update might break the API, It's recommended to pin 
 * change: remove the `conn` positional argument from `PgCollection.features()` and `PgCollection.get_tile()`: collections now acquire their own connection **breaking change**
 * change: update `tipg.pg.collections.pg_get_collection_index` signature to `pg_get_collection_index(*, connection_pool: asyncpg.Pool, settings: PostgresCatalogSettings | None = None)`: it acquires a connection from the pool instead of taking an `asyncpg.Connection` **breaking change**
 * change: move `register_collection_catalog` from `tipg.pg.collections` to `tipg.main` (the catalog is no longer PG-specific) and replace its `db_settings` option with a required `catalog_settings: PostgresCatalogSettings` argument **breaking change**
+* change: add `get_vector_layers` method to `Collection` for retrieving vector tile layer metadata
 * perf: compute datetime extents with `min(col)::timestamptz` / `max(col)::timestamptz` instead of casting each value before aggregating, so btree indexes on `timestamp` / `date` columns are used instead of a full table scan on every catalog refresh
 * perf: use `ST_EstimatedExtent` for spatial extents whenever table statistics exist.
 * perf: cache `Collection.extent`, `bounds`, `dt_bounds`, `geometry_columns` and `datetime_columns` (`functools.cached_property`) instead of recomputing them on every access
