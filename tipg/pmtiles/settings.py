@@ -9,7 +9,7 @@ class PMTilesCatalogSettings(BaseSettings):
     sources: dict[str, str]
 
     model_config = {
-        "env_prefix": "TIPG_PMTILES",
+        "env_prefix": "TIPG_PMTILES_",
         "env_file": ".env",
         "env_nested_delimiter": "__",
         "extra": "ignore",

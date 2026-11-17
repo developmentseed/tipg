@@ -1,5 +1,6 @@
 """tipg PMTiles collection models."""
 
+import asyncio
 import warnings
 from functools import cached_property
 from typing import Any
@@ -19,7 +20,7 @@ from .settings import PMTilesCatalogSettings
 
 
 class PMTilesCollection(Collection):
-    """Model for DB Table and Function."""
+    """Model for PMTiles source."""
 
     source: str
 
@@ -34,8 +35,6 @@ class PMTilesCollection(Collection):
         if bbox := self.bounds:
             extent["spatial"] = {
                 "bbox": [bbox],
-                # The extent calculated in Pg is in WGS84 LON,LAT order
-                # so we use `CRS84` as CRS
                 "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
             }
 
@@ -81,6 +80,7 @@ class PMTilesCollection(Collection):
         """Return vector layers."""
         pmtiles: PMTilesReader = await open_pmtiles(self.source)  # type: ignore
         metadata = await pmtiles.metadata()
+        # NOTE: By specification, vector_layers should always be present in Vector Tiles PMTiles metadata
         return metadata["vector_layers"]
 
     async def features(self, **kwargs) -> ItemList:
@@ -98,7 +98,9 @@ class PMTilesCollection(Collection):
         **kwargs,
     ) -> Response:  # type: ignore
         """Tile for PmTiles."""
-        params = {k for k, v in (kwargs or {}).items() if v is not None}
+        # NOTE: the factory always passes `properties_filter=[]` and `function_parameters={}`
+        # so we only warn for parameters with an actual value.
+        params = {k for k, v in (kwargs or {}).items() if v}
         if params:
             warnings.warn(
                 "Parameter handling not implemented for PMTiles collections. Received parameters: "
@@ -107,9 +109,11 @@ class PMTilesCollection(Collection):
             )
 
         # TODO: Check TMS support, assume they are in WebMercatorQuad
-        assert tms.id == "WebMercatorQuad", (
-            "Only WebMercatorQuad TMS is supported for PMTiles collections."
-        )
+        if tms.id != "WebMercatorQuad":
+            raise HTTPException(
+                status_code=400,
+                detail="Only WebMercatorQuad TMS is supported for PMTiles collections.",
+            )
 
         pmtiles: PMTilesReader = await open_pmtiles(self.source)  # type: ignore
         tile_body = await pmtiles.get_tile(tile.x, tile.y, tile.z)
@@ -129,7 +133,7 @@ class PMTilesCollection(Collection):
         )
 
 
-async def pmtiles_get_collection_index(  # noqa: C901
+async def pmtiles_get_collection_index(
     *,
     settings: PMTilesCatalogSettings | None = None,
 ) -> list[Collection]:
@@ -137,21 +141,22 @@ async def pmtiles_get_collection_index(  # noqa: C901
     if not settings:
         settings = PMTilesCatalogSettings()
 
-    # Attach and register file sources as views in the in-memory database.
-    collections: list[Collection] = []
-    for name, path in settings.sources.items():
+    async def _create_collection(name: str, path: str) -> Collection:
         pmtiles: PMTilesReader = await open_pmtiles(path)
         assert pmtiles.tile_type.name == "MVT", (
             f"invalid tile type {pmtiles.tile_type}, expected MVT"
         )
 
-        collection = PMTilesCollection(
+        return PMTilesCollection(
             source=path,
             bounds=list(pmtiles.bounds),
             type="pmtiles",
             id=name,
             table=name,
         )
-        collections.append(collection)
 
-    return collections
+    return list(
+        await asyncio.gather(
+            *[_create_collection(name, path) for name, path in settings.sources.items()]
+        )
+    )

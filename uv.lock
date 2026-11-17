@@ -3883,6 +3883,7 @@ metrics = [
 pmtiles = [
     { name = "async-cache" },
     { name = "async-pmtiles" },
+    { name = "httpx2" },
     { name = "obstore" },
 ]
 
@@ -3919,13 +3920,14 @@ server = [
 
 [package.metadata]
 requires-dist = [
-    { name = "async-cache", marker = "extra == 'pmtiles'" },
+    { name = "async-cache", marker = "extra == 'pmtiles'", specifier = ">=2.0,<3.0" },
     { name = "async-pmtiles", marker = "extra == 'pmtiles'", specifier = "==0.1.0" },
     { name = "asyncpg", specifier = ">=0.23.0" },
     { name = "ciso8601", specifier = "~=2.3" },
     { name = "cql2", specifier = ">=0.5,<0.7" },
     { name = "fastapi", specifier = ">=0.100.0" },
     { name = "geojson-pydantic", specifier = ">=1.0,<3.0" },
+    { name = "httpx2", marker = "extra == 'pmtiles'" },
     { name = "jinja2", specifier = ">=2.11.2,<4.0.0" },
     { name = "morecantile", specifier = ">=7.0,<8.0" },
     { name = "obstore", marker = "extra == 'pmtiles'", specifier = ">=0.8.2" },
@@ -3934,7 +3936,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.4,<3.0" },
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "starlette", specifier = ">=1.0" },
-    { name = "starlette-cramjam", specifier = ">=0.4,<1.0" },
+    { name = "starlette-cramjam", specifier = ">=0.8,<1.0" },
 ]
 provides-extras = ["metrics", "pmtiles"]
 

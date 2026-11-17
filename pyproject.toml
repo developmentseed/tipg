@@ -32,7 +32,7 @@ dependencies = [
     "pydantic-settings~=2.0",
     "geojson-pydantic>=1.0,<3.0",
     "ciso8601~=2.3",
-    "starlette-cramjam>=0.4,<1.0",
+    "starlette-cramjam>=0.8,<1.0",
 ]
 
 [dependency-groups]
@@ -73,7 +73,8 @@ metrics = [
 pmtiles = [
     "obstore>=0.8.2",
     "async_pmtiles==0.1.0",
-    "async-cache",
+    "async-cache>=2.0,<3.0",
+    "httpx2",
 ]
 
 [project.urls]

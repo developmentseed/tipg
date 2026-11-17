@@ -25,11 +25,22 @@ if TYPE_CHECKING:
 
 
 @AsyncTTL(time_to_live=300)
-async def _find_bucket_region(bucket: str, use_https: bool = True) -> str | None:
+async def _fetch_bucket_region(bucket: str, use_https: bool = True) -> str | None:
     prefix = "https" if use_https else "http"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{prefix}://{bucket}.s3.amazonaws.com")
+    async with httpx.AsyncClient(timeout=5) as client:
+        response = await client.head(f"{prefix}://{bucket}.s3.amazonaws.com")
     return response.headers.get("x-amz-bucket-region")
+
+
+async def _find_bucket_region(bucket: str, use_https: bool = True) -> str | None:
+    """Find AWS S3 bucket region (return None if the lookup fails).
+
+    Failures are not cached, so a transient network error will be retried on next call.
+    """
+    try:
+        return await _fetch_bucket_region(bucket, use_https)
+    except httpx.HTTPError:
+        return None
 
 
 @AsyncTTL(time_to_live=300)
@@ -52,10 +63,6 @@ async def _get_store(url: str) -> Store:
         aws_profile = os.environ.get("AWS_PROFILE")
         # s3:// urls
         if parsed.scheme == "s3":
-            config["region"] = (
-                await _find_bucket_region(parsed.netloc) or region_name_env
-            )
-
             # AWS_S3_ENDPOINT and AWS_HTTPS are GDAL config options of vsis3 driver
             # # https://gdal.org/user/virtual_file_systems.html#vsis3-aws-s3-files
             endpoint_url = os.environ.get("AWS_S3_ENDPOINT", None)
@@ -64,6 +71,13 @@ async def _get_store(url: str) -> Store:
                 config["endpoint"] = (
                     "https://" + endpoint_url if use_https else "http://" + endpoint_url
                 )
+                # Custom (non-AWS) endpoint: don't ask amazonaws.com for the region
+                region = region_name_env
+            else:
+                region = await _find_bucket_region(parsed.netloc) or region_name_env
+
+            if region:
+                config["region"] = region
 
             if aws_profile and Boto3CredentialProvider:
                 # Use Boto3CredentialProvider for AWS profile support
@@ -94,9 +108,8 @@ async def _get_store(url: str) -> Store:
             ).match(parsed.netloc):
                 bucket = expr.groupdict()["bucket"]
                 if not expr.groupdict().get("region"):
-                    config["region"] = (
-                        await _find_bucket_region(bucket) or region_name_env
-                    )
+                    if region := (await _find_bucket_region(bucket) or region_name_env):
+                        config["region"] = region
 
     directory = posixpath.dirname(parsed.path)
     store_url = f"{parsed.scheme}://{parsed.netloc}{directory}"
