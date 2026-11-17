@@ -1700,6 +1700,8 @@ class OGCTilesFactory(EndpointsFactory):
                 dt=datetime_column,
                 simplify=simplify,
             )
+            if isinstance(t, Response):
+                return t
 
             return Response(t, media_type=MediaType.mvt.value)
 

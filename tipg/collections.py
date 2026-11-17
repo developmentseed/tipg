@@ -11,6 +11,7 @@ from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, model_validator
 from pyproj import Transformer
+from starlette.responses import Response
 
 from .errors import (
     InvalidDatetime,
@@ -627,7 +628,7 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    async def get_tile(self, *args, **kwargs) -> bytes:
+    async def get_tile(self, *args, **kwargs) -> bytes | Response:
         """Get MVT Tile."""
         ...
 
