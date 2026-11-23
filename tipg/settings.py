@@ -73,7 +73,7 @@ class MVTSettings(BaseSettings):
     tile_clip: bool = True
     max_features_per_tile: int = 10000
 
-    set_mvt_layername: bool | None = None
+    set_mvt_layername: bool = False
 
     model_config = {"env_prefix": "TIPG_", "env_file": ".env", "extra": "ignore"}
 

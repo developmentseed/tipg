@@ -63,6 +63,20 @@ jinja2_env = jinja2.Environment(
 )
 DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
+# Qualitative palette (RGB) used to give each vector layer a distinct color in style.json
+LAYER_COLORS: list[tuple[int, int, int]] = [
+    (200, 100, 240),  # purple
+    (31, 119, 180),  # blue
+    (255, 127, 14),  # orange
+    (44, 160, 44),  # green
+    (214, 39, 40),  # red
+    (140, 86, 75),  # brown
+    (227, 119, 194),  # pink
+    (127, 127, 127),  # gray
+    (188, 189, 34),  # olive
+    (23, 190, 207),  # cyan
+]
+
 
 COMMON_CONFORMS = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
@@ -1770,19 +1784,9 @@ class OGCTilesFactory(EndpointsFactory):
             if collection.bounds:
                 tile_json["bounds"] = collection.bounds
 
-            layername = collection.id if mvt_settings.set_mvt_layername else "default"
-            tile_json["vector_layers"] = [
-                {
-                    "id": layername,
-                    "fields": {
-                        col.name: col.json_type
-                        for col in collection.properties
-                        if col.type not in ["geometry", "geography"]
-                    },
-                    "minzoom": minzoom,
-                    "maxzoom": maxzoom,
-                }
-            ]
+            tile_json["vector_layers"] = await collection.get_vector_layers(
+                set_mvt_layername=mvt_settings.set_mvt_layername,
+            )
 
             return tile_json
 
@@ -1876,56 +1880,79 @@ class OGCTilesFactory(EndpointsFactory):
                 "zoom": minzoom,
             }
 
-            layername = collection.id if mvt_settings.set_mvt_layername else "default"
-            style_json["layers"] = [
-                {
-                    "id": f"{collection.id}_fill",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "fill",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["Polygon", "MultiPolygon"]],
-                    ],
-                    "paint": {
-                        "fill-color": "rgba(200, 100, 240, 0.4)",
-                        "fill-outline-color": "#000",
-                    },
-                },
-                {
-                    "id": f"{collection.id}_stroke",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "line",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["LineString", "MultiLineString"]],
-                    ],
-                    "paint": {
-                        "line-color": "#000",
-                        "line-width": 1,
-                        "line-opacity": 0.75,
-                    },
-                },
-                {
-                    "id": f"{collection.id}_point",
-                    "source": collection.id,
-                    "source-layer": layername,
-                    "type": "circle",
-                    "filter": [
-                        "in",
-                        ["geometry-type"],
-                        ["literal", ["Point", "MultiPoint"]],
-                    ],
-                    "paint": {
-                        "circle-color": "#000",
-                        "circle-radius": 2.5,
-                        "circle-opacity": 0.75,
-                    },
-                },
-            ]
+            vector_layers = await collection.get_vector_layers(
+                set_mvt_layername=mvt_settings.set_mvt_layername,
+            )
+
+            layers: list[dict[str, Any]] = []
+            for idx, layer in enumerate(vector_layers):
+                layer_id = layer["id"]
+                layer_minzoom = layer.get("minzoom", minzoom)
+                layer_maxzoom = layer.get("maxzoom", maxzoom)
+
+                r, g, b = LAYER_COLORS[idx % len(LAYER_COLORS)]
+                color = f"rgb({r}, {g}, {b})"
+                fill_color = f"rgba({r}, {g}, {b}, 0.4)"
+
+                layers.extend(
+                    [
+                        {
+                            "id": f"{layer_id}_fill",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "fill",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["Polygon", "MultiPolygon"]],
+                            ],
+                            "paint": {
+                                "fill-color": fill_color,
+                                "fill-outline-color": color,
+                            },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
+                        },
+                        {
+                            "id": f"{layer_id}_stroke",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "line",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["LineString", "MultiLineString"]],
+                            ],
+                            "paint": {
+                                "line-color": color,
+                                "line-width": 1,
+                                "line-opacity": 0.75,
+                            },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
+                        },
+                        {
+                            "id": f"{layer_id}_point",
+                            "source": collection.id,
+                            "source-layer": layer_id,
+                            "type": "circle",
+                            "filter": [
+                                "in",
+                                ["geometry-type"],
+                                ["literal", ["Point", "MultiPoint"]],
+                            ],
+                            "paint": {
+                                "circle-color": color,
+                                "circle-radius": 2.5,
+                                "circle-opacity": 0.75,
+                            },
+                            "minzoom": layer_minzoom,
+                            "maxzoom": layer_maxzoom,
+                        },
+                    ]
+                )
+
+            style_json["layers"] = layers
 
             return style_json
 
