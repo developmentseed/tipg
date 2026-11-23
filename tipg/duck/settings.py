@@ -17,6 +17,15 @@ class DuckDBSettings(BaseSettings):
             are read with `read_parquet`, other formats with the spatial
             extension's `ST_Read`. Each source is registered as a view in the
             in-memory `memory.main` schema.
+        extensions: extensions to load in addition to `spatial`
+            (e.g `["httpfs", "iceberg"]`).
+        extension_directory: directory DuckDB installs and loads extensions
+            from (e.g extensions baked into a container image).
+        custom_extension_repository: URL of the repository extensions are
+            installed from.
+        autoinstall_extensions: run `INSTALL` before `LOAD`. Disable it when
+            the extensions are already in `extension_directory` and the
+            runtime has no network access.
 
     """
 
@@ -24,6 +33,10 @@ class DuckDBSettings(BaseSettings):
     threads: int | None = None
     memory_limit: str | None = None
     sources: dict[str, str] = {}
+    extensions: list[str] = []
+    extension_directory: str | None = None
+    custom_extension_repository: str | None = None
+    autoinstall_extensions: bool = True
 
     model_config = {
         "env_prefix": "TIPG_DUCKDB_",
