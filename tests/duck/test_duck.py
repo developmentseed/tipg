@@ -139,7 +139,7 @@ def test_items_filters(duck_app):
         url,
         params={"datetime": "2020-01-01T03:00:00Z/..", "datetime-column": "dt"},
     ).json()
-    # filtered requests don't count the matched features (full scan)
+    # A filtered page with a next link cannot infer the total.
     assert body.get("numberMatched") is None
     assert [f["id"] for f in body["features"]] == list(range(3, 13))
     assert "next" in {link["rel"] for link in body["links"]}
@@ -153,11 +153,13 @@ def test_items_filters(duck_app):
         },
     ).json()
     assert [f["id"] for f in body["features"]] == list(range(13, 21))
+    assert body["numberMatched"] == 18
     assert "next" not in {link["rel"] for link in body["links"]}
 
     # exactly `limit` features left: no next link
     body = duck_app.get(url, params={"ids": "2,4", "limit": 2}).json()
     assert len(body["features"]) == 2
+    assert body["numberMatched"] == 2
     assert "next" not in {link["rel"] for link in body["links"]}
 
     body = duck_app.get(url, params={"name": "point 3"}).json()
@@ -175,6 +177,21 @@ def test_items_filters(duck_app):
         },
     ).json()
     assert [f["id"] for f in body["features"]] == [1, 2]
+
+
+@pytest.mark.parametrize(
+    ("ids", "offset", "matched"),
+    [("21", 0, 0), ("2,4", 2, None), ("2,4", 3, None)],
+)
+def test_items_filtered_empty_page(duck_app, ids, offset, matched):
+    """An empty filtered page proves zero matches only at offset zero."""
+    response = duck_app.get(
+        "/collections/main.points/items", params={"ids": ids, "offset": offset}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["numberReturned"] == 0
+    assert body.get("numberMatched") == matched
 
 
 def test_items_projected(duck_app):

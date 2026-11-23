@@ -547,8 +547,8 @@ class DuckCollection(Collection):
         where = self._where_clause(where_filter)
 
         # Without filter, DuckDB answers COUNT(*) from the table/file metadata.
-        # With a filter it is a full scan (while the features query can stop
-        # after `limit` rows), so `numberMatched` is not returned.
+        # With a filter, skip the count query: it can require a full scan even
+        # when the features query can stop after `limit + 1` rows.
         count_sql = None
         if where_filter is None:
             count_sql = " ".join(["SELECT COUNT(*)", self._from()])
@@ -574,6 +574,10 @@ class DuckCollection(Collection):
             self._run_features_queries, count_sql, sql, geom_as_wkt, offset, limit
         )
         returned = len(features)
+
+        # An empty page at a positive offset only gives an upper bound.
+        if matched is None and not has_more and (returned or offset == 0):
+            matched = offset + returned
 
         return ItemList(
             items=features,

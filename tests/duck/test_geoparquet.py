@@ -389,7 +389,7 @@ def test_bbox_covering_filter(covering_collection):
 
     items = asyncio.run(col.features(bbox_filter=[12, 12, 15, 15], limit=1000))
     assert len(items["items"]) == 301
-    assert items["matched"] is None
+    assert items["matched"] == 301
 
     # cql2 spatial filter, combined with other filters
     where = col.cql_where(
