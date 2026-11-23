@@ -381,17 +381,16 @@ class DuckCollection(Collection):
         return ""
 
     def _bbox_covering_filter(self, where: Expr) -> str | None:
-        """SQL filter on the GeoParquet bbox covering columns.
+        """SQL bbox prefilter for the spatial predicates of ``where``.
 
         For each spatial predicate (e.g the `bbox` or tile filters) between a
-        geometry column with a bbox covering and a geometry literal, which is
-        part of the top-level ``AND`` of ``where``, filter the covering
-        columns with the bounds of the literal. DuckDB uses the row group
-        statistics of those columns to skip reading most of the file.
+        geometry column and a geometry literal, which is part of the top-level
+        ``AND`` of ``where``, filter the column's bbox with the bounds of the
+        literal: the GeoParquet bbox covering columns when there are some,
+        else ``geom && envelope``. DuckDB uses the row group statistics of
+        those columns to skip reading most of the data. Unlike
+        ``ST_Intersects``, ``&&`` is pushed down to the scan through a view.
         """
-        if not self.bbox_coverings:
-            return None
-
         filters = []
         for expr in _conjuncts(where.to_json()):
             if not isinstance(expr, dict) or expr.get("op") not in _BBOX_PREDICATES:
@@ -406,17 +405,22 @@ class DuckCollection(Collection):
                     continue
 
                 name = prop["property"]
-                covering = self.bbox_coverings.get(name)
                 column = self.get_column(name)
-                if not covering or not column:
+                if not column or not column.is_geometry:
                     continue
 
                 if bounds := _literal_bounds(literal, column.srid or 4326):
                     xmin, ymin, xmax, ymax = bounds
-                    filters.append(
-                        f"{covering['xmin']} <= {xmax!r} AND {covering['xmax']} >= {xmin!r} "
-                        f"AND {covering['ymin']} <= {ymax!r} AND {covering['ymax']} >= {ymin!r}"
-                    )
+                    if covering := self.bbox_coverings.get(name):
+                        filters.append(
+                            f"{covering['xmin']} <= {xmax!r} AND {covering['xmax']} >= {xmin!r} "
+                            f"AND {covering['ymin']} <= {ymax!r} AND {covering['ymax']} >= {ymin!r}"
+                        )
+                    else:
+                        filters.append(
+                            f"{_quote_ident(name)} && "
+                            f"ST_MakeEnvelope({xmin!r}, {ymin!r}, {xmax!r}, {ymax!r})"
+                        )
                 break
 
         return " AND ".join(filters) or None
