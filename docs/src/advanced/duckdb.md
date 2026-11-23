@@ -23,10 +23,14 @@ The DuckDB backend requires `duckdb>=2.0` (CRS aware `GEOMETRY` type).
 
 | Setting | Env | Default | Description |
 | ------- | --- | ------- | ----------- |
-| `database` | `TIPG_DUCKDB_DATABASE` | | Path or URL to a DuckDB database file, attached (read-only) under its file name (without extension). If not set, only `sources` are served |
+| `database` | `TIPG_DUCKDB_DATABASE` | | Path or URL to a DuckDB database file, attached (read-only) under its file name (without extension) |
 | `threads` | `TIPG_DUCKDB_THREADS` | | Number of threads DuckDB can use |
 | `memory_limit` | `TIPG_DUCKDB_MEMORY_LIMIT` | | Maximum memory DuckDB can use (e.g `4GB`) |
 | `sources` | `TIPG_DUCKDB_SOURCES` | `{}` | Mapping of name to file path/glob/URL (e.g `'{"countries": "data/countries.parquet"}'`). Parquet files are read with `read_parquet`, other formats with `ST_Read` |
+| `extensions` | `TIPG_DUCKDB_EXTENSIONS` | `[]` | Extensions to load in addition to `spatial` (e.g `'["httpfs", "iceberg"]'`) |
+| `extension_directory` | `TIPG_DUCKDB_EXTENSION_DIRECTORY` | | Directory DuckDB installs and loads extensions from (e.g extensions baked into a container image) |
+| `custom_extension_repository` | `TIPG_DUCKDB_CUSTOM_EXTENSION_REPOSITORY` | | URL of the repository extensions are installed from |
+| `autoinstall_extensions` | `TIPG_DUCKDB_AUTOINSTALL_EXTENSIONS` | `True` | Run `INSTALL` before `LOAD`. Disable it when the extensions are already in `extension_directory` and the runtime has no network access |
 | `schemas` | `TIPG_DUCKDB_SCHEMAS` | `["main"]` | Schemas to look for tables/views in |
 | `tables` | `TIPG_DUCKDB_TABLES` | | Only expose those tables (`schema.table`) |
 | `exclude_tables` | `TIPG_DUCKDB_EXCLUDE_TABLES` | | Tables (`schema.table`) to exclude |
@@ -101,6 +105,46 @@ TIPG_DUCKDB_DATABASE=data.duckdb \
 TIPG_DUCKDB_SOURCES='{"countries": "countries.parquet"}' \
 uvicorn app:app --port 8000
 ```
+
+### Define collections with DuckDB views
+
+Use `sources` for file paths. If you need to filter or join datasets, read an Iceberg table, or choose assets from a STAC catalog, create views in your application code. You don't need to build a `.duckdb` file or list those views in `sources`.
+
+Pass an `on_connect` function to `connect_to_duckdb()`. It's called with the connection after the `database` is attached and before `sources` are registered, so it can also create the secrets a remote source needs. Use a regular view in `memory.main`: TiPg uses separate DuckDB cursors for discovery and queries, so it can't see a connection-local `TEMP` view.
+
+```python
+def create_views(conn: duckdb.DuckDBPyConnection) -> None:
+    """Create the views served by TiPg."""
+    conn.execute("""
+        CREATE VIEW memory.main.roads AS
+        SELECT * FROM read_parquet('data/roads.parquet')
+    """)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Connect to DuckDB, with the views, before discovery."""
+    await connect_to_duckdb(app, settings=duckdb_settings, on_connect=create_views)
+    try:
+        await register_collection_catalog(app)
+        yield
+    finally:
+        await close_duckdb_connection(app)
+```
+
+With the default catalog settings, TiPg exposes the view as `main.roads` if it returns a DuckDB `GEOMETRY` column. If your source stores geometry as WKB or WKT, convert it in the view with `ST_GeomFromWKB` or `ST_GeomFromText`.
+
+For Iceberg, load the [DuckDB Iceberg extension](https://duckdb.org/docs/stable/core_extensions/iceberg/overview) with `TIPG_DUCKDB_EXTENSIONS='["httpfs", "iceberg"]'`, and configure any storage credentials before creating the views. For example, in `create_views()`:
+
+```python
+conn.execute("CREATE SECRET (TYPE s3, PROVIDER credential_chain)")
+conn.execute("""
+    CREATE VIEW memory.main.parcels AS
+    SELECT * FROM iceberg_scan('s3://my-bucket/warehouse/parcels')
+""")
+```
+
+You can use the same pattern to walk a trusted STAC catalog at startup and create one view per selected collection-level asset. TiPg discovers the resulting views; its catalog refresh doesn't rerun your STAC lookup.
 
 ### Example application
 
@@ -187,7 +231,7 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 - **Extents and geometry type**: tables and views are never scanned to build the catalog. The spatial extent and geometry type of parquet `sources` are read from their [GeoParquet](https://geoparquet.org) metadata (`bbox` and `geometry_types`, in the file footers). Other collections have no spatial extent and a generic `Geometry` type, and no collection has a temporal extent.
 - **Items order**: without `sortby`, features are returned in their insertion order (no default sort on the primary key).
 - **Feature ids**: single parquet file `sources` are read with `read_parquet(..., file_row_number = true)`, and the added `file_row_number` column (row position in the file, starting at 0) is used as id when the collection has no other id column (`TIPG_TABLE_CONFIG__..._pk` or fallback key names). Looking up a feature by id (`/items/{itemId}`) then only reads one row group. Other collections without primary key use the feature position in the response as `id`, and don't support `/items/{itemId}`.
-- **Spatial filters**: DuckDB has no spatial index on parquet files. When a GeoParquet (1.1+) source declares a [bbox covering](https://geoparquet.org/releases/v1.1.0/#bbox-covering-encoding) column, spatial filters (`bbox`, tile envelope, and cql2 spatial predicates in the top-level `AND` of the filter) also filter the covering columns, so DuckDB can skip the row groups outside of the filter using their statistics. Without covering, spatial filters scan the whole geometry column. Parquet sources whose covering doesn't match the file (e.g. pointing to missing struct fields) are not added to the catalog (a warning is logged). See [Data layout and performance](#data-layout-and-performance).
+- **Spatial filters**: DuckDB has no spatial index on parquet files. When a GeoParquet (1.1+) source declares a [bbox covering](https://geoparquet.org/releases/v1.1.0/#bbox-covering-encoding) column, spatial filters (`bbox`, tile envelope, and cql2 spatial predicates in the top-level `AND` of the filter) also filter the covering columns, so DuckDB can skip the row groups outside of the filter using their statistics. Without covering, the same spatial filters also get a `geom && envelope` term, so DuckDB can skip row groups using the bounding box statistics of native `GEOMETRY` columns (DuckDB tables, Iceberg tables, GeoParquet files with the native Parquet `GEOMETRY` type), including through a view, where `ST_Intersects` alone isn't pushed down to the scan. Without either, spatial filters scan the whole geometry column. Parquet sources whose covering doesn't match the file (e.g. pointing to missing struct fields) are not added to the catalog (a warning is logged). See [Data layout and performance](#data-layout-and-performance).
 - **Parquet metadata cache**: parquet files metadata (footers) are cached in memory (`parquet_metadata_cache`), so they are only fetched once per file.
 - **`numberMatched`**: only returned for requests without filter (DuckDB answers `COUNT(*)` from metadata), counting the features matching a filter would need a full scan.
 - **Vector tiles**: `ST_AsMVT` only supports boolean, integer, float and string properties; `DECIMAL` values are cast to `DOUBLE` and other types (dates, timestamps, lists, ...) to `VARCHAR`.
@@ -278,7 +322,7 @@ gdf.to_parquet("parcels_sorted.parquet", write_covering_bbox=True, row_group_siz
 
     DuckDB's `COPY ... TO` doesn't write the bbox `covering` metadata, and adding it with `KV_METADATA` results in two `geo` metadata entries in the file. Use DuckDB to sort the data, but GDAL or GeoPandas to write the final GeoParquet file with a bbox covering.
 
-    DuckDB can write the native Parquet `GEOMETRY` type, with bounding box statistics (`GEOPARQUET_VERSION 'V2'`), but those statistics are not used when the file is read through a view, which is how `TiPg` registers parquet `sources`.
+    DuckDB can write the native Parquet `GEOMETRY` type, with bounding box statistics (`GEOPARQUET_VERSION 'V2'`), but through a view, which is how `TiPg` registers parquet `sources`, DuckDB only uses those statistics for `&&` filters. `TiPg` adds a `geom && envelope` term to spatial filters on geometry columns without a covering, so they are used.
 
 #### Low zoom levels
 
