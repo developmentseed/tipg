@@ -15,7 +15,7 @@ def _setting(conn, name):
     return conn.execute(f"SELECT current_setting('{name}')").fetchone()[0]
 
 
-def test_extension_settings(tmp_path):
+def test_extension_settings(installed_spatial):
     """Extensions are loaded and connect-time settings are applied."""
     conn = create_connection(
         DuckDBSettings(
@@ -48,7 +48,7 @@ def test_no_autoinstall(tmp_path):
     assert not list(tmp_path.iterdir())
 
 
-def test_on_connect_runs_before_sources(tmp_path):
+def test_on_connect_runs_before_sources(tmp_path, installed_spatial):
     """on_connect runs after ATTACH and before sources are registered."""
     path = tmp_path / "points.parquet"
     seed = duckdb.connect()

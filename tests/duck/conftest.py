@@ -68,14 +68,20 @@ CREATE TABLE nongeo AS SELECT x::INTEGER AS id, 'row ' || x AS name FROM range(1
 
 
 @pytest.fixture(scope="session")
-def duckdb_files(tmp_path_factory):
+def installed_spatial():
+    """Install spatial before tests that load it without installing it."""
+    with duckdb.connect() as conn:
+        conn.execute("INSTALL spatial")
+
+
+@pytest.fixture(scope="session")
+def duckdb_files(tmp_path_factory, installed_spatial):
     """Create a DuckDB database file and a GeoParquet file."""
     tmp = tmp_path_factory.mktemp("duckdb")
     database = str(tmp / "test.duckdb")
     parquet = str(tmp / "landmarks.parquet")
 
     conn = duckdb.connect(database)
-    conn.execute("INSTALL spatial")
     conn.execute("LOAD spatial")
     conn.execute(FIXTURE_SQL)
     conn.execute(
