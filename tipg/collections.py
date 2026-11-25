@@ -10,7 +10,8 @@ from ciso8601 import parse_rfc3339
 from cql2 import Expr
 from morecantile import Tile, TileMatrixSet
 from pydantic import BaseModel, model_validator
-from pyproj import Transformer
+from pyproj import CRS, Transformer
+from pyproj.exceptions import CRSError
 
 from .errors import (
     InvalidDatetime,
@@ -23,8 +24,31 @@ from .model import Extent
 
 TransformerFromCRS = lru_cache(Transformer.from_crs)
 
+# CRS of a geometry column: an EPSG code, or a CRS definition understood by
+# pyproj and the database (e.g PROJJSON or `AUTH:CODE`) for CRS without EPSG
+# code (only produced by the DuckDB backend).
+Srid = int | str
+
 # Wraps a cql2-json geometry node into a backend-specific function call
-GeometryLiteralWrapper = Callable[[Any, int], Any]
+GeometryLiteralWrapper = Callable[[Any, Srid], Any]
+
+
+@lru_cache(maxsize=256)
+def crs_uri(srid: Srid) -> str | None:
+    """OGC URI of a CRS (``None`` for CRS definitions without authority code)."""
+    if isinstance(srid, int):
+        return f"http://www.opengis.net/def/crs/EPSG/0/{srid}"
+
+    try:
+        authority = CRS.from_user_input(srid).to_authority(min_confidence=100)
+    except CRSError:
+        return None
+
+    if authority is None:
+        return None
+
+    auth, code = authority
+    return f"http://www.opengis.net/def/crs/{auth}/0/{code}"
 
 
 def _quote_ident(name: str) -> str:
@@ -70,7 +94,7 @@ def _s_intersects_bbox(
     south: float,
     east: float,
     north: float,
-    srid: int | None = None,
+    srid: Srid | None = None,
     *,
     tag: GeometryLiteralWrapper,
 ) -> Expr:
@@ -113,7 +137,7 @@ _GEOJSON_GEOMETRY_TYPES = frozenset(
 
 def _transform_cql_geom_literals(
     node: Any,
-    target_srid: int,
+    target_srid: Srid,
     reproject: GeometryLiteralWrapper,
 ) -> Any:
     """Walk a user-supplied cql2-json tree and wrap every GeoJSON geometry
@@ -180,7 +204,8 @@ class Column(BaseModel):
     type: str
     description: str | None = None
     geometry_type: str | None = None
-    srid: int | None = None
+    # EPSG code, or CRS definition (see `Srid`)
+    srid: Srid | None = None
     bounds: list[float] | None = None
     mindt: str | None = None
     maxdt: str | None = None
@@ -319,8 +344,8 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
     @property
     def crs(self):
         """Return crs of set geometry column."""
-        if self.geometry_column:
-            return f"http://www.opengis.net/def/crs/EPSG/0/{self.geometry_column.srid}"
+        if self.geometry_column and self.geometry_column.srid is not None:
+            return crs_uri(self.geometry_column.srid)
 
     @cached_property
     def geometry_columns(self) -> list[Column]:
@@ -420,14 +445,14 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         return {**geoms, **props}
 
     @abc.abstractmethod
-    def _tag_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _tag_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Tag a cql2-json geometry literal, whose coordinates are already in
         ``srid``, with that CRS (returns a cql2-json function call node).
         """
         ...
 
     @abc.abstractmethod
-    def _reproject_geometry_literal(self, geom: Any, srid: int) -> Any:
+    def _reproject_geometry_literal(self, geom: Any, srid: Srid) -> Any:
         """Reproject a EPSG:4326 cql2-json geometry literal to ``srid``
         (returns a cql2-json function call node).
         """
@@ -444,8 +469,15 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
         dt: str | None = None,
         tile: Tile | None = None,
         tms: TileMatrixSet | None = None,
+        tile_buffer: int = 0,
+        tile_resolution: int = 4096,
     ) -> Expr | None:
-        """Construct WHERE query as a cql2 Expr."""
+        """Construct WHERE query as a cql2 Expr.
+
+        The `tile` envelope filter is expanded by `tile_buffer` pixels (of a
+        `tile_resolution` pixels tile), so features in the tile buffer are
+        encoded in the tile.
+        """
         exprs: list[Expr] = []
         geometry_column = self.get_geometry_column(geom)
 
@@ -587,6 +619,19 @@ class Collection(BaseModel, metaclass=abc.ABCMeta):
                 bounds.right,
                 bounds.top,
             )
+            # Expand the envelope by the tile buffer (`ST_AsMVTGeom` keeps
+            # geometries up to `tile_buffer` pixels outside of the tile).
+            # The buffer doesn't extend past the TMS bounds (but tiles
+            # outside of the TMS bounds are not shrunk).
+            if tile_buffer:
+                margin_x = (east - west) * tile_buffer / tile_resolution
+                margin_y = (north - south) * tile_buffer / tile_resolution
+                tms_bbox = tms.xy_bbox
+                west = max(west - margin_x, min(west, tms_bbox.left))
+                south = max(south - margin_y, min(south, tms_bbox.bottom))
+                east = min(east + margin_x, max(east, tms_bbox.right))
+                north = min(north + margin_y, max(north, tms_bbox.top))
+
             # Bounds are now in TMS CRS
             tms_srid = tms.crs.to_epsg() or 4326
             tile_target_srid = col_srid if col_srid is not None else 4326

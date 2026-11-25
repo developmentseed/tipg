@@ -27,11 +27,16 @@ nav:
     - "Customization": advanced/customization.md
     - "TiPg Vector Tiles server": advanced/ogc_tiles_server.md
     - "TiPg Features server": advanced/ogc_features_server.md
+    - "DuckDB backend": advanced/duckdb.md
   - API:
     - pg:
       - collections: api/tipg/pg/collections.md
       - database: api/tipg/pg/database.md
       - settings: api/tipg/pg/settings.md
+    - duck:
+      - collections: api/tipg/duck/collections.md
+      - database: api/tipg/duck/database.md
+      - settings: api/tipg/duck/settings.md
     - collections: api/tipg/collections.md
     - dependencies: api/tipg/dependencies.md
     - errors: api/tipg/errors.md
